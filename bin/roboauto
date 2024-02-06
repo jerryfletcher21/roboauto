@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+
+# pylint: disable=C0114 missing-module-docstring
+# pylint: disable=C0103 invalid-name
+
+import sys
+import re
+import signal
+
+from roboauto.logger import print_out, print_err
+from roboauto.global_state import roboauto_state
+from roboauto.utils import global_setup, list_configs
+from roboauto.robot import \
+    import_robot, remove_robot, print_token, robot_print_dir, \
+    waiting_queue_print, robot_set_dir, generate_robot
+from roboauto.order import \
+    order_info_local, \
+    create_order, cancel_order, recreate_order
+from roboauto.info import robosats_info, robot_info, list_limits
+from roboauto.book import \
+    list_offers_per_hour, \
+    list_offers_all, list_offers_buy, list_offers_sell
+from roboauto.keep_online import slowly_move_to_active, keep_online
+
+
+version = "0.1"
+
+info = """\
+roboauto action [options]
+
+list-configs
+import-robot [--inactive, --paused] [robot-name] [token]
+remove-robot [robot-name]
+print-token [robot-name]
+list-active|list-inactive|list-paused
+waiting-queue
+set-active [robot-name]
+set-inactive|set-paused [robot-name/--all]
+order-info-local [robot-name/--active/--paused/--inactive] [order-id]
+slowly-move-to-active [seconds]
+generate-robot [--inactive, --paused]
+robosats-info
+robot-info [--no-order] [--stdin|robot-name]
+list-limits
+list-hours-absolute
+list-hours-relative
+list-offers-all|list-offers-buy|list-offers-sell [currency] [search]
+create-order [robot-name] [key=value]
+cancel-order [robot-name]
+recreate-order [--no-cancel] robot-name key=value
+keep-online
+"""
+
+info_verbose = """\
+roboauto action [options]
+
+-h|--help
+    print this help message
+--verbose-help
+    print long help message
+-v|--version
+    print roboauto version
+
+list-configs
+    list configs
+
+import-robot [--inactive, --paused] [robot-name] [token]
+    import a robot, robot-name and token are required
+    if not passed as arguments roboauto will ask for them
+    by default the new robot is put in the active folder
+    so it will be considered when running keep-online
+    --inactive imports the robot in the inactive directory
+    --paused imports the robot in the paused directory
+
+remove-robot [robot-name]
+    remove a robot searching all directories
+
+print-token [robot-name]
+    print robot token
+
+list-active|list-inactive|list-paused
+    list active|inactive|paused robots one per line
+
+waiting-queue
+    list waiting queue
+
+set-active [robot-name]
+    set an inactive/paused robot active
+
+set-inactive|set-paused [robot-name/--all]
+    set an active robot inactive|paused
+    if --all, set all robot
+
+order-info-local [robot-name/--active/--paused/--inactive] [order-id]
+    print info about an order from disk
+    if --active, --paused, --inactive is passed print
+    local order info about all robots in the directory
+
+slowly-move-to-active [seconds]
+    slowly move robots to active from paused
+    if seconds is not present $slowly_paused_interval is used
+
+generate-robot [--inactive, --paused]
+    generate a new robot
+
+robosats-info
+    get info about robosats
+
+robot-info [--no-order] [--stdin|robot-name]
+    get info about a robot
+    and its order if present
+
+list-limits
+    list currency limits
+
+list-hours-absolute
+    list orders per hours absolute
+
+list-hours-relative
+    list orders per hours relative from current time
+
+list-offers-all|list-offers-buy|list-offers-sell [currency] [search]
+    list all [buy|sell] offers in the order book
+
+create-order [robot-name] [key=value]
+    create a new order
+    if key=value are not provided they will be asked
+
+cancel-order [robot-name]
+    cancel robot order just if order is public or paused
+
+recreate-order [--no-cancel] robot-name key=value
+    recreate robot order just if order is public or paused
+    if --no-cancel do not cancel the order, recreate is from
+    last saved order
+    provide a list of key=value of parameters to change in the
+    new order
+
+keep-online
+    keep the offers of the robots in the active directory online
+    if message-send program is present, send a message when
+    something other than expirations happens to an offer
+"""
+
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+global_setup()
+
+argv_global = sys.argv[1:]
+if len(argv_global) < 1:
+    print_err("insert parameters", date=False)
+    sys.exit(1)
+
+while len(argv_global) > 0:
+    if argv_global[0] in ("-h", "--help"):
+        print_out(info, end="", date=False)
+        sys.exit(0)
+    elif argv_global[0] == "--verbose-help":
+        print_out(info_verbose, end="", date=False)
+        sys.exit(0)
+    elif argv_global[0] in ("-v", "--version"):
+        print_out(version, date=False)
+        sys.exit(0)
+    elif re.match('^-', argv_global[0]) is not None:
+        print_err("option " + argv_global[0] + " not recognized", date=False)
+        sys.exit(1)
+    else:
+        break
+    argv_global = argv_global[1:]
+
+if len(argv_global) < 1:
+    print_err("insert action", date=False)
+    sys.exit(1)
+action = argv_global[0]
+argv_global = argv_global[1:]
+
+try:
+    if action == "list-configs":
+        return_status_global = list_configs()
+    elif action == "import-robot":
+        return_status_global = import_robot(argv_global)
+    elif action == "remove-robot":
+        return_status_global = remove_robot(argv_global)
+    elif action == "print-token":
+        return_status_global = print_token(argv_global)
+    elif action == "list-active":
+        return_status_global = robot_print_dir(roboauto_state["active_home"])
+    elif action == "list-inactive":
+        return_status_global = robot_print_dir(roboauto_state["inactive_home"])
+    elif action == "list-paused":
+        return_status_global = robot_print_dir(roboauto_state["paused_home"])
+    elif action == "waiting-queue":
+        return_status_global = waiting_queue_print()
+    elif action == "set-active":
+        return_status_global = robot_set_dir(roboauto_state["active_home"], argv_global)
+    elif action == "set-inactive":
+        return_status_global = robot_set_dir(roboauto_state["inactive_home"], argv_global)
+    elif action == "set-paused":
+        return_status_global = robot_set_dir(roboauto_state["paused_home"], argv_global)
+    elif action == "order-info-local":
+        return_status_global = order_info_local(argv_global)
+    elif action == "slowly-move-to-active":
+        return_status_global = slowly_move_to_active(argv_global)
+    elif action == "generate-robot":
+        return_status_global = generate_robot(argv_global)
+    elif action == "robosats-info":
+        return_status_global = robosats_info()
+    elif action == "robot-info":
+        return_status_global = robot_info(argv_global)
+    elif action == "list-limits":
+        return_status_global = list_limits()
+    elif action == "list-hours-absolute":
+        return_status_global = list_offers_per_hour(False)
+    elif action == "list-hours-relative":
+        return_status_global = list_offers_per_hour(True)
+    elif action == "list-offers-all":
+        return_status_global = list_offers_all(argv_global)
+    elif action == "list-offers-buy":
+        return_status_global = list_offers_buy(argv_global)
+    elif action == "list-offers-sell":
+        return_status_global = list_offers_sell(argv_global)
+    elif action == "create-order":
+        return_status_global = create_order(argv_global)
+    elif action == "cancel-order":
+        return_status_global = cancel_order(argv_global)
+    elif action == "recreate-order":
+        return_status_global = recreate_order(argv_global)
+    elif action == "keep-online":
+        return_status_global = keep_online()
+    else:
+        print_err("action " + action + " not recognized", date=False)
+        sys.exit(1)
+except KeyboardInterrupt:
+    print_out("\n", end="", date=False)
+    return_status_global = False
+
+if return_status_global:
+    sys.exit(0)
+else:
+    sys.exit(1)
