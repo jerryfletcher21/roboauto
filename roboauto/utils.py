@@ -28,39 +28,80 @@ def dir_make_sure_exists(directory):
     return True
 
 
-def update_single_option(option, new_option, print_info=False):
-    if roboauto_options[option] != new_option:
-        old_option = roboauto_options[option]
-        roboauto_options[option] = new_option
+def update_single_option(name, new_option, print_info=False):
+    if roboauto_options[name] != new_option:
+        old_option = roboauto_options[name]
+        roboauto_options[name] = new_option
         if print_info:
             print_out(
                 "option %s changed from %s to %s" %
-                (option, str(old_option), str(new_option))
+                (name, str(old_option), str(new_option))
             )
+
+
+def update_federation_option(name, new_option, print_info=False):
+    if len(name) < 3:
+        print_err("coordinators name should be longer than 3 letters %s not valid" % name)
+        return False
+    for key in roboauto_options["federation"]:
+        if name != key and name[:3] == key[:3]:
+            print_err("coordinator name %s not valid, similar to %s" % (name, key))
+            return False
+
+    old_option = roboauto_options["federation"].get(name, False)
+    if old_option is False:
+        roboauto_options["federation"].update({name, new_option})
+        print_out("new coordinator %s added with url %s" % (name, new_option))
+    elif old_option != new_option:
+        roboauto_options["federation"][name] = new_option
+        if print_info:
+            print_out(
+                "option %s changed from %s to %s" %
+                (name, str(old_option), str(new_option))
+            )
+
+    return True
 
 
 def update_roboauto_options(print_info=False):
     if os.path.isfile(roboauto_state["config_file"]):
         parser = configparser.RawConfigParser()
-        with open(roboauto_state["config_file"], encoding="utf8") as stream:
-            default_section = "DEFAULT"
-            parser.read_string("[" + default_section + "]\n" + stream.read())
+        parser.read(roboauto_state["config_file"])
 
-            for option in (
-                "robosats_url", "user_agent", "default_duration",
-                "default_escrow", "date_format"
-            ):
-                if parser.has_option(default_section, option):
-                    new_option = parser.get(default_section, option).strip("'\"")
-                    update_single_option(option, new_option, print_info=print_info)
+        general_section = "general"
 
-            for option in (
-                "book_interval", "bond_interval", "slowly_paused_interval_global",
-                "error_interval", "tab_size", "order_maximum"
-            ):
-                if parser.has_option(default_section, option):
-                    new_option = parser.getint(default_section, option)
-                    update_single_option(option, new_option, print_info=print_info)
+        for option in (
+            "user_agent", "default_duration",
+            "default_escrow", "date_format"
+        ):
+            if parser.has_option(general_section, option):
+                new_option = parser.get(general_section, option).strip("'\"")
+                update_single_option(option, new_option, print_info=print_info)
+
+        for option in (
+            "book_interval", "bond_interval", "slowly_paused_interval_global",
+            "error_interval", "tab_size", "order_maximum"
+        ):
+            if parser.has_option(general_section, option):
+                try:
+                    new_option = parser.getint(general_section, option)
+                except (ValueError, TypeError):
+                    print_err("reading %s" % option)
+                    return False
+                update_single_option(option, new_option, print_info=print_info)
+
+        federation_section = "federation"
+
+        current_coordinator_set = False
+        for key in parser.options(federation_section):
+            value = parser.get(federation_section, key).strip("'\"")
+            if update_federation_option(key, value, print_info=print_info) is False:
+                return False
+            if current_coordinator_set is False:
+                roboauto_state["current_url"] = roboauto_options["federation"][key]
+                current_coordinator_set = True
+
+    return True
 
 
 def global_setup():
@@ -99,8 +140,6 @@ def global_setup():
     ):
         if not dir_make_sure_exists(directory_global):
             sys.exit(1)
-
-    update_roboauto_options()
 
 
 def get_int(string_number):

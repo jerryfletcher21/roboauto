@@ -9,7 +9,7 @@ import time
 import requests
 
 from roboauto.logger import print_err
-from roboauto.global_state import roboauto_options
+from roboauto.global_state import roboauto_state, roboauto_options
 
 
 def requests_tor(url, headers, data="", until_true=True):
@@ -75,7 +75,7 @@ def requests_api_base(url):
         "Accept": "*/*",
         "Accept-Language": "en-US,en;q=0.5",
         "Accept-Encoding": "gzip, deflate",
-        "Referer": roboauto_options["robosats_url"],
+        "Referer": roboauto_state["current_url"],
         "Content-Type": "application/json",
         "Connection": "keep-alive",
         "Sec-Fetch-Dest": "empty",
@@ -87,15 +87,15 @@ def requests_api_base(url):
 
 
 def requests_api_info():
-    return requests_api_base(roboauto_options["robosats_url"] + "/api/info/")
+    return requests_api_base(roboauto_state["current_url"] + "/api/info/")
 
 
 def requests_api_book():
-    return requests_api_base(roboauto_options["robosats_url"] + "/api/book/?currency=0&type=2")
+    return requests_api_base(roboauto_state["current_url"] + "/api/book/?currency=0&type=2")
 
 
 def requests_api_limits():
-    return requests_api_base(roboauto_options["robosats_url"] + "/api/limits/")
+    return requests_api_base(roboauto_state["current_url"] + "/api/limits/")
 
 
 def requests_api_token(token_base91, referer, url):
@@ -119,16 +119,16 @@ def requests_api_token(token_base91, referer, url):
 def requests_api_robot(token_base91):
     return requests_api_token(
         token_base91,
-        roboauto_options["robosats_url"] + "/robot/",
-        roboauto_options["robosats_url"] + "/api/robot/"
+        roboauto_state["current_url"] + "/robot/",
+        roboauto_state["current_url"] + "/api/robot/"
     )
 
 
 def requests_api_order(token_base91, order_id):
     return requests_api_token(
         token_base91,
-        roboauto_options["robosats_url"] + "/order/" + order_id,
-        roboauto_options["robosats_url"] + "/api/order/?order_id=" + order_id
+        roboauto_state["current_url"] + "/order/" + order_id,
+        roboauto_state["current_url"] + "/api/order/?order_id=" + order_id
     )
 
 
@@ -137,8 +137,8 @@ def requests_api_chat(token_base91, order_id):
 
     return requests_api_token(
         token_base91,
-        roboauto_options["robosats_url"] + "/order/" + order_id,
-        roboauto_options["robosats_url"] + "api/chat/?order_id=" + order_id + "&offset=" + offset
+        roboauto_state["current_url"] + "/order/" + order_id,
+        roboauto_state["current_url"] + "api/chat/?order_id=" + order_id + "&offset=" + offset
     )
 
 
@@ -151,7 +151,7 @@ def requests_api_post(token_base91, referer, url, data):
         "Referer": referer,
         "Content-Type": "application/json",
         "Authorization": "Token " + token_base91,
-        "Origin": roboauto_options["robosats_url"],
+        "Origin": roboauto_state["current_url"],
         "Connection": "keep-alive",
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
@@ -164,8 +164,8 @@ def requests_api_post(token_base91, referer, url, data):
 def requests_api_order_post(token_base91, order_id, order_action):
     return requests_api_post(
         token_base91,
-        roboauto_options["robosats_url"] + "/order/" + order_id,
-        roboauto_options["robosats_url"] + "/api/order/?order_id=" + order_id,
+        roboauto_state["current_url"] + "/order/" + order_id,
+        roboauto_state["current_url"] + "/api/order/?order_id=" + order_id,
         order_action
 )
 
@@ -176,12 +176,12 @@ def requests_api_cancel(token_base91, order_id):
 
 def requests_api_make(token_base91, order_id, make_data):
     if order_id:
-        referer = roboauto_options["robosats_url"] + "/order/" + order_id
+        referer = roboauto_state["current_url"] + "/order/" + order_id
     else:
-        referer = roboauto_options["robosats_url"]
+        referer = roboauto_state["current_url"]
     return requests_api_post(
         token_base91,
         referer,
-        roboauto_options["robosats_url"] + "/api/make/",
+        roboauto_state["current_url"] + "/api/make/",
         make_data
     )

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+# pylint: disable=C0209 consider-using-f-string
 # pylint: disable=C0114 missing-module-docstring
 # pylint: disable=C0103 invalid-name
 
@@ -8,8 +9,8 @@ import re
 import signal
 
 from roboauto.logger import print_out, print_err
-from roboauto.global_state import roboauto_state
-from roboauto.utils import global_setup, list_configs
+from roboauto.global_state import roboauto_state, roboauto_options
+from roboauto.utils import global_setup, list_configs, update_roboauto_options
 from roboauto.robot import \
     import_robot, remove_robot, print_token, robot_print_dir, \
     waiting_queue_print, robot_set_dir, generate_robot
@@ -146,11 +147,16 @@ signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 global_setup()
 
+if update_roboauto_options() is False:
+    print_err("reading the config file")
+    sys.exit(1)
+
 argv_global = sys.argv[1:]
 if len(argv_global) < 1:
     print_err("insert parameters", date=False)
     sys.exit(1)
 
+coordinator_set = False
 while len(argv_global) > 0:
     if argv_global[0] in ("-h", "--help"):
         print_out(info, end="", date=False)
@@ -161,6 +167,25 @@ while len(argv_global) > 0:
     elif argv_global[0] in ("-v", "--version"):
         print_out(version, date=False)
         sys.exit(0)
+    elif re.match('^--', argv_global[0]) is not None:
+        if coordinator_set is True:
+            print_err("coordinator can not be set 2 times")
+            sys.exit(1)
+        coordinator_option = argv_global[0][2:]
+        if len(coordinator_option) < 3:
+            print_err(
+                "coordinator name should be at least 3 characters long: %s invalid" %
+                coordinator_option
+            )
+            sys.exit(1)
+        for name in roboauto_options["federation"]:
+            if name[:3] == coordinator_option[:3]:
+                roboauto_state["current_url"] = roboauto_options["federation"][name]
+                coordinator_set = True
+                break
+        if coordinator_set is False:
+            print_err("coordinator %s not present" % coordinator_option)
+            sys.exit(1)
     elif re.match('^-', argv_global[0]) is not None:
         print_err("option " + argv_global[0] + " not recognized", date=False)
         sys.exit(1)

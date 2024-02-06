@@ -235,7 +235,8 @@ def keep_online():
 
     while True:
         # allow to adjust configs while roboauto is running
-        update_roboauto_options(True)
+        if update_roboauto_options(True) is False:
+            print_err("reading the config file")
 
         robot_list = robot_list_dir(roboauto_state["active_home"])
         robot_list_len = len(robot_list)
