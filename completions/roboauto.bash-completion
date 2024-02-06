@@ -1,0 +1,110 @@
+#!/bin/bash
+
+__roboauto_completion() {
+    # shellcheck disable=SC2034
+    local cur prev words=() cword
+
+    _get_comp_words_by_ref -n = cur prev words cword
+
+    OPTS=""
+
+    if [ "${cword}" -eq 1 ]; then
+        OPTS="$(
+            roboauto -h |
+            grep '^[^[:space:]]' |
+            tail -n +2 |
+            cut -d " " -f 1 |
+            tr '|' '\n'
+        )"
+    else
+        local action="${words[1]}"
+
+        local roboauto_home="${XDG_DATA_HOME:-${XDG_LOCAL_HOME:-$HOME/.local}/share}/roboauto"
+        local active_home="$roboauto_home/active"
+        local inactive_home="$roboauto_home/inactive"
+        local paused_home="$roboauto_home/paused"
+
+        if [ ! -d "$active_home" ] || [ ! -d "$inactive_home" ] || [ ! -d "$paused_home" ]; then
+            return 0
+        fi
+
+        case "$action" in
+        import-robot)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="
+--inactive
+--paused
+"
+            fi
+        ;;
+        remove-robot)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="$(
+                    find "$active_home" "$inactive_home" "$paused_home" \
+                        -mindepth 1 -maxdepth 1 -type d |
+                    rev |
+                    cut -d "/" -f 1 |
+                    rev
+                )"
+            fi
+        ;;
+        set-active)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="$(
+                    find "$inactive_home" "$paused_home" \
+                        -mindepth 1 -maxdepth 1 -type d |
+                    rev |
+                    cut -d "/" -f 1 |
+                    rev
+                )"
+            fi
+        ;;
+        set-inactive|set-paused)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="--all
+                $(
+                    find "$active_home" \
+                        -mindepth 1 -maxdepth 1 -type d |
+                    rev |
+                    cut -d "/" -f 1 |
+                    rev
+                )"
+            fi
+        ;;
+        robot-info)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="--no-order"
+            fi
+            if [ "${cword}" -eq 2 ] || [ "${cword}" -eq 3 ]; then
+                OPTS="$OPTS
+                $(
+                    find "$active_home" \
+                        -mindepth 1 -maxdepth 1 -type d |
+                    rev |
+                    cut -d "/" -f 1 |
+                    rev
+                )"
+            fi
+        ;;
+        list-offers-all|list-offers-buy|list-offers-sell)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="
+all
+eur
+usd
+btc
+"
+            fi
+        ;;
+        esac
+    fi
+
+    if [ -n "$OPTS" ]; then
+        # shellcheck disable=SC2207
+        COMPREPLY=($(
+            printf "%s\n" "$OPTS" |
+            awk -v IGNORECASE=1 -v p="$cur" 'p==substr($0,0,length(p))'
+        ))
+    fi
+} &&
+complete -F __roboauto_completion roboauto

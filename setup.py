@@ -7,8 +7,9 @@ setuptools.setup(
     name="roboauto",
     version="0.1",
     description="robosats cli",
-    license="MIT",
+    license="ISC",
     author="jerryfletcher21",
     author_email="jerryfletcher@cock.email",
-    packages=["roboauto"]
+    packages=["roboauto"],
+    scripts=["bin/roboauto"]
 )

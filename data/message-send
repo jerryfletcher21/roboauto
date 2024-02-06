@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# simplex example
+
+if [ "$#" -lt 3 ]; then
+    echo "error: there are not enough parameters" >&2
+    exit 1
+fi
+robot="$1"
+order_id="$2"
+other="$3"
+shift 3
+
+contact="satoshi-nakamoto"
+timeout="32"
+
+simplex-chat -x \
+    -e "@${contact} $robot $order_id $other" \
+    -t "$timeout"
