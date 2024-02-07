@@ -17,7 +17,7 @@ from roboauto.global_state import roboauto_options, roboauto_state
 
 
 def roboauto_get_current_url():
-    return roboauto_options["federation"][roboauto_state["current_url"]]
+    return roboauto_options["federation"][roboauto_state["current_coordinator"]]
 
 
 def roboauto_get_coordinator_url(coordinator):
