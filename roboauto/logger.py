@@ -20,10 +20,18 @@ def print_out(arg, end="\n", date=True):
     print(arg, end=end)
 
 
-def print_err(arg, end="\n", date=True, error=True):
+def print_stderr(error_string, arg, end="\n", date=True, error=True):
     if roboauto_state["print_date"] and date:
         date_current = get_date()
         print("[" + date_current + "] ", end="", file=sys.stderr)
     if error:
-        print("error: ", end="", file=sys.stderr)
+        print(error_string, end="", file=sys.stderr)
     print(arg, end=end, file=sys.stderr)
+
+
+def print_war(arg, end="\n", date=True, error=True):
+    print_stderr("warning: ", arg, end, date, error)
+
+
+def print_err(arg, end="\n", date=True, error=True):
+    print_stderr("error: ", arg, end, date, error)

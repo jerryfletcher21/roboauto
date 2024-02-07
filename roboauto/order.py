@@ -6,6 +6,7 @@
 # pylint: disable=C0302 too-many-lines
 # pylint: disable=R0911 too-many-return-statements
 # pylint: disable=R0912 too-many-branches
+# pylint: disable=R0913 too-many-arguments
 # pylint: disable=R0914 too-many-locals
 # pylint: disable=R0915 too-many-statements
 # pylint: disable=R1703 simplifiable-if-statement
@@ -24,7 +25,8 @@ from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import \
     robot_dir_search, robot_get_lock_file, \
-    robot_get_token_base91, robot_list_dir, robot_set_dir
+    robot_get_token_base91, robot_list_dir, robot_set_dir, \
+    robot_get_coordinator
 from roboauto.requests_api import \
     requests_api_order, requests_api_robot, requests_api_cancel, \
     requests_api_make
@@ -32,7 +34,7 @@ from roboauto.utils import \
     get_date_short, json_dumps, file_json_read, \
     input_ask_robot, file_is_executable, subprocess_run_command, \
     json_loads, is_float, get_int, dir_make_sure_exists, file_json_write, \
-    input_ask
+    input_ask, roboauto_get_coordinator_url
 
 
 def get_type_string(target, reverse=False):
@@ -431,8 +433,8 @@ def get_empty_order_user():
     }
 
 
-def api_order_get_dic(robot, token_base91, order_id):
-    order_response_all = requests_api_order(token_base91, order_id)
+def api_order_get_dic(robot, token_base91, robot_url, order_id):
+    order_response_all = requests_api_order(token_base91, order_id, robot_url)
     if order_response_all.status_code == 400:
         return None
     order_response = order_response_all.text
@@ -659,11 +661,14 @@ def robot_cancel_order(robot, token_base91):
     if not os.path.isdir(robot_dir):
         print_err("robot %s is not in the active directory" % robot)
         return False
+    robot_url = roboauto_get_coordinator_url(
+        robot_get_coordinator(robot, robot_dir)
+    )
 
     # except filelock.Timeout
     # timeout=
     with filelock.SoftFileLock(robot_get_lock_file(robot)):
-        robot_response = requests_api_robot(token_base91).text
+        robot_response = requests_api_robot(token_base91, robot_url).text
         robot_response_json = json_loads(robot_response)
         if robot_response_json is False:
             print_err(robot_response, end="", error=False, date=False)
@@ -678,7 +683,7 @@ def robot_cancel_order(robot, token_base91):
 
         order_id = str(order_id_number)
 
-        order_dic = api_order_get_dic(robot, token_base91, order_id)
+        order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
         if order_dic is False:
             print_err("order data is false %s %s" % (robot, order_id))
             return False
@@ -704,7 +709,7 @@ def robot_cancel_order(robot, token_base91):
 
         print_out("robot %s cancel order %s" % (robot, order_id))
 
-        order_post_response = requests_api_cancel(token_base91, order_id).text
+        order_post_response = requests_api_cancel(token_base91, order_id, robot_url).text
         order_post_response_json = json_loads(order_post_response)
         if order_post_response_json is False:
             print_err(order_post_response, end="", error=False, date=False)
@@ -722,8 +727,8 @@ def robot_cancel_order(robot, token_base91):
     return True
 
 
-def bond_order(robot, token_base91, order_id, bond_amount):
-    order_dic = api_order_get_dic(robot, token_base91, order_id)
+def bond_order(robot, token_base91, robot_url, order_id, bond_amount):
+    order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
     if order_dic is False or order_dic is None:
         return False
 
@@ -768,7 +773,7 @@ def bond_order(robot, token_base91, order_id, bond_amount):
             while True:
                 print_out("checking if order is bonded...")
 
-                order_response = requests_api_order(token_base91, order_id).text
+                order_response = requests_api_order(token_base91, order_id, robot_url).text
                 order_response_json = json_loads(order_response)
                 if order_response_json is False:
                     print_err(order_response, end="", error=False, date=False)
@@ -803,7 +808,7 @@ def bond_order(robot, token_base91, order_id, bond_amount):
     return False
 
 
-def make_order(robot, token_base91, order_id, make_data, satoshis_now):
+def make_order(robot, token_base91, robot_url, order_id, make_data, satoshis_now):
     if not make_data["bond_size"]:
         print_err("bond size percentage not defined")
         return False
@@ -818,7 +823,7 @@ def make_order(robot, token_base91, order_id, make_data, satoshis_now):
         bond_amount = False
 
     make_response = requests_api_make(
-        token_base91, order_id, make_data=json_dumps(make_data)
+        token_base91, order_id, robot_url, make_data=json_dumps(make_data)
     ).text
     make_response_json = json_loads(make_response)
     if make_response_json is False:
@@ -839,7 +844,7 @@ def make_order(robot, token_base91, order_id, make_data, satoshis_now):
 
     order_id = str(order_id_number)
 
-    return bond_order(robot, token_base91, order_id, bond_amount)
+    return bond_order(robot, token_base91, robot_url, order_id, bond_amount)
 
 
 def order_user_from_argv(argv):
@@ -884,6 +889,10 @@ def create_order(argv):
         print_err("getting token base91 for " + robot)
         return False
 
+    robot_url = roboauto_get_coordinator_url(
+        robot_get_coordinator(robot, robot_dir)
+    )
+
     order_user = order_user_from_argv(argv)
     if order_user is False:
         return False
@@ -900,8 +909,8 @@ def create_order(argv):
         return False
 
     return make_order(
-        robot, token_base91, False,
-        order_data, False
+        robot, token_base91, robot_url,
+        False, order_data, False
     )
 
 
@@ -976,6 +985,10 @@ def recreate_order(argv):
         print_err("getting token base91 for " + robot)
         return False
 
+    robot_url = roboauto_get_coordinator_url(
+        robot_get_coordinator(robot, robot_dir)
+    )
+
     if len(argv) > 0:
         order_user_changed = True
     else:
@@ -1020,8 +1033,8 @@ def recreate_order(argv):
         return False
 
     if not make_order(
-        robot, token_base91, order_id,
-        order_data, satoshis_now
+        robot, token_base91, robot_url,
+        order_id, order_data, satoshis_now
     ):
         return False
 

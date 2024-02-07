@@ -16,6 +16,19 @@ from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_options, roboauto_state
 
 
+def roboauto_get_current_url():
+    return roboauto_options["federation"][roboauto_state["current_url"]]
+
+
+def roboauto_get_coordinator_url(coordinator):
+    url = roboauto_options["federation"].get(coordinator, False)
+    if url is False:
+        print_err("coordinator %s not valid" % coordinator)
+        return roboauto_get_current_url()
+
+    return url
+
+
 def dir_make_sure_exists(directory):
     if not os.path.exists(directory):
         if os.makedirs(directory) is not None:
@@ -70,36 +83,38 @@ def update_roboauto_options(print_info=False):
 
         general_section = "general"
 
-        for option in (
-            "user_agent", "default_duration",
-            "default_escrow", "date_format"
-        ):
-            if parser.has_option(general_section, option):
-                new_option = parser.get(general_section, option).strip("'\"")
-                update_single_option(option, new_option, print_info=print_info)
+        if parser.has_section(general_section):
+            for option in (
+                "user_agent", "default_duration",
+                "default_escrow", "date_format"
+            ):
+                if parser.has_option(general_section, option):
+                    new_option = parser.get(general_section, option).strip("'\"")
+                    update_single_option(option, new_option, print_info=print_info)
 
-        for option in (
-            "book_interval", "bond_interval", "slowly_paused_interval_global",
-            "error_interval", "tab_size", "order_maximum"
-        ):
-            if parser.has_option(general_section, option):
-                try:
-                    new_option = parser.getint(general_section, option)
-                except (ValueError, TypeError):
-                    print_err("reading %s" % option)
-                    return False
-                update_single_option(option, new_option, print_info=print_info)
+            for option in (
+                "book_interval", "bond_interval", "slowly_paused_interval_global",
+                "error_interval", "tab_size", "order_maximum"
+            ):
+                if parser.has_option(general_section, option):
+                    try:
+                        new_option = parser.getint(general_section, option)
+                    except (ValueError, TypeError):
+                        print_err("reading %s" % option)
+                        return False
+                    update_single_option(option, new_option, print_info=print_info)
 
         federation_section = "federation"
 
-        current_coordinator_set = False
-        for key in parser.options(federation_section):
-            value = parser.get(federation_section, key).strip("'\"")
-            if update_federation_option(key, value, print_info=print_info) is False:
-                return False
-            if current_coordinator_set is False:
-                roboauto_state["current_url"] = roboauto_options["federation"][key]
-                current_coordinator_set = True
+        if parser.has_section(federation_section):
+            current_coordinator_set = False
+            for key in parser.options(federation_section):
+                value = parser.get(federation_section, key).strip("'\"")
+                if update_federation_option(key, value, print_info=print_info) is False:
+                    return False
+                if current_coordinator_set is False:
+                    roboauto_state["current_coordinator"] = key
+                    current_coordinator_set = True
 
     return True
 

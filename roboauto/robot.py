@@ -15,15 +15,16 @@ import hashlib
 
 import base91
 
-from roboauto.logger import print_out, print_err
+from roboauto.logger import print_out, print_err, print_war
 from roboauto.requests_api import requests_api_robot
-from roboauto.global_state import roboauto_state
+from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.utils import \
     file_read, file_write, \
     file_json_read, \
     json_loads, \
     input_ask_robot, password_ask_token, \
-    generate_random_token_base62
+    generate_random_token_base62, \
+    roboauto_get_current_url
 
 
 def get_destination_mode(argv):
@@ -68,12 +69,22 @@ def robot_dir_search(robot):
     return robot_dir
 
 
-def robot_write_token(robot_dir, token):
+def robot_write_token(robot_dir, token, coordinator):
     if os.makedirs(robot_dir) is not None:
         print_err("creating directory")
         return False
 
-    return file_write(robot_dir + "/token", token)
+    if roboauto_options["federation"].get(coordinator, False) is False:
+        print_err("coordinator %s does not exists" % coordinator)
+        return False
+
+    if file_write(robot_dir + "/token", token) is False:
+        return False
+
+    if file_write(robot_dir + "/coordinator", coordinator) is False:
+        return False
+
+    return True
 
 
 def import_robot(argv):
@@ -114,7 +125,7 @@ def import_robot(argv):
         print_err("robot token not set")
         return False
 
-    return robot_write_token(robot_dir, token)
+    return robot_write_token(robot_dir, token, roboauto_state["current_coordinator"])
 
 
 def remove_robot_from_dir(directory, robot, directory_name):
@@ -186,6 +197,19 @@ def robot_get_token_base91(robot, robot_dir):
         return False
 
     return token_get_base91(token_string)
+
+
+def robot_get_coordinator(robot, robot_dir):
+    if not os.path.isdir(robot_dir):
+        print_war(robot + " does not exists, using current coordinator")
+        return roboauto_state["current_coordinator"]
+
+    coordinator = file_read(robot_dir + "/coordinator")
+    if coordinator is False:
+        print_war(robot + " does not have a coordinator, using current")
+        return roboauto_state["current_coordinator"]
+
+    return coordinator
 
 
 def print_token(argv):
@@ -329,8 +353,9 @@ def generate_robot(argv):
 
     token = generate_random_token_base62()
     token_base91 = token_get_base91(token)
+    robot_url = roboauto_get_current_url()
 
-    robot_response = requests_api_robot(token_base91).text
+    robot_response = requests_api_robot(token_base91, robot_url).text
     robot_response_json = json_loads(robot_response)
     if robot_response_json is False:
         print_err(robot_response, end="", error=False, date=False)
@@ -354,7 +379,7 @@ def generate_robot(argv):
 
     print_out("robot name: %s" % robot)
 
-    return robot_write_token(robot_dir, token)
+    return robot_write_token(robot_dir, token, roboauto_state["current_coordinator"])
 
 
 def robot_get_lock_file(robot):

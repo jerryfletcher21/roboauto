@@ -5,6 +5,7 @@
 # pylint: disable=C0209 consider-using-f-string
 # pylint: disable=R0911 too-many-return-statements
 # pylint: disable=R0912 too-many-branches
+# pylint: disable=R0914 too-many-locals
 # pylint: disable=R0915 too-many-statements
 # pylint: disable=R1705 no-else-return
 
@@ -19,7 +20,7 @@ from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import \
     robot_set_dir, robot_get_token_base91, \
-    robot_get_lock_file, robot_list_dir
+    robot_get_lock_file, robot_list_dir, robot_get_coordinator
 from roboauto.order import \
     api_order_get_dic, \
     bond_order, wait_order, make_order, \
@@ -32,7 +33,8 @@ from roboauto.book import get_offers_per_hour
 from roboauto.utils import \
     get_uint, json_loads, dir_make_sure_exists, \
     file_json_write, file_json_read, \
-    update_roboauto_options
+    update_roboauto_options, \
+    roboauto_get_coordinator_url
 
 
 def slowly_move_to_active(argv):
@@ -64,8 +66,8 @@ def slowly_move_to_active(argv):
     return True
 
 
-def robot_check_expired(robot, token_base91, robot_this_hour=0):
-    robot_response = requests_api_robot(token_base91).text
+def robot_check_expired(robot, token_base91, robot_url, robot_this_hour=0):
+    robot_response = requests_api_robot(token_base91, robot_url).text
     robot_response_json = json_loads(robot_response)
     if robot_response_json is False:
         print_err(robot_response, end="", error=False, date=False)
@@ -82,7 +84,7 @@ def robot_check_expired(robot, token_base91, robot_this_hour=0):
 
     order_id = str(order_id_number)
 
-    order_dic = api_order_get_dic(robot, token_base91, order_id)
+    order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
     if order_dic is False:
         return False
     elif order_dic is None:
@@ -126,7 +128,7 @@ def robot_check_expired(robot, token_base91, robot_this_hour=0):
         print_out(robot + " " + order_id + " is in the process of being taken")
     elif order_is_waiting_maker_bond(status_id):
         if robot_this_hour < maximum_per_hour:
-            if bond_order(robot, token_base91, order_id, False):
+            if bond_order(robot, token_base91, robot_url, order_id, False):
                 return 1
             else:
                 return False
@@ -138,7 +140,7 @@ def robot_check_expired(robot, token_base91, robot_this_hour=0):
     elif order_is_expired(status_id):
         if robot_this_hour < maximum_per_hour:
             if make_order(
-                robot, token_base91, order_id,
+                robot, token_base91, robot_url, order_id,
                 order_dic["order_data"], order_info["satoshis_now"]
             ):
                 return 1
@@ -198,12 +200,15 @@ def list_orders(robot_list):
         if token_base91 is False:
             print_err("getting token base91 for " + robot)
             continue
+        robot_url = roboauto_get_coordinator_url(
+            robot_get_coordinator(robot, robot_dir)
+        )
 
         if robot not in nicks:
             if robot not in nicks_waiting:
                 with filelock.SoftFileLock(robot_get_lock_file(robot)):
                     expired_response = robot_check_expired(
-                        robot, token_base91, robot_this_hour=robot_this_hour
+                        robot, token_base91, robot_url, robot_this_hour=robot_this_hour
                     )
                     if expired_response is not False:
                         robot_this_hour += expired_response

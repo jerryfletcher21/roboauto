@@ -35,5 +35,5 @@ roboauto_state = {
     "message_command": "",
     "check_command": "",
     "pay_command": "",
-    "current_url": next(iter(roboauto_options["federation"]))
+    "current_coordinator": next(iter(roboauto_options["federation"]))
 }

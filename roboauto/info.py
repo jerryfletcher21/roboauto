@@ -13,7 +13,7 @@
 import sys
 
 from roboauto.logger import print_out, print_err
-from roboauto.robot import robot_dir_search, robot_get_token_base91
+from roboauto.robot import robot_dir_search, robot_get_token_base91, robot_get_coordinator
 from roboauto.order import get_order_string
 from roboauto.requests_api import \
     requests_api_limits, \
@@ -23,7 +23,8 @@ from roboauto.utils import \
     file_read, file_write, \
     file_json_read, \
     json_loads, json_dumps, \
-    input_ask_robot, password_ask_token
+    input_ask_robot, password_ask_token, \
+    roboauto_get_coordinator_url
 
 
 def list_limits():
@@ -85,7 +86,11 @@ def robot_info(argv):
             print_err("getting token base91 for " + robot)
             return False
 
-    robot_response = requests_api_robot(token_base91).text
+    robot_url = roboauto_get_coordinator_url(
+        robot_get_coordinator(robot, robot_dir)
+    )
+
+    robot_response = requests_api_robot(token_base91, robot_url).text
     robot_response_json = json_loads(robot_response)
     if robot_response_json is False:
         print_err(robot_response, end="", error=False, date=False)
@@ -104,7 +109,7 @@ def robot_info(argv):
     order_id = str(order_id_number)
 
     if order_print:
-        order_response = requests_api_order(token_base91, order_id).text
+        order_response = requests_api_order(token_base91, order_id, robot_url).text
         order_response_json = json_loads(order_response)
         if not order_response_json:
             print_err(order_response, end="", error=False, date=False)
@@ -124,7 +129,7 @@ def robot_info(argv):
 
         chat_print = False
         if chat_print:
-            chat_response = requests_api_chat(token_base91, order_id).text
+            chat_response = requests_api_chat(token_base91, order_id, robot_url).text
             chat_response_json = json_loads(chat_response)
             if not chat_response_json:
                 print_err(chat_response, end="", error=False, date=False)

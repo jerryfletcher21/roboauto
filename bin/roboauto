@@ -180,7 +180,7 @@ while len(argv_global) > 0:
             sys.exit(1)
         for name in roboauto_options["federation"]:
             if name[:3] == coordinator_option[:3]:
-                roboauto_state["current_url"] = roboauto_options["federation"][name]
+                roboauto_state["current_coordinator"] = name
                 coordinator_set = True
                 break
         if coordinator_set is False:

@@ -9,7 +9,8 @@ import time
 import requests
 
 from roboauto.logger import print_err
-from roboauto.global_state import roboauto_state, roboauto_options
+from roboauto.global_state import roboauto_options
+from roboauto.utils import roboauto_get_current_url
 
 
 def requests_tor(url, headers, data="", until_true=True):
@@ -69,13 +70,13 @@ def requests_tor(url, headers, data="", until_true=True):
         return requests_tor_response(url, proxies, timeout, headers, data)
 
 
-def requests_api_base(url):
+def requests_api_base(url_path):
     headers = {
         "User-Agent": roboauto_options["user_agent"],
         "Accept": "*/*",
         "Accept-Language": "en-US,en;q=0.5",
         "Accept-Encoding": "gzip, deflate",
-        "Referer": roboauto_state["current_url"],
+        "Referer": roboauto_get_current_url(),
         "Content-Type": "application/json",
         "Connection": "keep-alive",
         "Sec-Fetch-Dest": "empty",
@@ -83,28 +84,28 @@ def requests_api_base(url):
         "Sec-Fetch-Site": "same-origin"
     }
 
-    return requests_tor(url, headers)
+    return requests_tor(roboauto_get_current_url() + url_path, headers)
 
 
 def requests_api_info():
-    return requests_api_base(roboauto_state["current_url"] + "/api/info/")
+    return requests_api_base("/api/info/")
 
 
 def requests_api_book():
-    return requests_api_base(roboauto_state["current_url"] + "/api/book/?currency=0&type=2")
+    return requests_api_base("/api/book/?currency=0&type=2")
 
 
 def requests_api_limits():
-    return requests_api_base(roboauto_state["current_url"] + "/api/limits/")
+    return requests_api_base("/api/limits/")
 
 
-def requests_api_token(token_base91, referer, url):
+def requests_api_token(token_base91, base_url, referer_path, url_path):
     headers = {
         "User-Agent": roboauto_options["user_agent"],
         "Accept": "*/*",
         "Accept-Language": "en-US,en;q=0.5",
         "Accept-Encoding": "gzip, deflate",
-        "Referer": referer,
+        "Referer": base_url + referer_path,
         "Content-Type": "application/json",
         "Authorization": "Token " + token_base91,
         "Connection": "keep-alive",
@@ -113,75 +114,78 @@ def requests_api_token(token_base91, referer, url):
         "Sec-Fetch-Site": "same-origin"
     }
 
-    return requests_tor(url, headers)
+    return requests_tor(base_url + url_path, headers)
 
 
-def requests_api_robot(token_base91):
+def requests_api_robot(token_base91, base_url):
     return requests_api_token(
-        token_base91,
-        roboauto_state["current_url"] + "/robot/",
-        roboauto_state["current_url"] + "/api/robot/"
+        token_base91, base_url,
+        "/robot/",
+        "/api/robot/"
     )
 
 
-def requests_api_order(token_base91, order_id):
+def requests_api_order(token_base91, order_id, base_url):
     return requests_api_token(
-        token_base91,
-        roboauto_state["current_url"] + "/order/" + order_id,
-        roboauto_state["current_url"] + "/api/order/?order_id=" + order_id
+        token_base91, base_url,
+        "/order/" + order_id,
+        "/api/order/?order_id=" + order_id
     )
 
 
-def requests_api_chat(token_base91, order_id):
+def requests_api_chat(token_base91, order_id, base_url):
     offset = "2"
 
     return requests_api_token(
-        token_base91,
-        roboauto_state["current_url"] + "/order/" + order_id,
-        roboauto_state["current_url"] + "api/chat/?order_id=" + order_id + "&offset=" + offset
+        token_base91, base_url,
+        "/order/" + order_id,
+        "api/chat/?order_id=" + order_id + "&offset=" + offset
     )
 
 
-def requests_api_post(token_base91, referer, url, data):
+def requests_api_post(token_base91, base_url, referer_path, url_path, data):
     headers = {
         "User-Agent": roboauto_options["user_agent"],
         "Accept": "*/*",
         "Accept-Language": "en-US,en;q=0.5",
         "Accept-Encoding": "gzip, deflate, br",
-        "Referer": referer,
+        "Referer": base_url + referer_path,
         "Content-Type": "application/json",
         "Authorization": "Token " + token_base91,
-        "Origin": roboauto_state["current_url"],
+        "Origin": base_url,
         "Connection": "keep-alive",
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-origin"
     }
 
-    return requests_tor(url, headers, data=data)
+    return requests_tor(base_url + url_path, headers, data=data)
 
 
-def requests_api_order_post(token_base91, order_id, order_action):
+def requests_api_order_post(token_base91, order_id, base_url, order_action):
     return requests_api_post(
-        token_base91,
-        roboauto_state["current_url"] + "/order/" + order_id,
-        roboauto_state["current_url"] + "/api/order/?order_id=" + order_id,
+        token_base91, base_url,
+        "/order/" + order_id,
+        "/api/order/?order_id=" + order_id,
         order_action
 )
 
 
-def requests_api_cancel(token_base91, order_id):
-    return requests_api_order_post(token_base91, order_id, '{ "action": "cancel" }')
+def requests_api_cancel(token_base91, order_id, base_url):
+    return requests_api_order_post(
+        token_base91, order_id, base_url,
+        '{ "action": "cancel" }'
+    )
 
 
-def requests_api_make(token_base91, order_id, make_data):
+def requests_api_make(token_base91, order_id, base_url, make_data):
     if order_id:
-        referer = roboauto_state["current_url"] + "/order/" + order_id
+        referer_path = "/order/" + order_id
     else:
-        referer = roboauto_state["current_url"]
+        referer_path = ""
     return requests_api_post(
         token_base91,
-        referer,
-        roboauto_state["current_url"] + "/api/make/",
+        base_url, referer_path,
+        "/api/make/",
         make_data
     )
