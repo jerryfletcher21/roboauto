@@ -25,7 +25,24 @@ from roboauto.utils import \
     input_ask_robot, password_ask_token, \
     generate_random_token_base62, \
     roboauto_first_coordinator, \
+    roboauto_get_coordinator_url, \
     roboauto_get_coordinator_from_argv
+
+
+def robot_input_ask(argv):
+    multi_false = False, False
+    if len(argv) >= 1:
+        robot = argv[0]
+        argv = argv[1:]
+    else:
+        robot = input_ask_robot()
+        if robot is False:
+            return multi_false
+    if robot == "":
+        print_err("robot name not set")
+        return multi_false
+
+    return robot, argv
 
 
 def get_destination_mode(argv):
@@ -99,15 +116,8 @@ def import_robot(argv):
     elif destination_mode != "active":
         argv = argv[1:]
 
-    if len(argv) >= 1:
-        robot = argv[0]
-        argv = argv[1:]
-    else:
-        robot = input_ask_robot()
-        if robot is False:
-            return False
-    if robot == "":
-        print_err("robot name not set")
+    robot, argv = robot_input_ask(argv)
+    if robot is False:
         return False
 
     robot_dir = get_robot_dir_from_destination(robot, destination_mode)
@@ -146,15 +156,8 @@ def remove_robot_from_dir(directory, robot, directory_name):
 
 
 def remove_robot(argv):
-    if len(argv) >= 1:
-        robot = argv[0]
-        argv = argv[1:]
-    else:
-        robot = input_ask_robot()
-        if robot is False:
-            return False
-    if robot == "":
-        print_err("robot name not set")
+    robot, argv = robot_input_ask(argv)
+    if robot is False:
         return False
 
     robot_exists = False
@@ -223,15 +226,8 @@ def print_token(argv):
         if argv[0] == "--base91":
             use_base91 = True
             argv = argv[1:]
-    if len(argv) >= 1:
-        robot = argv[0]
-        argv = argv[1:]
-    else:
-        robot = input_ask_robot()
-        if robot is False:
-            return False
-    if robot == "":
-        print_err("robot name not set")
+    robot, argv = robot_input_ask(argv)
+    if robot is False:
         return False
 
     robot_dir = robot_dir_search(robot)
@@ -249,6 +245,25 @@ def print_token(argv):
             return False
 
     print_out(token_string)
+
+    return True
+
+
+def print_coordinator(argv):
+    robot, argv = robot_input_ask(argv)
+    if robot is False:
+        return False
+
+    robot_dir = robot_dir_search(robot)
+    if robot_dir is False:
+        return False
+
+    coordinator = robot_get_coordinator(robot, robot_dir)
+    if robot_dir is False:
+        return False
+
+    print_out(coordinator)
+    print_out(roboauto_get_coordinator_url(coordinator))
 
     return True
 
@@ -285,15 +300,8 @@ def waiting_queue_print():
 
 
 def robot_set_dir(destination_dir, argv):
-    if len(argv) >= 1:
-        robot = argv[0]
-        argv = argv[1:]
-    else:
-        robot = input_ask_robot()
-        if robot is False:
-            return False
-    if robot == "":
-        print_err("robot name not set")
+    robot, argv = robot_input_ask(argv)
+    if robot is False:
         return False
 
     if destination_dir not in (

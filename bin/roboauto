@@ -12,8 +12,8 @@ from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state
 from roboauto.utils import global_setup, list_configs, update_roboauto_options
 from roboauto.robot import \
-    import_robot, remove_robot, print_token, robot_print_dir, \
-    waiting_queue_print, robot_set_dir, generate_robot
+    import_robot, remove_robot, print_token, print_coordinator, \
+    robot_print_dir, waiting_queue_print, robot_set_dir, generate_robot
 from roboauto.order import \
     order_info_local, \
     create_order, cancel_order, recreate_order
@@ -33,6 +33,7 @@ list-configs
 import-robot --{coordinator} [--inactive, --paused] [robot-name] [token]
 remove-robot [robot-name]
 print-token [robot-name]
+print-coordinator [robot-name]
 list-active|list-inactive|list-paused
 waiting-queue
 set-active [robot-name]
@@ -78,6 +79,9 @@ remove-robot [robot-name]
 
 print-token [robot-name]
     print robot token
+
+print-coordinator [robot-name]
+    print robot coordinator and url
 
 list-active|list-inactive|list-paused
     list active|inactive|paused robots one per line
@@ -189,6 +193,8 @@ try:
         return_status_global = remove_robot(argv_global)
     elif action == "print-token":
         return_status_global = print_token(argv_global)
+    elif action == "print-coordinator":
+        return_status_global = print_coordinator(argv_global)
     elif action == "list-active":
         return_status_global = robot_print_dir(roboauto_state["active_home"])
     elif action == "list-inactive":

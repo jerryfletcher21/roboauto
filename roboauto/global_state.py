@@ -26,6 +26,7 @@ roboauto_options = {
 
 roboauto_state = {
     "print_date": False,
+    "filelock_timeout": 120,
     "active_home": "",
     "inactive_home": "",
     "paused_home": "",

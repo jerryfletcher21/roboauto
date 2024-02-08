@@ -210,12 +210,16 @@ def list_orders_single_book(coordinator, coordinator_url, robot_list):
 
         if robot not in nicks:
             if robot not in nicks_waiting:
-                with filelock.SoftFileLock(robot_get_lock_file(robot)):
-                    expired_response = robot_check_expired(
-                        robot, token_base91, robot_url, robot_this_hour=robot_this_hour
-                    )
-                    if expired_response is not False:
-                        robot_this_hour += expired_response
+                try:
+                    with filelock.SoftFileLock(robot_get_lock_file(robot)):
+                        expired_response = robot_check_expired(
+                            robot, token_base91, robot_url, robot_this_hour=robot_this_hour
+                        )
+                        if expired_response is not False:
+                            robot_this_hour += expired_response
+                except filelock.Timeout:
+                    print_err("filelock timeout %d" % roboauto_state["filelock_timeout"])
+                    continue
         elif robot in nicks_waiting:
             print_err(robot + " is waiting and also active")
             continue

@@ -13,7 +13,9 @@
 import sys
 
 from roboauto.logger import print_out, print_err
-from roboauto.robot import robot_dir_search, robot_get_token_base91, robot_get_coordinator
+from roboauto.robot import \
+    robot_dir_search, robot_get_token_base91, \
+    robot_get_coordinator, robot_input_ask
 from roboauto.order import get_order_string
 from roboauto.requests_api import \
     requests_api_limits, \
@@ -23,7 +25,7 @@ from roboauto.utils import \
     file_read, file_write, \
     file_json_read, \
     json_loads, json_dumps, \
-    input_ask_robot, password_ask_token, \
+    password_ask_token, \
     roboauto_get_coordinator_url, \
     roboauto_get_coordinator_from_argv
 
@@ -75,15 +77,8 @@ def robot_info(argv):
         argv = argv[1:]
 
     if token_base91 is False:
-        if len(argv) >= 1:
-            robot = argv[0]
-            argv = argv[1:]
-        else:
-            robot = input_ask_robot()
-            if robot is False:
-                return False
-        if robot == "":
-            print_err("robot name not set")
+        robot, argv = robot_input_ask(argv)
+        if robot is False:
             return False
 
         robot_dir = robot_dir_search(robot)

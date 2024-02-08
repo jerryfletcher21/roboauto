@@ -26,13 +26,13 @@ from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import \
     robot_dir_search, robot_get_lock_file, \
     robot_get_token_base91, robot_list_dir, robot_set_dir, \
-    robot_get_coordinator
+    robot_get_coordinator, robot_input_ask
 from roboauto.requests_api import \
     requests_api_order, requests_api_robot, requests_api_cancel, \
     requests_api_make
 from roboauto.utils import \
     get_date_short, json_dumps, file_json_read, \
-    input_ask_robot, file_is_executable, subprocess_run_command, \
+    file_is_executable, subprocess_run_command, \
     json_loads, is_float, get_int, dir_make_sure_exists, file_json_write, \
     input_ask, roboauto_get_coordinator_url
 
@@ -352,15 +352,8 @@ def print_robot_order(robot, robot_dir, order_id, one_line):
 
 
 def order_info_local(argv):
-    if len(argv) >= 1:
-        robot = argv[0]
-        argv = argv[1:]
-    else:
-        robot = input_ask_robot()
-        if robot is False:
-            return False
-    if robot == "":
-        print_err("robot name not set")
+    robot, argv = robot_input_ask(argv)
+    if robot is False:
         return False
 
     if re.match('^-', robot) is None:
@@ -673,64 +666,68 @@ def robot_cancel_order(robot, token_base91):
         robot_get_coordinator(robot, robot_dir)
     )
 
-    # except filelock.Timeout
-    # timeout=
-    with filelock.SoftFileLock(robot_get_lock_file(robot)):
-        robot_response = requests_api_robot(token_base91, robot_url).text
-        robot_response_json = json_loads(robot_response)
-        if robot_response_json is False:
-            print_err(robot_response, end="", error=False, date=False)
-            print_err("getting robot response")
-            return False
+    try:
+        with filelock.SoftFileLock(
+            robot_get_lock_file(robot), timeout=roboauto_state["filelock_timeout"]
+        ):
+            robot_response = requests_api_robot(token_base91, robot_url).text
+            robot_response_json = json_loads(robot_response)
+            if robot_response_json is False:
+                print_err(robot_response, end="", error=False, date=False)
+                print_err("getting robot response")
+                return False
 
-        order_id_number = robot_response_json.get("active_order_id", False)
-        if order_id_number is False:
-            print_err(robot_response, end="", error=False, date=False)
-            print_err("getting active order_id for " + robot)
-            return False
+            order_id_number = robot_response_json.get("active_order_id", False)
+            if order_id_number is False:
+                print_err(robot_response, end="", error=False, date=False)
+                print_err("getting active order_id for " + robot)
+                return False
 
-        order_id = str(order_id_number)
+            order_id = str(order_id_number)
 
-        order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
-        if order_dic is False:
-            print_err("order data is false %s %s" % (robot, order_id))
-            return False
-        elif order_dic is None:
-            print_err("order data is none %s %s" % (robot, order_id))
-            return False
+            order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
+            if order_dic is False:
+                print_err("order data is false %s %s" % (robot, order_id))
+                return False
+            elif order_dic is None:
+                print_err("order data is none %s %s" % (robot, order_id))
+                return False
 
-        orders_dir = robot_dir + "/orders"
-        if not dir_make_sure_exists(orders_dir):
-            return False
-        order_file = orders_dir + "/" + order_id
-        if not file_json_write(order_file, order_dic):
-            print_err("saving order %s to file" % order_id)
-            return False
+            orders_dir = robot_dir + "/orders"
+            if not dir_make_sure_exists(orders_dir):
+                return False
+            order_file = orders_dir + "/" + order_id
+            if not file_json_write(order_file, order_dic):
+                print_err("saving order %s to file" % order_id)
+                return False
 
-        status_id = order_dic["order_info"]["status"]
+            status_id = order_dic["order_info"]["status"]
 
-        if \
-            not order_is_public(status_id) and \
-            not order_is_paused(status_id):
-            print_err("robot order %s %s is not public or paused" % (robot, order_id))
-            return False
+            if \
+                not order_is_public(status_id) and \
+                not order_is_paused(status_id):
+                print_err("robot order %s %s is not public or paused" % (robot, order_id))
+                return False
 
-        print_out("robot %s cancel order %s" % (robot, order_id))
+            print_out("robot %s cancel order %s" % (robot, order_id))
 
-        order_post_response = requests_api_cancel(token_base91, order_id, robot_url).text
-        order_post_response_json = json_loads(order_post_response)
-        if order_post_response_json is False:
-            print_err(order_post_response, end="", error=False, date=False)
-            print_err("cancelling order %s %s" % (robot, token_base91))
-            return False
+            order_post_response = requests_api_cancel(token_base91, order_id, robot_url).text
+            order_post_response_json = json_loads(order_post_response)
+            if order_post_response_json is False:
+                print_err(order_post_response, end="", error=False, date=False)
+                print_err("cancelling order %s %s" % (robot, token_base91))
+                return False
 
-        bad_requets = order_post_response_json.get("bad_request", False)
-        if bad_requets is False:
-            print_err(order_post_response, end="", error=False, date=False)
-            print_err("getting cancel response %s %s" % (robot, order_id))
-            return False
+            bad_requets = order_post_response_json.get("bad_request", False)
+            if bad_requets is False:
+                print_err(order_post_response, end="", error=False, date=False)
+                print_err("getting cancel response %s %s" % (robot, order_id))
+                return False
 
-        print_out(bad_requets)
+            print_out(bad_requets)
+    except filelock.Timeout:
+        print_err("filelock timeout %d" % roboauto_state["filelock_timeout"])
+        return False
 
     return True
 
@@ -876,15 +873,8 @@ def order_user_from_argv(argv):
 
 
 def create_order(argv):
-    if len(argv) >= 1:
-        robot = argv[0]
-        argv = argv[1:]
-    else:
-        robot = input_ask_robot()
-        if robot is False:
-            return False
-    if robot == "":
-        print_err("robot name not set")
+    robot, argv = robot_input_ask(argv)
+    if robot is False:
         return False
 
     robot_dir = roboauto_state["active_home"] + "/" + robot
@@ -923,15 +913,8 @@ def create_order(argv):
 
 
 def cancel_order(argv):
-    if len(argv) >= 1:
-        robot = argv[0]
-        argv = argv[1:]
-    else:
-        robot = input_ask_robot()
-        if robot is False:
-            return False
-    if robot == "":
-        print_err("robot name not set")
+    robot, argv = robot_input_ask(argv)
+    if robot is False:
         return False
 
     robot_dir = roboauto_state["active_home"] + "/" + robot
@@ -964,15 +947,8 @@ def recreate_order(argv):
         elif re.match('^-', argv[0]) is not None:
             print_err("option %s not recognized" % argv[0])
             return False
-    if len(argv) >= 1:
-        robot = argv[0]
-        argv = argv[1:]
-    else:
-        robot = input_ask_robot()
-        if robot is False:
-            return False
-    if robot == "":
-        print_err("robot name not set")
+    robot, argv = robot_input_ask(argv)
+    if robot is False:
         return False
 
     if should_cancel:
