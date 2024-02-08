@@ -42,7 +42,7 @@ order-info-local [robot-name/--active/--paused/--inactive] [order-id]
 slowly-move-to-active [seconds]
 generate-robot --{coordinator} [--inactive, --paused]
 robosats-info --{coordinator}
-robot-info [--no-order] [--stdin|robot-name]
+robot-info [--no-order] {[robot-name], --stdin|--stdin-base91 --{coordinator}|coordinator-url}
 list-limits --{coordinator}
 list-hours-absolute
 list-hours-relative
@@ -111,9 +111,11 @@ generate-robot --{coordinator} [--inactive, --paused]
 robosats-info --{coordinator}
     get info about robosats
 
-robot-info [--no-order] [--stdin|robot-name]
+robot-info [--no-order] {[robot-name], --stdin|--stdin-base91 --{coordinator}|coordinator-url}
     get info about a robot
-    and its order if present
+    and if --no-order is present its order if present
+    if instead of robot-name --stdin or --stdin-base91 is passed
+    token is taken from stdin and coordinator is also required
 
 list-limits --{coordinator}
     list currency limits

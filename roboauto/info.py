@@ -11,11 +11,13 @@
 
 
 import sys
+import re
 
 from roboauto.logger import print_out, print_err
 from roboauto.robot import \
     robot_dir_search, robot_get_token_base91, \
-    robot_get_coordinator, robot_input_ask
+    robot_get_coordinator, robot_input_ask, \
+    token_get_base91
 from roboauto.order import get_order_string
 from roboauto.requests_api import \
     requests_api_limits, \
@@ -65,12 +67,16 @@ def robosats_info(argv):
 
 
 def robot_info(argv):
+    robot = False
     order_print = True
     token_base91 = False
     while len(argv) > 0:
         if argv[0] == "--no-order":
             order_print = False
         elif argv[0] == "--stdin":
+            token_string = sys.stdin.readline().rstrip()
+            token_base91 = token_get_base91(token_string)
+        elif argv[0] == "--stdin-base91":
             token_base91 = sys.stdin.readline().rstrip()
         else:
             break
@@ -90,9 +96,21 @@ def robot_info(argv):
             print_err("getting token base91 for " + robot)
             return False
 
-    robot_url = roboauto_get_coordinator_url(
-        robot_get_coordinator(robot, robot_dir)
-    )
+        robot_url = roboauto_get_coordinator_url(
+            robot_get_coordinator(robot, robot_dir)
+        )
+    else:
+        if len(argv) < 1:
+            print_err("insert coordinator name or link")
+            return False
+
+        if re.match('^--', argv[0]) is None:
+            robot_url = argv[0]
+            argv = argv[1:]
+        else:
+            _, robot_url, argv = roboauto_get_coordinator_from_argv(argv)
+            if robot_url is False:
+                return False
 
     robot_response = requests_api_robot(token_base91, robot_url).text
     robot_response_json = json_loads(robot_response)
@@ -102,6 +120,9 @@ def robot_info(argv):
         return False
 
     print_out(json_dumps(robot_response_json))
+
+    if robot is False:
+        robot = robot_response_json.get("nickname", "unknown")
 
     order_id_number = robot_response_json.get("active_order_id", False)
     if order_id_number is False:
