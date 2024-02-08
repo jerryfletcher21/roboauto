@@ -4,63 +4,65 @@
 # pylint: disable=C0116 missing-function-docstring
 # pylint: disable=C0209 consider-using-f-string
 
+import os
 import datetime
 
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state
 from roboauto.robot import robot_list_dir
-from roboauto.order import get_offer_dic, offer_dic_print
+from roboauto.order import get_offer_dic, offer_dic_print, get_order_file
 from roboauto.requests_api import requests_api_book
-from roboauto.utils import json_loads
+from roboauto.utils import json_loads, file_json_read
 
 
-def get_offers_per_hour(relative, book_json_text=False):
-    if book_json_text is not False:
-        book_response_json = book_json_text
-    else:
-        book_response = requests_api_book().text
-        book_response_json = json_loads(book_response)
-        if not book_response_json:
-            print_err(book_response, error=False, date=False)
-            print_err("getting book")
-            return False
-
+def get_offers_per_hour(relative):
     hours = [[] for _ in range(24)]
 
     if relative:
         current_timestamp = int(datetime.datetime.now().timestamp())
 
-    for order in book_response_json:
-        created_at = order["created_at"]
-        maker_nick = order["maker_nick"]
-        if maker_nick in robot_list_dir(roboauto_state["active_home"]):
-            try:
-                robosats_date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
-                if relative:
-                    unix_time = int(
-                        datetime.datetime.strptime(
-                            created_at, robosats_date_format
-                        ).replace(
-                            tzinfo=datetime.timezone(datetime.timedelta(hours=0))
-                        ).timestamp()
-                    )
-                    date_hour = (23 - int((current_timestamp - unix_time) / 3600)) % 24
-                else:
-                    date_hour = int(
-                        datetime.datetime.strptime(
-                            created_at, robosats_date_format
-                        ).replace(
-                            tzinfo=datetime.timezone(datetime.timedelta(hours=-1))
-                        ).astimezone(datetime.timezone.utc).strftime(
-                            "%H"
-                        )
-                    )
-                    # date_hour = int(get_date_short(created_at).split(":")[0])
-            except (ValueError, TypeError):
-                print_err("getting hour")
-                return False
+    for robot in robot_list_dir(roboauto_state["active_home"]):
+        robot_dir = roboauto_state["active_home"] + "/" + robot
 
-            hours[date_hour].append(maker_nick)
+        orders_dir = robot_dir + "/orders"
+        if not os.path.isdir(orders_dir):
+            continue
+        order_file = get_order_file(orders_dir)
+        if order_file is False:
+            return False
+
+        order_dic = file_json_read(order_file)
+        if order_dic is False:
+            return False
+
+        created_at = order_dic["order_response_json"]["created_at"]
+        try:
+            robosats_date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
+            if relative:
+                unix_time = int(
+                    datetime.datetime.strptime(
+                        created_at, robosats_date_format
+                    ).replace(
+                        tzinfo=datetime.timezone(datetime.timedelta(hours=0))
+                    ).timestamp()
+                )
+                date_hour = (23 - int((current_timestamp - unix_time) / 3600)) % 24
+            else:
+                date_hour = int(
+                    datetime.datetime.strptime(
+                        created_at, robosats_date_format
+                    ).replace(
+                        tzinfo=datetime.timezone(datetime.timedelta(hours=-1))
+                    ).astimezone(datetime.timezone.utc).strftime(
+                        "%H"
+                    )
+                )
+                # date_hour = int(get_date_short(created_at).split(":")[0])
+        except (ValueError, TypeError):
+            print_err("getting hour")
+            return False
+
+        hours[date_hour].append(robot)
 
     return hours
 

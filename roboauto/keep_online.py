@@ -186,8 +186,7 @@ def list_orders(robot_list):
     else:
         hour_position = int(datetime.datetime.now().strftime("%H"))
     robot_this_hour = len(get_offers_per_hour(
-        offers_per_hour_relative,
-        book_json_text=book_response_json
+        offers_per_hour_relative
     )[hour_position])
     maximum_per_hour = roboauto_options["order_maximum"]
     # maximum_per_hour = \

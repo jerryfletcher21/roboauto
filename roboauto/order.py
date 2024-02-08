@@ -303,6 +303,15 @@ def offer_dic_print(offer_dic):
     ))
 
 
+def get_order_file(orders_dir):
+    order_file = orders_dir + "/" + sorted(os.listdir(orders_dir))[-1]
+    if not os.path.isfile(order_file):
+        print_err("%s is not a file" % order_file)
+        return False
+
+    return order_file
+
+
 def print_robot_order(robot, robot_dir, order_id, one_line):
     order_id_error = "------"
 
@@ -315,9 +324,8 @@ def print_robot_order(robot, robot_dir, order_id, one_line):
         return True
 
     if order_id is False:
-        order_file = orders_dir + "/" + sorted(os.listdir(orders_dir))[-1]
-        if not os.path.isfile(order_file):
-            print_err("%s is not a file" % order_file)
+        order_file = get_order_file(orders_dir)
+        if order_file is False:
             return False
     else:
         order_file = orders_dir + "/" + order_id
@@ -776,13 +784,13 @@ def bond_order(robot, token_base91, robot_url, order_id, bond_amount):
                 order_response = requests_api_order(token_base91, order_id, robot_url).text
                 order_response_json = json_loads(order_response)
                 if order_response_json is False:
-                    print_err(order_response, end="", error=False, date=False)
+                    print_err(order_response, error=False, date=False)
                     print_err("getting order response of " + robot + " " + order_id)
                     return False
 
                 order_status = order_response_json.get("status", False)
                 if order_status is False:
-                    print_err(order_response, end="", error=False, date=False)
+                    print_err(order_response, error=False, date=False)
                     print_err("getting order_status of " + robot + " " + order_id)
                     return False
 
@@ -1007,9 +1015,8 @@ def recreate_order(argv):
         print_err("%s is not a dir" % orders_dir)
         return False
 
-    order_file = orders_dir + "/" + sorted(os.listdir(orders_dir))[-1]
-    if not os.path.isfile(order_file):
-        print_err("%s is not a file" % order_file)
+    order_file = get_order_file(orders_dir)
+    if order_file is False:
         return False
 
     order_dic = file_json_read(order_file)
