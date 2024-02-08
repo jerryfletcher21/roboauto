@@ -9,7 +9,7 @@ import re
 import signal
 
 from roboauto.logger import print_out, print_err
-from roboauto.global_state import roboauto_state, roboauto_options
+from roboauto.global_state import roboauto_state
 from roboauto.utils import global_setup, list_configs, update_roboauto_options
 from roboauto.robot import \
     import_robot, remove_robot, print_token, robot_print_dir, \
@@ -30,7 +30,7 @@ info = """\
 roboauto action [options]
 
 list-configs
-import-robot [--inactive, --paused] [robot-name] [token]
+import-robot --{coordinator} [--inactive, --paused] [robot-name] [token]
 remove-robot [robot-name]
 print-token [robot-name]
 list-active|list-inactive|list-paused
@@ -39,13 +39,13 @@ set-active [robot-name]
 set-inactive|set-paused [robot-name/--all]
 order-info-local [robot-name/--active/--paused/--inactive] [order-id]
 slowly-move-to-active [seconds]
-generate-robot [--inactive, --paused]
-robosats-info
+generate-robot --{coordinator} [--inactive, --paused]
+robosats-info --{coordinator}
 robot-info [--no-order] [--stdin|robot-name]
-list-limits
+list-limits --{coordinator}
 list-hours-absolute
 list-hours-relative
-list-offers-all|list-offers-buy|list-offers-sell [currency] [search]
+list-offers-all|list-offers-buy|list-offers-sell --{coordinator} [currency] [search]
 create-order [robot-name] [key=value]
 cancel-order [robot-name]
 recreate-order [--no-cancel] robot-name key=value
@@ -65,7 +65,7 @@ roboauto action [options]
 list-configs
     list configs
 
-import-robot [--inactive, --paused] [robot-name] [token]
+import-robot --{coordinator} [--inactive, --paused] [robot-name] [token]
     import a robot, robot-name and token are required
     if not passed as arguments roboauto will ask for them
     by default the new robot is put in the active folder
@@ -101,17 +101,17 @@ slowly-move-to-active [seconds]
     slowly move robots to active from paused
     if seconds is not present $slowly_paused_interval is used
 
-generate-robot [--inactive, --paused]
+generate-robot --{coordinator} [--inactive, --paused]
     generate a new robot
 
-robosats-info
+robosats-info --{coordinator}
     get info about robosats
 
 robot-info [--no-order] [--stdin|robot-name]
     get info about a robot
     and its order if present
 
-list-limits
+list-limits --{coordinator}
     list currency limits
 
 list-hours-absolute
@@ -120,7 +120,7 @@ list-hours-absolute
 list-hours-relative
     list orders per hours relative from current time
 
-list-offers-all|list-offers-buy|list-offers-sell [currency] [search]
+list-offers-all|list-offers-buy|list-offers-sell --{coordinator} [currency] [search]
     list all [buy|sell] offers in the order book
 
 create-order [robot-name] [key=value]
@@ -145,7 +145,8 @@ keep-online
 
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-global_setup()
+if global_setup() is False:
+    sys.exit(1)
 
 if update_roboauto_options() is False:
     print_err("reading the config file")
@@ -156,7 +157,6 @@ if len(argv_global) < 1:
     print_err("insert parameters", date=False)
     sys.exit(1)
 
-coordinator_set = False
 while len(argv_global) > 0:
     if argv_global[0] in ("-h", "--help"):
         print_out(info, end="", date=False)
@@ -167,25 +167,6 @@ while len(argv_global) > 0:
     elif argv_global[0] in ("-v", "--version"):
         print_out(version, date=False)
         sys.exit(0)
-    elif re.match('^--', argv_global[0]) is not None:
-        if coordinator_set is True:
-            print_err("coordinator can not be set 2 times")
-            sys.exit(1)
-        coordinator_option = argv_global[0][2:]
-        if len(coordinator_option) < 3:
-            print_err(
-                "coordinator name should be at least 3 characters long: %s invalid" %
-                coordinator_option
-            )
-            sys.exit(1)
-        for name in roboauto_options["federation"]:
-            if name[:3] == coordinator_option[:3]:
-                roboauto_state["current_coordinator"] = name
-                coordinator_set = True
-                break
-        if coordinator_set is False:
-            print_err("coordinator %s not present" % coordinator_option)
-            sys.exit(1)
     elif re.match('^-', argv_global[0]) is not None:
         print_err("option " + argv_global[0] + " not recognized", date=False)
         sys.exit(1)
@@ -229,11 +210,11 @@ try:
     elif action == "generate-robot":
         return_status_global = generate_robot(argv_global)
     elif action == "robosats-info":
-        return_status_global = robosats_info()
+        return_status_global = robosats_info(argv_global)
     elif action == "robot-info":
         return_status_global = robot_info(argv_global)
     elif action == "list-limits":
-        return_status_global = list_limits()
+        return_status_global = list_limits(argv_global)
     elif action == "list-hours-absolute":
         return_status_global = list_offers_per_hour(False)
     elif action == "list-hours-relative":

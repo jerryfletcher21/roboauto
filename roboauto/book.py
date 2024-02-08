@@ -12,7 +12,9 @@ from roboauto.global_state import roboauto_state
 from roboauto.robot import robot_list_dir
 from roboauto.order import get_offer_dic, offer_dic_print, get_order_file
 from roboauto.requests_api import requests_api_book
-from roboauto.utils import json_loads, file_json_read
+from roboauto.utils import \
+    json_loads, file_json_read, \
+    roboauto_get_coordinator_from_argv
 
 
 def get_offers_per_hour(relative):
@@ -83,8 +85,8 @@ def list_offers_per_hour(relative):
     return True
 
 
-def get_book_response_json():
-    book_response = requests_api_book().text
+def get_book_response_json(base_url):
+    book_response = requests_api_book(base_url).text
     book_response_json = json_loads(book_response)
     if not book_response_json:
         print_err(book_response, error=False, date=False)
@@ -148,6 +150,10 @@ def list_offers_general(book_response_json, book_type, book_currency, search_ele
 
 
 def list_offers_buy(argv):
+    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    if coordinator_url is False:
+        return False
+
     if len(argv) >= 1:
         currency = argv[0]
         argv = argv[1:]
@@ -159,7 +165,7 @@ def list_offers_buy(argv):
     else:
         search_element = ""
 
-    book_response_json = get_book_response_json()
+    book_response_json = get_book_response_json(coordinator_url)
     if book_response_json is False:
         return False
 
@@ -167,6 +173,10 @@ def list_offers_buy(argv):
 
 
 def list_offers_sell(argv):
+    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    if coordinator_url is False:
+        return False
+
     if len(argv) >= 1:
         currency = argv[0]
         argv = argv[1:]
@@ -178,7 +188,7 @@ def list_offers_sell(argv):
     else:
         search_element = ""
 
-    book_response_json = get_book_response_json()
+    book_response_json = get_book_response_json(coordinator_url)
     if book_response_json is False:
         return False
 
@@ -186,6 +196,10 @@ def list_offers_sell(argv):
 
 
 def list_offers_all(argv):
+    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    if coordinator_url is False:
+        return False
+
     if len(argv) >= 1:
         currency = argv[0]
         argv = argv[1:]
@@ -197,7 +211,7 @@ def list_offers_all(argv):
     else:
         search_element = ""
 
-    book_response_json = get_book_response_json()
+    book_response_json = get_book_response_json(coordinator_url)
     if book_response_json is False:
         return False
 

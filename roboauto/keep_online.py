@@ -28,7 +28,7 @@ from roboauto.order import \
     order_is_public, order_is_paused, \
     order_is_waiting_maker_bond, order_is_waiting_taker_bond, \
     order_is_expired
-from roboauto.requests_api import requests_api_robot, requests_api_book
+from roboauto.requests_api import requests_api_robot, requests_api_book, response_is_error
 from roboauto.book import get_offers_per_hour
 from roboauto.utils import \
     get_uint, json_loads, dir_make_sure_exists, \
@@ -160,8 +160,13 @@ def robot_check_expired(robot, token_base91, robot_url, robot_this_hour=0):
     return 0
 
 
-def list_orders(robot_list):
-    book_response = requests_api_book().text
+def list_orders_single_book(coordinator, coordinator_url, robot_list):
+    book_response_pre = requests_api_book(coordinator_url, until_true=False)
+    if response_is_error(book_response_pre):
+        print_err("connecting to coordinator %s" % coordinator)
+        return False
+
+    book_response = book_response_pre.text
     book_response_json = json_loads(book_response)
     if book_response_json is False:
         print_err(book_response, error=False, date=False)
@@ -254,7 +259,20 @@ def keep_online():
                 (robot_list_len, maximum_possible_orders)
             )
 
-        list_orders(robot_list)
+        coordinator_robot_list = {}
+
+        for robot in robot_list:
+            robot_dir = roboauto_state["active_home"] + "/" + robot
+            coordinator = robot_get_coordinator(robot, robot_dir)
+            if coordinator_robot_list.get(coordinator, False) is False:
+                coordinator_robot_list.update({coordinator: []})
+            coordinator_robot_list[coordinator].append(robot)
+
+        for coordinator, robot_list in coordinator_robot_list.items():
+            list_orders_single_book(
+                coordinator, roboauto_get_coordinator_url(coordinator),
+                robot_list
+            )
 
         time.sleep(roboauto_options["book_interval"])
 

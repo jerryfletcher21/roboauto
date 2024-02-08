@@ -5,7 +5,7 @@
 # pylint: disable=C0209 consider-using-f-string
 
 import os
-import sys
+import re
 import getpass
 import json
 import subprocess
@@ -16,17 +16,52 @@ from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_options, roboauto_state
 
 
-def roboauto_get_current_url():
-    return roboauto_options["federation"][roboauto_state["current_coordinator"]]
+def roboauto_first_coordinator():
+    return next(iter(roboauto_options["federation"]))
 
 
 def roboauto_get_coordinator_url(coordinator):
     url = roboauto_options["federation"].get(coordinator, False)
     if url is False:
         print_err("coordinator %s not valid" % coordinator)
-        return roboauto_get_current_url()
+        return roboauto_options["federation"][roboauto_first_coordinator()]
 
     return url
+
+
+def roboauto_get_coordinator_from_argv(argv):
+    multi_false = False, False, False
+    coordinator = False
+
+    if len(argv) < 1:
+        print_err("insert coordinator")
+        return multi_false
+
+    first_param = argv[0]
+    argv = argv[1:]
+
+    if re.match('^--', first_param) is None:
+        print_err("insert coordinator")
+        return multi_false
+
+    coordinator_option = first_param[2:]
+    if len(coordinator_option) < 3:
+        print_err(
+            "coordinator name should be at least 3 characters long: %s invalid" %
+            coordinator_option
+        )
+        return multi_false
+    coordinator_found = False
+    for name in roboauto_options["federation"]:
+        if name[:3] == coordinator_option[:3]:
+            coordinator = name
+            coordinator_found = True
+            break
+    if coordinator_found is False:
+        print_err("coordinator %s not present" % coordinator_option)
+        return multi_false
+
+    return coordinator, roboauto_options["federation"][coordinator], argv
 
 
 def dir_make_sure_exists(directory):
@@ -107,14 +142,10 @@ def update_roboauto_options(print_info=False):
         federation_section = "federation"
 
         if parser.has_section(federation_section):
-            current_coordinator_set = False
             for key in parser.options(federation_section):
                 value = parser.get(federation_section, key).strip("'\"")
                 if update_federation_option(key, value, print_info=print_info) is False:
                     return False
-                if current_coordinator_set is False:
-                    roboauto_state["current_coordinator"] = key
-                    current_coordinator_set = True
 
     return True
 
@@ -154,7 +185,9 @@ def global_setup():
         roboauto_state["lock_home"]
     ):
         if not dir_make_sure_exists(directory_global):
-            sys.exit(1)
+            return False
+
+    return True
 
 
 def get_int(string_number):

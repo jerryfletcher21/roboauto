@@ -24,7 +24,8 @@ from roboauto.utils import \
     json_loads, \
     input_ask_robot, password_ask_token, \
     generate_random_token_base62, \
-    roboauto_get_current_url
+    roboauto_first_coordinator, \
+    roboauto_get_coordinator_from_argv
 
 
 def get_destination_mode(argv):
@@ -88,6 +89,10 @@ def robot_write_token(robot_dir, token, coordinator):
 
 
 def import_robot(argv):
+    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    if coordinator_url is False:
+        return False
+
     destination_mode = get_destination_mode(argv)
     if destination_mode is False:
         return False
@@ -125,7 +130,7 @@ def import_robot(argv):
         print_err("robot token not set")
         return False
 
-    return robot_write_token(robot_dir, token, roboauto_state["current_coordinator"])
+    return robot_write_token(robot_dir, token, coordinator)
 
 
 def remove_robot_from_dir(directory, robot, directory_name):
@@ -201,13 +206,13 @@ def robot_get_token_base91(robot, robot_dir):
 
 def robot_get_coordinator(robot, robot_dir):
     if not os.path.isdir(robot_dir):
-        print_war(robot + " does not exists, using current coordinator")
-        return roboauto_state["current_coordinator"]
+        print_war(robot + " does not exists, using default coordinator")
+        return roboauto_first_coordinator()
 
     coordinator = file_read(robot_dir + "/coordinator")
     if coordinator is False:
-        print_war(robot + " does not have a coordinator, using current")
-        return roboauto_state["current_coordinator"]
+        print_war(robot + " does not have a coordinator, using default")
+        return roboauto_first_coordinator()
 
     return coordinator
 
@@ -345,6 +350,10 @@ def robot_set_dir(destination_dir, argv):
 
 # TODO
 def generate_robot(argv):
+    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    if coordinator_url is False:
+        return False
+
     destination_mode = get_destination_mode(argv)
     if destination_mode is False:
         return False
@@ -353,9 +362,8 @@ def generate_robot(argv):
 
     token = generate_random_token_base62()
     token_base91 = token_get_base91(token)
-    robot_url = roboauto_get_current_url()
 
-    robot_response = requests_api_robot(token_base91, robot_url).text
+    robot_response = requests_api_robot(token_base91, coordinator_url).text
     robot_response_json = json_loads(robot_response)
     if robot_response_json is False:
         print_err(robot_response, end="", error=False, date=False)
@@ -379,7 +387,7 @@ def generate_robot(argv):
 
     print_out("robot name: %s" % robot)
 
-    return robot_write_token(robot_dir, token, roboauto_state["current_coordinator"])
+    return robot_write_token(robot_dir, token, coordinator)
 
 
 def robot_get_lock_file(robot):

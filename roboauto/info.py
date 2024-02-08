@@ -24,11 +24,16 @@ from roboauto.utils import \
     file_json_read, \
     json_loads, json_dumps, \
     input_ask_robot, password_ask_token, \
-    roboauto_get_coordinator_url
+    roboauto_get_coordinator_url, \
+    roboauto_get_coordinator_from_argv
 
 
-def list_limits():
-    limits_response = requests_api_limits().text
+def list_limits(argv):
+    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    if coordinator_url is False:
+        return False
+
+    limits_response = requests_api_limits(coordinator_url).text
     limits_response_json = json_loads(limits_response)
     if not limits_response_json:
         print_err(limits_response, end="", error=False, date=False)
@@ -40,8 +45,12 @@ def list_limits():
     return True
 
 
-def robosats_info():
-    info_response = requests_api_info().text
+def robosats_info(argv):
+    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    if coordinator_url is False:
+        return False
+
+    info_response = requests_api_info(coordinator_url).text
     info_response_json = json_loads(info_response)
     if not info_response_json:
         print_err(info_response, end="", error=False, date=False)

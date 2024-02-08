@@ -34,6 +34,5 @@ roboauto_state = {
     "config_file": "",
     "message_command": "",
     "check_command": "",
-    "pay_command": "",
-    "current_coordinator": next(iter(roboauto_options["federation"]))
+    "pay_command": ""
 }
