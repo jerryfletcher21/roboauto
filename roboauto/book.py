@@ -10,7 +10,7 @@ import datetime
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state
 from roboauto.robot import robot_list_dir, get_waiting_queue
-from roboauto.order import get_offer_dic, offer_dic_print, get_order_file
+from roboauto.order_local import get_offer_dic, offer_dic_print, get_order_file
 from roboauto.requests_api import requests_api_book
 from roboauto.utils import \
     json_loads, file_json_read, \

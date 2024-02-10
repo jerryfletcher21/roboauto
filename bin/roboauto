@@ -14,8 +14,8 @@ from roboauto.utils import global_setup, list_configs, update_roboauto_options
 from roboauto.robot import \
     import_robot, remove_robot, print_token, print_coordinator, \
     robot_print_dir, waiting_queue_print, robot_set_dir, generate_robot
+from roboauto.order_local import order_info_local
 from roboauto.order import \
-    order_info_local, \
     create_order, cancel_order, recreate_order
 from roboauto.info import robosats_info, robot_info, list_limits
 from roboauto.book import \

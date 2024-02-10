@@ -19,7 +19,8 @@ from roboauto.robot import \
     robot_dir_search, robot_get_token_base91, \
     robot_get_coordinator, robot_input_ask, \
     token_get_base91
-from roboauto.order import get_order_string, api_order_get_dic
+from roboauto.order_local import get_order_string
+from roboauto.order import api_order_get_dic
 from roboauto.requests_api import \
     requests_api_limits, \
     requests_api_info, requests_api_robot, \

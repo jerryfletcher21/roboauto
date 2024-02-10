@@ -22,13 +22,14 @@ from roboauto.robot import \
     robot_set_dir, robot_get_token_base91, \
     robot_get_lock_file, robot_list_dir, robot_get_coordinator, \
     get_waiting_queue
-from roboauto.order import \
-    api_order_get_dic, \
-    bond_order, wait_order, make_order, \
+from roboauto.order_local import \
     robot_set_inactive, \
     order_is_public, order_is_paused, \
     order_is_waiting_maker_bond, order_is_waiting_taker_bond, \
     order_is_expired
+from roboauto.order import \
+    api_order_get_dic, \
+    bond_order, wait_order, make_order
 from roboauto.requests_api import requests_api_robot, requests_api_book, response_is_error
 from roboauto.book import get_offers_per_hour
 from roboauto.utils import \
