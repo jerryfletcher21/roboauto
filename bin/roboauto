@@ -15,12 +15,10 @@ from roboauto.robot import \
     import_robot, remove_robot, print_token, print_coordinator, \
     robot_print_dir, waiting_queue_print, robot_set_dir, generate_robot
 from roboauto.order_local import order_info_local
-from roboauto.order import \
-    create_order, cancel_order, recreate_order
+from roboauto.order import create_order, cancel_order, recreate_order
 from roboauto.info import robosats_info, robot_info, list_limits
 from roboauto.book import \
-    list_offers_per_hour, \
-    list_offers_all, list_offers_buy, list_offers_sell
+    list_offers_per_hour, list_offers_all, list_offers_buy, list_offers_sell
 from roboauto.keep_online import slowly_move_to_active, keep_online
 
 
@@ -42,7 +40,8 @@ order-info-local [robot-name/--active/--paused/--inactive] [order-id]
 slowly-move-to-active [seconds]
 generate-robot --{coordinator} [--inactive, --paused]
 robosats-info --{coordinator}
-robot-info [--no-order] {[robot-name], --stdin|--stdin-base91 --{coordinator}|coordinator-url}
+robot-info [--no-order] [robot-name]
+robot-info [--no-order] --stdin|--stdin-base91 --{coordinator}|coordinator-url
 list-limits --{coordinator}
 list-hours-absolute
 list-hours-relative
@@ -111,7 +110,8 @@ generate-robot --{coordinator} [--inactive, --paused]
 robosats-info --{coordinator}
     get info about robosats
 
-robot-info [--no-order] {[robot-name], --stdin|--stdin-base91 --{coordinator}|coordinator-url}
+robot-info [--no-order] [robot-name]
+robot-info [--no-order] --stdin|--stdin-base91 --{coordinator}|coordinator-url
     get info about a robot
     and if --no-order is present its order if present
     if instead of robot-name --stdin or --stdin-base91 is passed

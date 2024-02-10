@@ -1,6 +1,16 @@
 #!/bin/bash
 
 __roboauto_completion() {
+    ___roboauto_get_coordinators() {
+        roboauto list-configs | jq -r '.federation | keys[] as $k | "--\($k)"'
+    }
+    ___roboauto_get_robots() {
+        find "$@" -mindepth 1 -maxdepth 1 -type d |
+        rev |
+        cut -d "/" -f 1 |
+        rev
+    }
+
     # shellcheck disable=SC2034
     local cur prev words=() cword
 
@@ -9,13 +19,20 @@ __roboauto_completion() {
     OPTS=""
 
     if [ "${cword}" -eq 1 ]; then
-        OPTS="$(
-            roboauto -h |
-            grep '^[^[:space:]]' |
-            tail -n +2 |
-            cut -d " " -f 1 |
-            tr '|' '\n'
-        )"
+        OPTS="
+-h
+--help
+--verbose-help
+-v
+--version
+$(
+    roboauto -h |
+    grep '^[^[:space:]]' |
+    tail -n +2 |
+    cut -d " " -f 1 |
+    tr '|' '\n' |
+    uniq
+)"
     else
         local action="${words[1]}"
 
@@ -31,44 +48,49 @@ __roboauto_completion() {
         case "$action" in
         import-robot)
             if [ "${cword}" -eq 2 ]; then
+                OPTS="$(___roboauto_get_coordinators)"
+            elif [ "${cword}" -eq 3 ]; then
                 OPTS="
 --inactive
 --paused
 "
             fi
         ;;
-        remove-robot)
+        remove-robot|print-token|print-coordinator)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$(
-                    find "$active_home" "$inactive_home" "$paused_home" \
-                        -mindepth 1 -maxdepth 1 -type d |
-                    rev |
-                    cut -d "/" -f 1 |
-                    rev
+                    ___roboauto_get_robots \
+                        "$active_home" "$inactive_home" "$paused_home"
                 )"
             fi
         ;;
         set-active)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$(
-                    find "$inactive_home" "$paused_home" \
-                        -mindepth 1 -maxdepth 1 -type d |
-                    rev |
-                    cut -d "/" -f 1 |
-                    rev
+                    ___roboauto_get_robots \
+                        "$inactive_home" "$paused_home"
                 )"
             fi
         ;;
         set-inactive|set-paused)
             if [ "${cword}" -eq 2 ]; then
-                OPTS="--all
-                $(
-                    find "$active_home" \
-                        -mindepth 1 -maxdepth 1 -type d |
-                    rev |
-                    cut -d "/" -f 1 |
-                    rev
-                )"
+                OPTS="
+--all
+$(___roboauto_get_robots "$active_home")"
+            fi
+        ;;
+        order-info-local)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="
+--active
+--inactive
+--paused
+$(___roboauto_get_robots "$active_home" "$inactive_home" "$paused_home")"
+            fi
+        ;;
+        robosats-info|list-limits)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="$(___roboauto_get_coordinators)"
             fi
         ;;
         robot-info)
@@ -77,23 +99,40 @@ __roboauto_completion() {
             fi
             if [ "${cword}" -eq 2 ] || [ "${cword}" -eq 3 ]; then
                 OPTS="$OPTS
-                $(
-                    find "$active_home" \
-                        -mindepth 1 -maxdepth 1 -type d |
-                    rev |
-                    cut -d "/" -f 1 |
-                    rev
-                )"
+--stdin
+--stdin-base91
+$(___roboauto_get_robots "$active_home")"
+            fi
+            if [ "${cword}" -eq 3 ] || [ "${cword}" -eq 4 ]; then
+                if [ "$prev" = "--stdin" ] || [ "$prev" = "--stdin-base91" ]; then
+                    OPTS="$(___roboauto_get_coordinators)"
+                fi
             fi
         ;;
         list-offers-all|list-offers-buy|list-offers-sell)
             if [ "${cword}" -eq 2 ]; then
+                OPTS="$(___roboauto_get_coordinators)"
+            elif [ "${cword}" -eq 3 ]; then
                 OPTS="
 all
 eur
 usd
 btc
 "
+            fi
+        ;;
+        cancel-order)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="$(___roboauto_get_robots "$active_home")"
+            fi
+        ;;
+        recreate-order)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="--no-cancel
+                $(___roboauto_get_robots "$active_home")"
+            fi
+            if [ "${cword}" -eq 3 ] && [ "$prev" = "--no-cancel" ]; then
+                OPTS="$(___roboauto_get_robots "$paused_home" "$inactive_home")"
             fi
         ;;
         esac
