@@ -26,7 +26,8 @@ from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import \
     robot_dir_search, robot_get_lock_file, \
     robot_get_token_base91, robot_list_dir, robot_set_dir, \
-    robot_get_coordinator, robot_input_ask
+    robot_get_coordinator, robot_input_ask, \
+    get_waiting_queue
 from roboauto.requests_api import \
     requests_api_order, requests_api_robot, requests_api_cancel, \
     requests_api_make
@@ -1029,13 +1030,9 @@ def recreate_order(argv):
 
 
 def wait_order(robot):
-    if os.path.isfile(roboauto_state["waiting_queue_file"]):
-        nicks_waiting = file_json_read(roboauto_state["waiting_queue_file"])
-        if nicks_waiting is False:
-            print_err("reading waiting queue")
-            return False
-    else:
-        nicks_waiting = []
+    nicks_waiting = get_waiting_queue()
+    if nicks_waiting is False:
+        return False
 
     nicks_waiting.append(robot)
     print_out(robot + " added to waiting queue")

@@ -20,7 +20,8 @@ from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import \
     robot_set_dir, robot_get_token_base91, \
-    robot_get_lock_file, robot_list_dir, robot_get_coordinator
+    robot_get_lock_file, robot_list_dir, robot_get_coordinator, \
+    get_waiting_queue
 from roboauto.order import \
     api_order_get_dic, \
     bond_order, wait_order, make_order, \
@@ -32,7 +33,7 @@ from roboauto.requests_api import requests_api_robot, requests_api_book, respons
 from roboauto.book import get_offers_per_hour
 from roboauto.utils import \
     get_uint, json_loads, dir_make_sure_exists, \
-    file_json_write, file_json_read, \
+    file_json_write, \
     update_roboauto_options, \
     roboauto_get_coordinator_url
 
@@ -177,13 +178,9 @@ def list_orders_single_book(coordinator, coordinator_url, robot_list):
     for offer in book_response_json:
         nicks.append(offer["maker_nick"])
 
-    if os.path.isfile(roboauto_state["waiting_queue_file"]):
-        nicks_waiting = file_json_read(roboauto_state["waiting_queue_file"])
-        if nicks_waiting is False:
-            print_err("reading waiting queue")
-            return False
-    else:
-        nicks_waiting = []
+    nicks_waiting = get_waiting_queue()
+    if nicks_waiting is False:
+        return False
 
     offers_per_hour_relative = False
     if offers_per_hour_relative is True:

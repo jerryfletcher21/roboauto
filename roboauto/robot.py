@@ -281,7 +281,7 @@ def robot_print_dir(robot_dir):
     return True
 
 
-def waiting_queue_print():
+def get_waiting_queue():
     if os.path.isfile(roboauto_state["waiting_queue_file"]):
         nicks_waiting = file_json_read(roboauto_state["waiting_queue_file"])
         if nicks_waiting is False:
@@ -289,6 +289,14 @@ def waiting_queue_print():
             return False
     else:
         nicks_waiting = []
+
+    return nicks_waiting
+
+
+def waiting_queue_print():
+    nicks_waiting = get_waiting_queue()
+    if nicks_waiting is False:
+        return False
 
     for nick in nicks_waiting:
         print_out("%s" % nick)

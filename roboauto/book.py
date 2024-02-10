@@ -9,7 +9,7 @@ import datetime
 
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state
-from roboauto.robot import robot_list_dir
+from roboauto.robot import robot_list_dir, get_waiting_queue
 from roboauto.order import get_offer_dic, offer_dic_print, get_order_file
 from roboauto.requests_api import requests_api_book
 from roboauto.utils import \
@@ -18,12 +18,21 @@ from roboauto.utils import \
 
 
 def get_offers_per_hour(relative):
-    hours = [[] for _ in range(24)]
+    hours = [[] for _ in range(25)]
 
     if relative:
         current_timestamp = int(datetime.datetime.now().timestamp())
 
+    nicks_waiting = get_waiting_queue()
+    if nicks_waiting is False:
+        return False
+
+    hours[24] = nicks_waiting
+
     for robot in robot_list_dir(roboauto_state["active_home"]):
+        if robot in nicks_waiting:
+            continue
+
         robot_dir = roboauto_state["active_home"] + "/" + robot
 
         orders_dir = robot_dir + "/orders"
@@ -77,7 +86,11 @@ def list_offers_per_hour(relative):
     for i, hour in enumerate(hours):
         if i < 10:
             print_out("0", end="")
-        print_out("%d %2s" % (i, len(hour)), end="")
+        if i < 24:
+            print_out("%d" % i, end="")
+        else:
+            print_out("WQ", end="")
+        print_out(" %2s" % len(hour), end="")
         for nick in hour:
             print_out(" %s" % nick, end="")
         print_out("\n", end="")
