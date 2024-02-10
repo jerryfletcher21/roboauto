@@ -74,14 +74,15 @@ def get_robot_dir_from_destination(robot, destination_mode):
     return robot_dir
 
 
-def robot_dir_search(robot):
+def robot_dir_search(robot, error_print=True):
     robot_dir = roboauto_state["active_home"] + "/" + robot
     if not os.path.isdir(robot_dir):
         robot_dir = roboauto_state["paused_home"] + "/" + robot
         if not os.path.isdir(robot_dir):
             robot_dir = roboauto_state["inactive_home"] + "/" + robot
             if not os.path.isdir(robot_dir):
-                print_err("robot " + robot + " not found")
+                if error_print:
+                    print_err("robot " + robot + " not found")
                 return False
 
     return robot_dir

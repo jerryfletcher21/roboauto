@@ -364,15 +364,26 @@ def order_info_local(argv):
         return False
 
     if re.match('^-', robot) is None:
+        robot_dir = robot_dir_search(robot, error_print=False)
+        if robot_dir is False:
+            robot_dir = robot
+            if os.path.isdir(robot_dir):
+                for robot in os.listdir(robot_dir):
+                    if not print_robot_order(
+                        robot, robot_dir + "/" + robot,
+                        order_id=False, one_line=True
+                    ):
+                        return False
+                return True
+            else:
+                print_err("%s is not a robot and not a directory" % robot)
+                return False
+
         if len(argv) >= 1:
             order_id = argv[0]
             argv = argv[1:]
         else:
             order_id = False
-
-        robot_dir = robot_dir_search(robot)
-        if robot_dir is False:
-            return False
 
         return print_robot_order(robot, robot_dir, order_id, one_line=False)
     elif robot in ("--active", "--paused", "--inactive"):
