@@ -133,7 +133,9 @@ def get_offers_unsorted(book_response_json, book_type, book_currency):
     return offers
 
 
-def list_offers_general(book_response_json, book_type, book_currency, search_element=""):
+def list_offers_general(
+    book_response_json, book_type, book_currency, coordinator, search_element=""
+):
     offers_unsorted = get_offers_unsorted(book_response_json, book_type, book_currency)
     if offers_unsorted is False:
         print_err("getting unsorted offers")
@@ -157,13 +159,13 @@ def list_offers_general(book_response_json, book_type, book_currency, search_ele
 
     if len(offers_sorted) >= 1:
         for offer in offers_sorted:
-            offer_dic_print(offer)
+            offer_dic_print(offer, coordinator=coordinator)
 
     return True
 
 
 def list_offers_buy(argv):
-    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator_url is False:
         return False
 
@@ -182,11 +184,11 @@ def list_offers_buy(argv):
     if book_response_json is False:
         return False
 
-    return list_offers_general(book_response_json, 0, currency, search_element)
+    return list_offers_general(book_response_json, 0, currency, coordinator, search_element)
 
 
 def list_offers_sell(argv):
-    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator_url is False:
         return False
 
@@ -205,11 +207,11 @@ def list_offers_sell(argv):
     if book_response_json is False:
         return False
 
-    return list_offers_general(book_response_json, 1, currency, search_element)
+    return list_offers_general(book_response_json, 1, currency, coordinator, search_element)
 
 
 def list_offers_all(argv):
-    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator_url is False:
         return False
 
@@ -230,12 +232,16 @@ def list_offers_all(argv):
 
     return_status = True
 
-    if list_offers_general(book_response_json, 0, currency, search_element) is False:
+    if list_offers_general(
+        book_response_json, 0, currency, coordinator, search_element
+    ) is False:
         return_status = False
 
     print_out("\n", end="")
 
-    if list_offers_general(book_response_json, 1, currency, search_element) is False:
+    if list_offers_general(
+        book_response_json, 1, currency, coordinator, search_element
+    ) is False:
         return_status = False
 
     return return_status

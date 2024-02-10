@@ -35,7 +35,8 @@ from roboauto.utils import \
     get_date_short, json_dumps, file_json_read, \
     file_is_executable, subprocess_run_command, \
     json_loads, is_float, get_int, dir_make_sure_exists, file_json_write, \
-    input_ask, roboauto_get_coordinator_url
+    input_ask, roboauto_get_coordinator_url, \
+    roboauto_get_coordinator_from_url
 
 
 def get_type_string(target, reverse=False):
@@ -287,13 +288,15 @@ def get_offer_dic(offer):
     return offer_dic
 
 
-def offer_dic_print(offer_dic):
+def offer_dic_print(offer_dic, coordinator=False):
     printf_string = \
-        "%-6s %-24s %-4s %-3s %3sh %5s %6.2f%% %3s " + \
+        "%-3s %-6s %-24s %-4s %-3s %3sh %5s %6.2f%% %3s " + \
         offer_dic["amount_format"] + " " + offer_dic["amount_format"] + \
         " %5s %s"
-    print_out(
-        printf_string % (
+    if not coordinator:
+        coordinator = "---"
+    print_out(printf_string % (
+        str(coordinator)[:3],
         offer_dic["offer_id"], offer_dic["maker_nick"],
         offer_dic["order_type"], offer_dic["currency"],
         offer_dic["duration"], offer_dic["bond_size"], float(offer_dic["premium"]),
@@ -316,12 +319,17 @@ def get_order_file(orders_dir):
 def print_robot_order(robot, robot_dir, order_id, one_line):
     order_id_error = "------"
 
+    coordinator = robot_get_coordinator(robot, robot_dir, warning_print=False)
+    coordinator_str = str(coordinator)[:3]
+
     orders_dir = robot_dir + "/orders"
     if not os.path.isdir(orders_dir):
         if not one_line:
             print_out(json_dumps({"error": "no order dir"}))
         else:
-            print_out("%-6s %-24s no order dir" % (order_id_error, robot))
+            print_out("%-3s %-6s %-24s no order dir" % (
+                coordinator_str, order_id_error, robot
+            ))
         return True
 
     if order_id is False:
@@ -339,15 +347,27 @@ def print_robot_order(robot, robot_dir, order_id, one_line):
         return False
 
     if not one_line:
-        if "order_user" in order_dic:
-            print_out(json_dumps(order_dic["order_user"]))
+        if "order_user" not in order_dic and "order_info" not in order_dic:
+            print_out(json_dumps({"error": "no order user and info"}))
         else:
-            print_out(json_dumps({"error": "no order user"}))
+            order_dic_print = {}
+            if "order_info" in order_dic:
+                for key in ("coordinator", "order_id", "status_string"):
+                    if key in order_dic["order_info"]:
+                        order_dic_print.update({key: order_dic["order_info"][key]})
+            if "order_user" in order_dic:
+                order_dic_print.update(order_dic["order_user"])
+            print_out(json_dumps(order_dic_print))
     else:
         if "order_response_json" in order_dic:
-            offer_dic_print(get_offer_dic(order_dic["order_response_json"]))
+            offer_dic_print(
+                get_offer_dic(order_dic["order_response_json"]),
+                coordinator=coordinator
+            )
         else:
-            print_out("%-6s %-24s no order response" % (order_id_error, robot))
+            print_out("%-3s %-6s %-24s no order response" % (
+                coordinator_str, order_id_error, robot
+            ))
 
     return True
 
@@ -446,6 +466,8 @@ def api_order_get_dic(robot, token_base91, robot_url, order_id):
         print_err("getting order info for " + robot + " " + order_id)
         return False
 
+    coordinator = roboauto_get_coordinator_from_url(robot_url)
+
     status_id = order_response_json.get("status", False)
     type_id = order_response_json.get("type", False)
     currency_id = order_response_json.get("currency", False)
@@ -526,6 +548,7 @@ def api_order_get_dic(robot, token_base91, robot_url, order_id):
             "bond_size":            bond_size
         },
         "order_info": {
+            "coordinator":          coordinator,
             "order_id":             order_id,
             "status":               status_id,
             "status_string":        status_string,
@@ -680,7 +703,7 @@ def robot_cancel_order(robot, token_base91):
 
             order_id_number = robot_response_json.get("active_order_id", False)
             if order_id_number is False:
-                print_err(robot_response, end="", error=False, date=False)
+                print_err(robot_response, error=False, date=False)
                 print_err("getting active order_id for " + robot)
                 return False
 
@@ -691,7 +714,7 @@ def robot_cancel_order(robot, token_base91):
                 print_err("order data is false %s %s" % (robot, order_id))
                 return False
             elif order_dic is None:
-                print_err("order data is none %s %s" % (robot, order_id))
+                print_err("%s last order not available" % robot)
                 return False
 
             orders_dir = robot_dir + "/orders"
@@ -735,7 +758,21 @@ def robot_cancel_order(robot, token_base91):
 
 def bond_order(robot, token_base91, robot_url, order_id, bond_amount):
     order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
-    if order_dic is False or order_dic is None:
+    if order_dic is False:
+        return False
+    if order_dic is None:
+        print_err("%s order not available" % robot)
+        return False
+
+    robot_dir = robot_dir_search(robot)
+    if robot_dir is False:
+        return False
+    orders_dir = robot_dir + "/orders"
+    if not dir_make_sure_exists(orders_dir):
+        return False
+    order_file = orders_dir + "/" + order_id
+    if not file_json_write(order_file, order_dic):
+        print_err("saving order %s to file" % order_id)
         return False
 
     order_user = order_dic["order_user"]
@@ -779,16 +816,22 @@ def bond_order(robot, token_base91, robot_url, order_id, bond_amount):
             while True:
                 print_out("checking if order is bonded...")
 
-                order_response = requests_api_order(token_base91, order_id, robot_url).text
-                order_response_json = json_loads(order_response)
-                if order_response_json is False:
-                    print_err(order_response, error=False, date=False)
-                    print_err("getting order response of " + robot + " " + order_id)
+                order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
+                if order_dic is False:
                     return False
+                if order_dic is None:
+                    print_err("%s order not available" % robot)
+                    return False
+                order_file = orders_dir + "/" + order_id
+                if not file_json_write(order_file, order_dic):
+                    print_err("saving order %s to file" % order_id)
+                    return False
+
+                order_response_json = order_dic["order_response_json"]
 
                 order_status = order_response_json.get("status", False)
                 if order_status is False:
-                    print_err(order_response, error=False, date=False)
+                    print_err(json_dumps(order_response_json), error=False, date=False)
                     print_err("getting order_status of " + robot + " " + order_id)
                     return False
 

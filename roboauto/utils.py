@@ -29,6 +29,14 @@ def roboauto_get_coordinator_url(coordinator):
     return url
 
 
+def roboauto_get_coordinator_from_url(coordinator_url):
+    for coordinator in roboauto_options["federation"]:
+        if roboauto_options["federation"][coordinator] == coordinator_url:
+            return coordinator
+
+    return "---"
+
+
 def roboauto_get_coordinator_from_argv(argv):
     multi_false = False, False, False
     coordinator = False
@@ -258,12 +266,13 @@ def json_dumps(data):
     return json.dumps(data, indent=roboauto_options["tab_size"])
 
 
-def file_write(file_name, string):
+def file_write(file_name, string, error_print=True):
     try:
         with open(file_name, "w", encoding="utf8") as file:
             file.write(string + "\n")
     except EnvironmentError:
-        print_err("writing to %s" % file_name)
+        if error_print:
+            print_err("writing to %s" % file_name)
         return False
 
     return True
@@ -280,12 +289,13 @@ def file_json_write(file_name, data):
     return True
 
 
-def file_read(file_name):
+def file_read(file_name, error_print=True):
     try:
         with open(file_name, "r", encoding="utf8") as file:
             string = file.readline().rstrip()
     except EnvironmentError:
-        print_err("reading from %s" % file_name)
+        if error_print:
+            print_err("reading from %s" % file_name)
         return False
 
     return string

@@ -79,7 +79,7 @@ def robot_check_expired(robot, token_base91, robot_url, robot_this_hour=0):
     if order_id_number is False:
         order_id_number = robot_response_json.get("last_order_id", False)
         if order_id_number is False:
-            print_err(robot_response, end="", error=False, date=False)
+            print_err(robot_response, error=False, date=False)
             print_err("getting order_id for " + robot)
             return False
 

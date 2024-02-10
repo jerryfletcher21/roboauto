@@ -207,14 +207,16 @@ def robot_get_token_base91(robot, robot_dir):
     return token_get_base91(token_string)
 
 
-def robot_get_coordinator(robot, robot_dir):
+def robot_get_coordinator(robot, robot_dir, warning_print=True):
     if not os.path.isdir(robot_dir):
-        print_war(robot + " does not exists, using default coordinator")
+        if warning_print:
+            print_war(robot + " does not exists, using default coordinator")
         return roboauto_first_coordinator()
 
-    coordinator = file_read(robot_dir + "/coordinator")
+    coordinator = file_read(robot_dir + "/coordinator", error_print=False)
     if coordinator is False:
-        print_war(robot + " does not have a coordinator, using default")
+        if warning_print:
+            print_war(robot + " does not have a coordinator, using default")
         return roboauto_first_coordinator()
 
     return coordinator

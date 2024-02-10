@@ -3,6 +3,7 @@
 # pylint: disable=C0114 missing-module-docstring
 # pylint: disable=C0116 missing-function-docstring
 # pylint: disable=C0116 missing-function-docstring
+# pylint: disable=C0209 consider-using-f-string
 # pylint: disable=R0911 too-many-return-statements
 # pylint: disable=R0912 too-many-branches
 # pylint: disable=R0914 too-many-locals
@@ -18,18 +19,19 @@ from roboauto.robot import \
     robot_dir_search, robot_get_token_base91, \
     robot_get_coordinator, robot_input_ask, \
     token_get_base91
-from roboauto.order import get_order_string
+from roboauto.order import get_order_string, api_order_get_dic
 from roboauto.requests_api import \
     requests_api_limits, \
     requests_api_info, requests_api_robot, \
-    requests_api_order, requests_api_chat
+    requests_api_chat
 from roboauto.utils import \
     file_read, file_write, \
-    file_json_read, \
+    file_json_read, file_json_write, \
     json_loads, json_dumps, \
     password_ask_token, \
     roboauto_get_coordinator_url, \
-    roboauto_get_coordinator_from_argv
+    roboauto_get_coordinator_from_argv, \
+    dir_make_sure_exists
 
 
 def list_limits(argv):
@@ -68,6 +70,7 @@ def robosats_info(argv):
 
 def robot_info(argv):
     robot = False
+    robot_dir = False
     order_print = True
     token_base91 = False
     while len(argv) > 0:
@@ -134,18 +137,29 @@ def robot_info(argv):
     order_id = str(order_id_number)
 
     if order_print:
-        order_response = requests_api_order(token_base91, order_id, robot_url).text
-        order_response_json = json_loads(order_response)
-        if not order_response_json:
-            print_err(order_response, end="", error=False, date=False)
-            print_err("order response is not json")
+        order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
+        if order_dic is False:
             return False
+        if order_dic is None:
+            print_err("%s order not available" % robot)
+            return False
+
+        if robot_dir is not False:
+            orders_dir = robot_dir + "/orders"
+            if not dir_make_sure_exists(orders_dir):
+                return False
+            order_file = orders_dir + "/" + order_id
+            if not file_json_write(order_file, order_dic):
+                print_err("saving order %s to file" % order_id)
+                return False
+
+        order_response_json = order_dic["order_response_json"]
 
         print_out(json_dumps(order_response_json))
 
         order_status = order_response_json.get("status", False)
         if order_status is False:
-            print_err(order_response, end="", error=False, date=False)
+            print_err(json_dumps(order_response_json), error=False, date=False)
             print_err("order getting order_status for " + robot)
             return False
 
