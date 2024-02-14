@@ -248,6 +248,26 @@ def list_orders_single_book(
     return robot_this_hour
 
 
+def keep_online_refresh():
+    refresh_file = roboauto_state["keep_online_refresh_file"]
+    try:
+        with open(refresh_file, "x", encoding="utf8"):
+            pass
+    except FileExistsError:
+        pass
+
+    return True
+
+
+def keep_online_check():
+    refresh_file = roboauto_state["keep_online_refresh_file"]
+    try:
+        os.remove(refresh_file)
+    except FileNotFoundError:
+        return False
+
+    return True
+
 def keep_online():
     roboauto_state["print_date"] = True
     robot_list = robot_list_dir(roboauto_state["active_home"])
@@ -259,6 +279,8 @@ def keep_online():
     for robot in robot_list:
         print_out(robot, date=False)
     print_out("\n", end="", date=False)
+
+    keep_online_check()
 
     while True:
         # allow to adjust configs while roboauto is running
@@ -309,6 +331,12 @@ def keep_online():
                 print_err("writing waiting queue")
                 return False
 
-        time.sleep(roboauto_options["book_interval"])
+        sleeping_periods = int(
+            roboauto_options["book_interval"] / roboauto_state["sleep_interval"]
+        )
+        for _ in range(sleeping_periods):
+            if keep_online_check():
+                break
+            time.sleep(roboauto_state["sleep_interval"])
 
     return True

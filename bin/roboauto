@@ -19,7 +19,8 @@ from roboauto.order import create_order, cancel_order, recreate_order
 from roboauto.info import robosats_info, robot_info, list_limits
 from roboauto.book import \
     list_offers_per_hour, list_offers_all, list_offers_buy, list_offers_sell
-from roboauto.keep_online import slowly_move_to_active, keep_online
+from roboauto.keep_online import \
+    slowly_move_to_active, keep_online, keep_online_refresh
 
 
 version = "0.1"
@@ -49,6 +50,7 @@ create-order [--no-bond] [robot-name] [key=value]
 cancel-order [robot-name]
 recreate-order [--no-cancel, --no-bond] robot-name key=value
 keep-online
+keep-online-refresh
 """
 
 info_verbose = """\
@@ -146,6 +148,10 @@ keep-online
     keep the offers of the robots in the active directory online
     if message-send program is present, send a message when
     something other than expirations happens to an offer
+
+keep-online-refresh
+    if there is an other instance of robosats keep-online running
+    skip sleeping one time
 """
 
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -238,6 +244,8 @@ try:
         return_status_global = recreate_order(argv_global)
     elif action == "keep-online":
         return_status_global = keep_online()
+    elif action == "keep-online-refresh":
+        return_status_global = keep_online_refresh()
     else:
         print_err("action " + action + " not recognized", date=False)
         sys.exit(1)

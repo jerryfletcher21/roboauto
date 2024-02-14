@@ -221,6 +221,7 @@ def global_setup():
     roboauto_state["lock_home"] = roboauto_home + "/lock"
 
     roboauto_state["waiting_queue_file"] = roboauto_home + "/waiting-queue"
+    roboauto_state["keep_online_refresh_file"] = roboauto_home + "/keep-online-refresh"
 
     roboauto_state["config_file"] = roboauto_config + "/config.ini"
     roboauto_state["message_command"] = roboauto_config + "/message-send"

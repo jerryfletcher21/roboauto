@@ -27,11 +27,13 @@ roboauto_options = {
 roboauto_state = {
     "print_date": False,
     "filelock_timeout": 120,
+    "sleep_interval": 5,
     "active_home": "",
     "inactive_home": "",
     "paused_home": "",
     "lock_home": "",
     "waiting_queue_file": "",
+    "keep_online_refresh_file": "",
     "config_file": "",
     "message_command": "",
     "check_command": "",
