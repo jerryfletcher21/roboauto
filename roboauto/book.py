@@ -8,20 +8,63 @@ import os
 import datetime
 
 from roboauto.logger import print_out, print_err
-from roboauto.global_state import roboauto_state
+from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import robot_list_dir, get_waiting_queue
 from roboauto.order_local import get_offer_dic, offer_dic_print, get_order_file
-from roboauto.requests_api import requests_api_book
+from roboauto.requests_api import response_is_error, requests_api_book
 from roboauto.utils import \
     json_loads, file_json_read, \
-    roboauto_get_coordinator_from_argv
+    roboauto_get_multi_coordinators_from_argv
+
+
+def get_hour_offer(hour_timestamp, current_timestamp, relative):
+    try:
+        robosats_date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
+        if relative:
+            unix_time = int(
+                datetime.datetime.strptime(
+                    hour_timestamp, robosats_date_format
+                ).replace(
+                    tzinfo=datetime.timezone(datetime.timedelta(hours=0))
+                ).timestamp()
+            )
+            date_hour = (23 - int((current_timestamp - unix_time) / 3600)) % 24
+        else:
+            date_hour = int(
+                datetime.datetime.strptime(
+                    hour_timestamp, robosats_date_format
+                ).replace(
+                    tzinfo=datetime.timezone(datetime.timedelta(hours=-1))
+                ).astimezone(datetime.timezone.utc).strftime(
+                    "%H"
+                )
+            )
+            # date_hour = int(get_date_short(hour_timestamp).split(":")[0])
+    except (ValueError, TypeError):
+        print_err("getting hour")
+        return False
+
+    return date_hour
+
+
+def get_current_timestamp():
+    return int(datetime.datetime.now().timestamp())
+
+
+def get_current_hour():
+    return int(
+        datetime.datetime.now().replace(
+            tzinfo=datetime.timezone(datetime.timedelta(hours=0))
+        ).astimezone(datetime.timezone.utc).strftime(
+            "%H"
+        )
+    )
 
 
 def get_offers_per_hour(relative):
     hours = [[] for _ in range(25)]
 
-    if relative:
-        current_timestamp = int(datetime.datetime.now().timestamp())
+    current_timestamp = get_current_timestamp()
 
     nicks_waiting = get_waiting_queue()
     if nicks_waiting is False:
@@ -46,31 +89,10 @@ def get_offers_per_hour(relative):
         if order_dic is False:
             return False
 
-        created_at = order_dic["order_response_json"]["created_at"]
-        try:
-            robosats_date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
-            if relative:
-                unix_time = int(
-                    datetime.datetime.strptime(
-                        created_at, robosats_date_format
-                    ).replace(
-                        tzinfo=datetime.timezone(datetime.timedelta(hours=0))
-                    ).timestamp()
-                )
-                date_hour = (23 - int((current_timestamp - unix_time) / 3600)) % 24
-            else:
-                date_hour = int(
-                    datetime.datetime.strptime(
-                        created_at, robosats_date_format
-                    ).replace(
-                        tzinfo=datetime.timezone(datetime.timedelta(hours=-1))
-                    ).astimezone(datetime.timezone.utc).strftime(
-                        "%H"
-                    )
-                )
-                # date_hour = int(get_date_short(created_at).split(":")[0])
-        except (ValueError, TypeError):
-            print_err("getting hour")
+        expires_at = order_dic["order_response_json"]["expires_at"]
+        date_hour = get_hour_offer(expires_at, current_timestamp, relative)
+        if date_hour is False:
+            print_err("robot %s getting expire hour" % robot)
             return False
 
         hours[date_hour].append(robot)
@@ -98,45 +120,59 @@ def list_offers_per_hour(relative):
     return True
 
 
-def get_book_response_json(base_url):
-    book_response = requests_api_book(base_url).text
+def get_book_response_json(coordinator, until_true=False):
+    base_url = roboauto_options["federation"][coordinator]
+    book_response_pre = requests_api_book(base_url, until_true=until_true)
+    if response_is_error(book_response_pre):
+        print_err("connecting to coordinator %s" % coordinator)
+        return False
+    book_response = book_response_pre.text
+
     book_response_json = json_loads(book_response)
     if not book_response_json:
         print_err(book_response, error=False, date=False)
         print_err("getting book")
         return False
 
+    if not isinstance(book_response_json, list):
+        print_err(book_response, error=False, date=False)
+        print_err("book response is not a list")
+        return False
+
     for offer in book_response_json:
         if not isinstance(offer, dict):
             print_err(book_response, error=False, date=False)
-            print_err("strange book response")
+            print_err("an element of book response is not a dict")
             return False
 
     return book_response_json
 
 
-def get_offers_unsorted(book_response_json, book_type, book_currency):
+def get_offers_unsorted(multi_book_response_json, book_type, book_currency):
     offers = []
-    for offer in book_response_json:
-        offer_dic = get_offer_dic(offer)
+    for book in multi_book_response_json:
+        book_response_json = book["offers"]
+        coordinator = book["coordinator"]
+        for offer in book_response_json:
+            offer_dic = get_offer_dic(offer, coordinator)
 
-        if offer_dic["order_type"] == "buy" and book_type == 1:
-            continue
-        if offer_dic["order_type"] == "sell" and book_type == 0:
-            continue
+            if offer_dic["order_type"] == "buy" and book_type == 1:
+                continue
+            if offer_dic["order_type"] == "sell" and book_type == 0:
+                continue
 
-        if book_currency not in ("all", offer_dic["currency"]):
-            continue
+            if book_currency not in ("all", offer_dic["currency"]):
+                continue
 
-        offers.append(offer_dic)
+            offers.append(offer_dic)
 
     return offers
 
 
 def list_offers_general(
-    book_response_json, book_type, book_currency, coordinator, search_element=""
+    multi_book_response_json, book_type, book_currency, search_element=""
 ):
-    offers_unsorted = get_offers_unsorted(book_response_json, book_type, book_currency)
+    offers_unsorted = get_offers_unsorted(multi_book_response_json, book_type, book_currency)
     if offers_unsorted is False:
         print_err("getting unsorted offers")
         return False
@@ -159,14 +195,36 @@ def list_offers_general(
 
     if len(offers_sorted) >= 1:
         for offer in offers_sorted:
-            offer_dic_print(offer, coordinator=coordinator)
+            offer_dic_print(offer)
 
     return True
 
 
+def get_multi_book_response_json(coordinators):
+    multi_book_response_json = []
+
+    for coordinator in coordinators:
+        book_response_json = get_book_response_json(coordinator, until_true=False)
+
+        if book_response_json is False:
+            print_err("getting book coordinator %s" % coordinator)
+            continue
+
+        multi_book_response_json.append({
+            "offers": book_response_json,
+            "coordinator": coordinator
+        })
+
+    if len(multi_book_response_json) < 1:
+        print_err("getting all books")
+        return False
+
+    return multi_book_response_json
+
+
 def list_offers_buy(argv):
-    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
-    if coordinator_url is False:
+    coordinators, argv = roboauto_get_multi_coordinators_from_argv(argv)
+    if coordinators is False:
         return False
 
     if len(argv) >= 1:
@@ -180,16 +238,16 @@ def list_offers_buy(argv):
     else:
         search_element = ""
 
-    book_response_json = get_book_response_json(coordinator_url)
-    if book_response_json is False:
+    multi_book_response_json = get_multi_book_response_json(coordinators)
+    if multi_book_response_json is False:
         return False
 
-    return list_offers_general(book_response_json, 0, currency, coordinator, search_element)
+    return list_offers_general(multi_book_response_json, 0, currency, search_element)
 
 
 def list_offers_sell(argv):
-    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
-    if coordinator_url is False:
+    coordinators, argv = roboauto_get_multi_coordinators_from_argv(argv)
+    if coordinators is False:
         return False
 
     if len(argv) >= 1:
@@ -203,16 +261,16 @@ def list_offers_sell(argv):
     else:
         search_element = ""
 
-    book_response_json = get_book_response_json(coordinator_url)
-    if book_response_json is False:
+    multi_book_response_json = get_multi_book_response_json(coordinators)
+    if multi_book_response_json is False:
         return False
 
-    return list_offers_general(book_response_json, 1, currency, coordinator, search_element)
+    return list_offers_general(multi_book_response_json, 1, currency, search_element)
 
 
 def list_offers_all(argv):
-    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
-    if coordinator_url is False:
+    coordinators, argv = roboauto_get_multi_coordinators_from_argv(argv)
+    if coordinators is False:
         return False
 
     if len(argv) >= 1:
@@ -226,21 +284,21 @@ def list_offers_all(argv):
     else:
         search_element = ""
 
-    book_response_json = get_book_response_json(coordinator_url)
-    if book_response_json is False:
+    multi_book_response_json = get_multi_book_response_json(coordinators)
+    if multi_book_response_json is False:
         return False
 
     return_status = True
 
     if list_offers_general(
-        book_response_json, 0, currency, coordinator, search_element
+        multi_book_response_json, 0, currency, search_element
     ) is False:
         return_status = False
 
     print_out("\n", end="")
 
     if list_offers_general(
-        book_response_json, 1, currency, coordinator, search_element
+        multi_book_response_json, 1, currency, search_element
     ) is False:
         return_status = False
 

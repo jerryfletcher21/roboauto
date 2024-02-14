@@ -47,10 +47,12 @@ def requests_tor(url, headers, data="", until_true=True):
     }
 
     timeout = 120
+    max_retries = 8
 
     if until_true:
         error_happened = False
         response = requests_tor_response(url, proxies, timeout, headers, data)
+        request_failed = 0
         while response_is_error(response):
             error_happened = True
             if hasattr(response, "text"):
@@ -63,6 +65,12 @@ def requests_tor(url, headers, data="", until_true=True):
                 "requests retrying " + url + " status code " + status_code,
                 error=False
             )
+
+            request_failed += 1
+            if request_failed >= max_retries:
+                print_err("maximum retries reached")
+                return False
+
             time.sleep(roboauto_options["error_interval"])
             response = requests_tor_response(url, proxies, timeout, headers, data)
         if error_happened:

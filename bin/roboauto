@@ -13,7 +13,7 @@ from roboauto.global_state import roboauto_state
 from roboauto.utils import global_setup, list_configs, update_roboauto_options
 from roboauto.robot import \
     import_robot, remove_robot, print_token, print_coordinator, \
-    robot_print_dir, waiting_queue_print, robot_set_dir, generate_robot
+    robot_print_dir, waiting_queue_print, robot_set_dir
 from roboauto.order_local import order_info_local
 from roboauto.order import create_order, cancel_order, recreate_order
 from roboauto.info import robosats_info, robot_info, list_limits
@@ -38,17 +38,16 @@ set-active [robot-name]
 set-inactive|set-paused [robot-name/--all]
 order-info-local [robot-name/--active/--paused/--inactive/directory] [order-id]
 slowly-move-to-active [seconds]
-generate-robot --{coordinator} [--inactive, --paused]
 robosats-info --{coordinator}
 robot-info [--no-order] [robot-name]
 robot-info [--no-order] --stdin|--stdin-base91 --{coordinator}|coordinator-url
 list-limits --{coordinator}
 list-hours-absolute
 list-hours-relative
-list-offers-all|list-offers-buy|list-offers-sell --{coordinator} [currency] [search]
-create-order [robot-name] [key=value]
+list-offers-all|list-offers-buy|list-offers-sell --{coordinators}/--all [currency] [search]
+create-order [--no-bond] [robot-name] [key=value]
 cancel-order [robot-name]
-recreate-order [--no-cancel] robot-name key=value
+recreate-order [--no-cancel, --no-bond] robot-name key=value
 keep-online
 """
 
@@ -104,9 +103,6 @@ slowly-move-to-active [seconds]
     slowly move robots to active from paused
     if seconds is not present $slowly_paused_interval is used
 
-generate-robot --{coordinator} [--inactive, --paused]
-    generate a new robot
-
 robosats-info --{coordinator}
     get info about robosats
 
@@ -126,20 +122,23 @@ list-hours-absolute
 list-hours-relative
     list orders per hours relative from current time
 
-list-offers-all|list-offers-buy|list-offers-sell --{coordinator} [currency] [search]
+list-offers-all|list-offers-buy|list-offers-sell --{coordinators}/--all [currency] [search]
     list all [buy|sell] offers in the order book
+    multiple coordinators can be specified or --all
 
-create-order [robot-name] [key=value]
+create-order [--no-bond] [robot-name] [key=value]
     create a new order
+    if --no-bond create order but do not bond
     if key=value are not provided they will be asked
 
 cancel-order [robot-name]
     cancel robot order just if order is public or paused
 
-recreate-order [--no-cancel] robot-name key=value
+recreate-order [--no-cancel, --no-bond] robot-name key=value
     recreate robot order just if order is public or paused
     if --no-cancel do not cancel the order, recreate is from
     last saved order
+    if --no-bond create order but do not bond
     provide a list of key=value of parameters to change in the
     new order
 
@@ -215,8 +214,6 @@ try:
         return_status_global = order_info_local(argv_global)
     elif action == "slowly-move-to-active":
         return_status_global = slowly_move_to_active(argv_global)
-    elif action == "generate-robot":
-        return_status_global = generate_robot(argv_global)
     elif action == "robosats-info":
         return_status_global = robosats_info(argv_global)
     elif action == "robot-info":

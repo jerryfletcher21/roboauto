@@ -304,9 +304,6 @@ def waiting_queue_print():
     for nick in nicks_waiting:
         print_out("%s" % nick)
 
-    # for i, nick in enumerate(nicks_waiting, start=1):
-    #     print_out("%2s %s" % (i, nick))
-
     return True
 
 
@@ -367,7 +364,7 @@ def robot_set_dir(destination_dir, argv):
     return True
 
 
-# TODO
+# TODO: requires gpg
 def generate_robot(argv):
     coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator_url is False:

@@ -110,8 +110,11 @@ $(___roboauto_get_robots "$active_home")"
             fi
         ;;
         list-offers-all|list-offers-buy|list-offers-sell)
+            possible_coordinatos="
+--all
+$(___roboauto_get_coordinators)"
             if [ "${cword}" -eq 2 ]; then
-                OPTS="$(___roboauto_get_coordinators)"
+                OPTS="$possible_coordinatos"
             elif [ "${cword}" -eq 3 ]; then
                 OPTS="
 all
@@ -121,6 +124,11 @@ btc
 "
             fi
         ;;
+        create-order)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="--no-bond"
+            fi
+        ;;
         cancel-order)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$(___roboauto_get_robots "$active_home")"
@@ -128,11 +136,17 @@ btc
         ;;
         recreate-order)
             if [ "${cword}" -eq 2 ]; then
-                OPTS="--no-cancel
-                $(___roboauto_get_robots "$active_home")"
+                OPTS="
+--no-cancel
+--no-bond
+$(___roboauto_get_robots "$active_home")"
             fi
-            if [ "${cword}" -eq 3 ] && [ "$prev" = "--no-cancel" ]; then
-                OPTS="$(___roboauto_get_robots "$paused_home" "$inactive_home")"
+            if [ "${cword}" -eq 3 ]; then
+                case "$prev" in
+                --no-cancel|--no-bond)
+                    OPTS="$(___roboauto_get_robots "$paused_home" "$inactive_home")"
+                ;;
+                esac
             fi
         ;;
         esac

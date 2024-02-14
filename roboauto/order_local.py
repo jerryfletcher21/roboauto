@@ -214,7 +214,7 @@ def order_is_finished(data):
         return False
 
 
-def get_offer_dic(offer):
+def get_offer_dic(offer, coordinator):
     offer_id = offer.get("id", "")
     expires_at = offer.get("expires_at", "")
     order_type_bool = offer.get("type", "")
@@ -256,6 +256,7 @@ def get_offer_dic(offer):
         ours = " - "
 
     offer_dic = {
+        "coordinator": str(coordinator),
         "offer_id": offer_id,
         "maker_nick": maker_nick,
         "order_type": order_type,
@@ -274,15 +275,13 @@ def get_offer_dic(offer):
     return offer_dic
 
 
-def offer_dic_print(offer_dic, coordinator=False):
+def offer_dic_print(offer_dic):
     printf_string = \
         "%-3s %-6s %-24s %-4s %-3s %3sh %5s %6.2f%% %3s " + \
         offer_dic["amount_format"] + " " + offer_dic["amount_format"] + \
         " %5s %s"
-    if not coordinator:
-        coordinator = "---"
     print_out(printf_string % (
-        str(coordinator)[:3],
+        offer_dic["coordinator"][:3],
         offer_dic["offer_id"], offer_dic["maker_nick"],
         offer_dic["order_type"], offer_dic["currency"],
         offer_dic["duration"], offer_dic["bond_size"], float(offer_dic["premium"]),
@@ -346,10 +345,9 @@ def print_robot_order(robot, robot_dir, order_id, one_line):
             print_out(json_dumps(order_dic_print))
     else:
         if "order_response_json" in order_dic:
-            offer_dic_print(
-                get_offer_dic(order_dic["order_response_json"]),
-                coordinator=coordinator
-            )
+            offer_dic_print(get_offer_dic(
+                order_dic["order_response_json"], coordinator
+            ))
         else:
             print_out("%-3s %-6s %-24s no order response" % (
                 coordinator_str, order_id_error, robot
@@ -405,6 +403,36 @@ def order_info_local(argv):
         return False
 
     return True
+
+
+def order_get_robot(robot, destination_dir):
+    robot_dir = destination_dir + "/" + robot
+
+    orders_dir = robot_dir + "/orders"
+    if not os.path.isdir(orders_dir):
+        return False
+
+    order_file = get_order_file(orders_dir)
+    if order_file is False:
+        return False
+
+    order_dic = file_json_read(order_file)
+    if order_dic is False:
+        return False
+
+    return order_dic
+
+
+def orders_get_directory(destination_dir):
+    orders = []
+    for robot in os.listdir(destination_dir):
+        order_dic = order_get_robot(robot, destination_dir)
+        if order_dic is False:
+            continue
+
+        orders.append(order_dic)
+
+    return orders
 
 
 def robot_set_inactive(robot, order_id, other):

@@ -37,22 +37,10 @@ def roboauto_get_coordinator_from_url(coordinator_url):
     return "---"
 
 
-def roboauto_get_coordinator_from_argv(argv):
-    multi_false = False, False, False
-    coordinator = False
+def get_coordinator_from_param(param):
+    multi_false = False, False
 
-    if len(argv) < 1:
-        print_err("insert coordinator")
-        return multi_false
-
-    first_param = argv[0]
-    argv = argv[1:]
-
-    if re.match('^--', first_param) is None:
-        print_err("insert coordinator")
-        return multi_false
-
-    coordinator_option = first_param[2:]
+    coordinator_option = param[2:]
     if len(coordinator_option) < 3:
         print_err(
             "coordinator name should be at least 3 characters long: %s invalid" %
@@ -69,7 +57,61 @@ def roboauto_get_coordinator_from_argv(argv):
         print_err("coordinator %s not present" % coordinator_option)
         return multi_false
 
-    return coordinator, roboauto_options["federation"][coordinator], argv
+    return coordinator, roboauto_options["federation"][coordinator]
+
+
+def roboauto_get_coordinator_from_argv(argv):
+    multi_false = False, False, False
+    coordinator = False
+
+    if len(argv) < 1:
+        print_err("insert coordinator")
+        return multi_false
+
+    first_param = argv[0]
+    argv = argv[1:]
+
+    if re.match('^--', first_param) is None:
+        print_err("insert coordinator")
+        return multi_false
+
+    coordinator, coordinator_url = get_coordinator_from_param(first_param)
+    if coordinator is False:
+        return multi_false
+
+    return coordinator, coordinator_url, argv
+
+
+def roboauto_get_multi_coordinators_from_argv(argv):
+    multi_false = False, False
+    coordinators = []
+
+    if len(argv) < 1:
+        print_err("insert coordinators")
+        return multi_false
+
+    if argv[0] == "--all":
+        return roboauto_options["federation"].keys(), argv[1:]
+
+    while len(argv) > 0:
+        first_param = argv[0]
+
+        if re.match('^--', first_param) is None:
+            break
+
+        argv = argv[1:]
+
+        coordinator, _ = get_coordinator_from_param(first_param)
+        if coordinator is False:
+            return multi_false
+
+        coordinators.append(coordinator)
+
+    if len(coordinators) < 1:
+        print_err("insert coordinators")
+        return multi_false
+
+    return coordinators, argv
 
 
 def dir_make_sure_exists(directory):

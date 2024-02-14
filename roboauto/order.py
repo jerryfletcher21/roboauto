@@ -337,7 +337,9 @@ def bond_order(robot, token_base91, robot_url, order_id, bond_amount):
     return False
 
 
-def make_order(robot, token_base91, robot_url, order_id, make_data, satoshis_now):
+def make_order(
+    robot, token_base91, robot_url, order_id, make_data, satoshis_now, should_bond=True
+):
     if not make_data["bond_size"]:
         print_err("bond size percentage not defined")
         return False
@@ -371,6 +373,10 @@ def make_order(robot, token_base91, robot_url, order_id, make_data, satoshis_now
             print_err("getting id of new order for " + robot)
         return False
 
+    if not should_bond:
+        print_out("order will not be bonded")
+        return True
+
     order_id = str(order_id_number)
 
     return bond_order(robot, token_base91, robot_url, order_id, bond_amount)
@@ -397,6 +403,14 @@ def order_user_from_argv(argv):
 
 
 def create_order(argv):
+    should_bond = True
+    if len(argv) >= 1:
+        if argv[0] == "--no-bond":
+            should_bond = False
+            argv = argv[1:]
+        elif re.match('^-', argv[0]) is not None:
+            print_err("option %s not recognized" % argv[0])
+            return False
     robot, argv = robot_input_ask(argv)
     if robot is False:
         return False
@@ -432,7 +446,8 @@ def create_order(argv):
 
     return make_order(
         robot, token_base91, robot_url,
-        False, order_data, False
+        False, order_data, False,
+        should_bond=should_bond
     )
 
 
@@ -464,9 +479,13 @@ def cancel_order(argv):
 
 def recreate_order(argv):
     should_cancel = True
+    should_bond = True
     if len(argv) >= 1:
         if argv[0] == "--no-cancel":
             should_cancel = False
+            argv = argv[1:]
+        elif argv[0] == "--no-bond":
+            should_bond = False
             argv = argv[1:]
         elif re.match('^-', argv[0]) is not None:
             print_err("option %s not recognized" % argv[0])
@@ -541,7 +560,8 @@ def recreate_order(argv):
 
     if not make_order(
         robot, token_base91, robot_url,
-        order_id, order_data, satoshis_now
+        order_id, order_data, satoshis_now,
+        should_bond=should_bond
     ):
         return False
 
