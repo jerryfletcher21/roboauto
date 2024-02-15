@@ -32,7 +32,8 @@ from roboauto.order import \
     api_order_get_dic, bond_order, wait_order, make_order
 from roboauto.book import \
     get_book_response_json, get_hour_offer, \
-    get_current_timestamp, get_current_hour
+    get_current_timestamp, \
+    get_current_hour_from_timestamp, get_current_minutes_from_timestamp
 from roboauto.utils import \
     get_uint, file_json_write, \
     update_roboauto_options, \
@@ -190,7 +191,7 @@ def list_orders_single_book(
     coordinator, robot_list, nicks_waiting, robot_this_hour, current_timestamp
 ):
     hour_relative = False
-    current_hour = get_current_hour()
+    current_hour = get_current_hour_from_timestamp(current_timestamp)
 
     robot_this_hour += single_book_count_active_orders_this_hour(
         current_hour, current_timestamp, hour_relative, coordinator
@@ -253,6 +254,21 @@ def list_orders_single_book(
             print_err(robot + " is waiting and also active")
 
     return robot_this_hour
+
+
+def should_remove_from_waiting_queue(
+    robot_this_hour, maximum_per_hour, nicks_waiting, current_timestamp
+):
+    # let old orders expire
+    current_minutes = get_current_minutes_from_timestamp(current_timestamp)
+    min_minutes = 10
+    if \
+        current_minutes > min_minutes and \
+        robot_this_hour < maximum_per_hour and \
+        len(nicks_waiting) > 0:
+        return True
+
+    return False
 
 
 def keep_online_refresh():
@@ -331,7 +347,9 @@ def keep_online():
             if single_book_response is not False:
                 robot_this_hour = single_book_response
 
-        if robot_this_hour < maximum_per_hour and len(nicks_waiting) > 0:
+        if should_remove_from_waiting_queue(
+            robot_this_hour, maximum_per_hour, nicks_waiting, current_timestamp
+        ):
             robot_activate = nicks_waiting.pop(0)
             print_out(robot_activate + " removed from waiting queue")
             if file_json_write(roboauto_state["waiting_queue_file"], nicks_waiting) is False:

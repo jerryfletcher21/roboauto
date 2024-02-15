@@ -51,12 +51,22 @@ def get_current_timestamp():
     return int(datetime.datetime.now().timestamp())
 
 
-def get_current_hour():
+def get_current_hour_from_timestamp(timestamp):
     return int(
-        datetime.datetime.now().replace(
+        datetime.datetime.fromtimestamp(timestamp).replace(
             tzinfo=datetime.timezone(datetime.timedelta(hours=0))
         ).astimezone(datetime.timezone.utc).strftime(
             "%H"
+        )
+    )
+
+
+def get_current_minutes_from_timestamp(timestamp):
+    return int(
+        datetime.datetime.fromtimestamp(timestamp).replace(
+            tzinfo=datetime.timezone(datetime.timedelta(hours=0))
+        ).astimezone(datetime.timezone.utc).strftime(
+            "%M"
         )
     )
 
