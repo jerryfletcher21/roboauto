@@ -8,6 +8,7 @@
 # pylint: disable=R0913 too-many-arguments
 # pylint: disable=R0914 too-many-locals
 # pylint: disable=R0915 too-many-statements
+# pylint: disable=R1702 too-many-nested-blocks
 # pylint: disable=R1703 simplifiable-if-statement
 # pylint: disable=R1705 no-else-return
 
@@ -302,7 +303,7 @@ def get_order_file(orders_dir):
     return order_file
 
 
-def print_robot_order(robot, robot_dir, order_id, one_line):
+def print_robot_order(robot, robot_dir, order_id, one_line, full_mode):
     order_id_error = "------"
 
     coordinator = robot_get_coordinator(robot, robot_dir, warning_print=False)
@@ -333,17 +334,20 @@ def print_robot_order(robot, robot_dir, order_id, one_line):
         return False
 
     if not one_line:
-        if "order_user" not in order_dic and "order_info" not in order_dic:
-            print_out(json_dumps({"error": "no order user and info"}))
+        if full_mode:
+            print_out(json_dumps(order_dic))
         else:
-            order_dic_print = {}
-            if "order_info" in order_dic:
-                for key in ("coordinator", "order_id", "status_string"):
-                    if key in order_dic["order_info"]:
-                        order_dic_print.update({key: order_dic["order_info"][key]})
-            if "order_user" in order_dic:
-                order_dic_print.update(order_dic["order_user"])
-            print_out(json_dumps(order_dic_print))
+            if "order_user" not in order_dic and "order_info" not in order_dic:
+                print_out(json_dumps({"error": "no order user and info"}))
+            else:
+                order_dic_print = {}
+                if "order_info" in order_dic:
+                    for key in ("coordinator", "order_id", "status_string"):
+                        if key in order_dic["order_info"]:
+                            order_dic_print.update({key: order_dic["order_info"][key]})
+                if "order_user" in order_dic:
+                    order_dic_print.update(order_dic["order_user"])
+                print_out(json_dumps(order_dic_print))
     else:
         if "order_response_json" in order_dic:
             offer_dic_print(get_offer_dic(
@@ -358,6 +362,12 @@ def print_robot_order(robot, robot_dir, order_id, one_line):
 
 
 def order_info_local(argv):
+    full_mode = False
+    if len(argv) > 0:
+        if argv[0] == "--full":
+            full_mode = True
+            argv = argv[1:]
+
     robot, argv = robot_input_ask(argv)
     if robot is False:
         return False
@@ -369,8 +379,8 @@ def order_info_local(argv):
             if os.path.isdir(robot_dir):
                 for robot in os.listdir(robot_dir):
                     if not print_robot_order(
-                        robot, robot_dir + "/" + robot,
-                        order_id=False, one_line=True
+                        robot, robot_dir + "/" + robot, False,
+                        one_line=True, full_mode=full_mode
                     ):
                         return False
                 return True
@@ -384,7 +394,9 @@ def order_info_local(argv):
         else:
             order_id = False
 
-        return print_robot_order(robot, robot_dir, order_id, one_line=False)
+        return print_robot_order(
+            robot, robot_dir, order_id, one_line=False, full_mode=full_mode
+        )
     elif robot in ("--active", "--paused", "--inactive"):
         if robot == "--active":
             destination_dir = roboauto_state["active_home"]
@@ -395,8 +407,8 @@ def order_info_local(argv):
 
         for robot in os.listdir(destination_dir):
             if not print_robot_order(
-                robot, destination_dir + "/" + robot,
-                order_id=False, one_line=True
+                robot, destination_dir + "/" + robot, False,
+                one_line=True, full_mode=full_mode
             ):
                 return False
     else:

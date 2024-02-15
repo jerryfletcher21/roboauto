@@ -82,11 +82,16 @@ $(___roboauto_get_robots "$active_home")"
         order-info-local)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="
+--full"
+            fi
+            if [ "${cword}" -eq 2 ] || { [ "${cword}" -eq 3 ] && [ "$prev" = "--full" ]; }; then
+                OPTS="$OPTS
 --active
 --inactive
 --paused
 $(___roboauto_get_robots "$active_home" "$inactive_home" "$paused_home")"
             fi
+
         ;;
         robosats-info|list-limits)
             if [ "${cword}" -eq 2 ]; then

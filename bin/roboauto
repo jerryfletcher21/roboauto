@@ -37,7 +37,7 @@ list-active|list-inactive|list-paused
 waiting-queue
 set-active [robot-name]
 set-inactive|set-paused [robot-name/--all]
-order-info-local [robot-name/--active/--paused/--inactive/directory] [order-id]
+order-info-local [--full] [robot-name/--active/--paused/--inactive/directory] [order-id]
 slowly-move-to-active [seconds]
 robosats-info --{coordinator}
 robot-info [--no-order] [robot-name]
@@ -96,8 +96,9 @@ set-inactive|set-paused [robot-name/--all]
     set an active robot inactive|paused
     if --all, set all robot
 
-order-info-local [robot-name/--active/--paused/--inactive/directory] [order-id]
+order-info-local [--full] [robot-name/--active/--paused/--inactive/directory] [order-id]
     print info about an order from disk
+    if --full is provided print all data about the order
     if --active, --paused, --inactive or a directory is passed print
     local order info about all robots in the directory
 
