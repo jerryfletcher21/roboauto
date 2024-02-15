@@ -24,19 +24,18 @@ from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.order_local import \
     get_order_string, get_type_string, get_currency_string, \
     order_is_public, order_is_paused, order_is_waiting_maker_bond, \
-    order_is_expired, order_data_from_order_user, get_order_file
+    order_is_expired, order_data_from_order_user, \
+    get_order_data, order_get_order_dic, order_save_order_file
 from roboauto.robot import \
     robot_dir_search, robot_get_lock_file, \
     robot_get_token_base91, robot_set_dir, \
     robot_get_coordinator, robot_input_ask, \
-    get_waiting_queue
+    get_waiting_queue, robot_get_data, robot_get_robot
 from roboauto.requests_api import \
-    requests_api_order, requests_api_robot, requests_api_cancel, \
-    requests_api_make
+    requests_api_order, requests_api_cancel, requests_api_make
 from roboauto.utils import \
-    json_dumps, file_json_read, \
-    file_is_executable, subprocess_run_command, \
-    json_loads, dir_make_sure_exists, file_json_write, \
+    json_dumps, file_is_executable, subprocess_run_command, \
+    json_loads, file_json_write, \
     input_ask, roboauto_get_coordinator_url, \
     roboauto_get_coordinator_from_url
 
@@ -123,19 +122,12 @@ def api_order_get_dic(robot, token_base91, robot_url, order_id):
         premium + " " + payment_method + " " + status_string
 
     return {
-        "order_data": {
-            "type":                 type_id,
-            "currency":             currency_id,
-            "amount":               amount,
-            "has_range":            has_range,
-            "min_amount":           min_amount,
-            "max_amount":           max_amount,
-            "payment_method":       payment_method,
-            "premium":              premium,
-            "public_duration":      public_duration,
-            "escrow_duration":      escrow_duration,
-            "bond_size":            bond_size
-        },
+        "order_data": get_order_data(
+            type_id, currency_id,
+            amount, has_range, min_amount, max_amount,
+            payment_method, premium,
+            public_duration, escrow_duration, bond_size
+        ),
         "order_user": {
             "type":                 type_string,
             "currency":             currency_string,
@@ -161,6 +153,17 @@ def api_order_get_dic(robot, token_base91, robot_url, order_id):
     }
 
 
+def api_order_get_dic_handle(robot, token_base91, robot_url, order_id):
+    order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
+    if order_dic is False:
+        return False
+    if order_dic is None:
+        print_err("%s order %s not available" % (robot, str(order_id)))
+        return False
+
+    return order_dic
+
+
 def robot_cancel_order(robot, token_base91):
     robot_dir = roboauto_state["active_home"] + "/" + robot
     if not os.path.isdir(robot_dir):
@@ -174,20 +177,17 @@ def robot_cancel_order(robot, token_base91):
         with filelock.SoftFileLock(
             robot_get_lock_file(robot), timeout=roboauto_state["filelock_timeout"]
         ):
-            robot_response = requests_api_robot(token_base91, robot_url).text
-            robot_response_json = json_loads(robot_response)
-            if robot_response_json is False:
-                print_err(robot_response, end="", error=False, date=False)
-                print_err("getting robot response")
+            robot_response, robot_response_json = robot_get_robot(token_base91, robot_url)
+            if robot_response is False:
                 return False
 
-            order_id_number = robot_response_json.get("active_order_id", False)
-            if order_id_number is False:
+            order_id_num = robot_response_json.get("active_order_id", False)
+            if order_id_num is False:
                 print_err(robot_response, error=False, date=False)
                 print_err("getting active order_id for " + robot)
                 return False
 
-            order_id = str(order_id_number)
+            order_id = str(order_id_num)
 
             order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
             if order_dic is False:
@@ -197,12 +197,7 @@ def robot_cancel_order(robot, token_base91):
                 print_err("%s last order not available" % robot)
                 return False
 
-            orders_dir = robot_dir + "/orders"
-            if not dir_make_sure_exists(orders_dir):
-                return False
-            order_file = orders_dir + "/" + order_id
-            if not file_json_write(order_file, order_dic):
-                print_err("saving order %s to file" % order_id)
+            if not order_save_order_file(robot_dir, order_id, order_dic):
                 return False
 
             status_id = order_dic["order_info"]["status"]
@@ -237,22 +232,14 @@ def robot_cancel_order(robot, token_base91):
 
 
 def bond_order(robot, token_base91, robot_url, order_id, bond_amount):
-    order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
+    order_dic = api_order_get_dic_handle(robot, token_base91, robot_url, order_id)
     if order_dic is False:
-        return False
-    if order_dic is None:
-        print_err("%s order not available" % robot)
         return False
 
     robot_dir = robot_dir_search(robot)
     if robot_dir is False:
         return False
-    orders_dir = robot_dir + "/orders"
-    if not dir_make_sure_exists(orders_dir):
-        return False
-    order_file = orders_dir + "/" + order_id
-    if not file_json_write(order_file, order_dic):
-        print_err("saving order %s to file" % order_id)
+    if not order_save_order_file(robot_dir, order_id, order_dic):
         return False
 
     order_user = order_dic["order_user"]
@@ -296,15 +283,11 @@ def bond_order(robot, token_base91, robot_url, order_id, bond_amount):
             while True:
                 print_out("checking if order is bonded...")
 
-                order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
+                order_dic = api_order_get_dic_handle(robot, token_base91, robot_url, order_id)
                 if order_dic is False:
                     return False
-                if order_dic is None:
-                    print_err("%s order not available" % robot)
-                    return False
-                order_file = orders_dir + "/" + order_id
-                if not file_json_write(order_file, order_dic):
-                    print_err("saving order %s to file" % order_id)
+
+                if not order_save_order_file(robot_dir, order_id, order_dic):
                     return False
 
                 order_response_json = order_dic["order_response_json"]
@@ -420,14 +403,9 @@ def create_order(argv):
         print_err("robot %s is not in the active directory" % robot)
         return False
 
-    token_base91 = robot_get_token_base91(robot, robot_dir)
+    token_base91, _, robot_url = robot_get_data(robot, robot_dir)
     if token_base91 is False:
-        print_err("getting token base91 for " + robot)
         return False
-
-    robot_url = roboauto_get_coordinator_url(
-        robot_get_coordinator(robot, robot_dir)
-    )
 
     order_user = order_user_from_argv(argv)
     if order_user is False:
@@ -534,11 +512,7 @@ def recreate_order(argv):
         print_err("%s is not a dir" % orders_dir)
         return False
 
-    order_file = get_order_file(orders_dir)
-    if order_file is False:
-        return False
-
-    order_dic = file_json_read(order_file)
+    order_dic = order_get_order_dic(orders_dir)
     if order_dic is False:
         return False
 

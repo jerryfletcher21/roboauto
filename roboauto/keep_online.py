@@ -21,22 +21,20 @@ from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import \
     robot_set_dir, robot_get_token_base91, \
     robot_get_lock_file, robot_list_dir, robot_get_coordinator, \
-    get_waiting_queue
+    get_waiting_queue, robot_get_robot
 from roboauto.order_local import \
     robot_set_inactive, \
     order_is_public, order_is_paused, \
     order_is_waiting_maker_bond, order_is_waiting_taker_bond, \
-    order_is_expired, order_get_robot, orders_get_directory
+    order_is_expired, order_get_robot, orders_get_directory, \
+    order_save_order_file
 from roboauto.order import \
-    api_order_get_dic, \
-    bond_order, wait_order, make_order
-from roboauto.requests_api import requests_api_robot
+    api_order_get_dic, bond_order, wait_order, make_order
 from roboauto.book import \
     get_book_response_json, get_hour_offer, \
     get_current_timestamp, get_current_hour
 from roboauto.utils import \
-    get_uint, json_loads, dir_make_sure_exists, \
-    file_json_write, \
+    get_uint, file_json_write, \
     update_roboauto_options, \
     roboauto_get_coordinator_url
 
@@ -71,11 +69,8 @@ def slowly_move_to_active(argv):
 
 
 def robot_check_expired(robot, token_base91, robot_url, robot_this_hour):
-    robot_response = requests_api_robot(token_base91, robot_url).text
-    robot_response_json = json_loads(robot_response)
-    if robot_response_json is False:
-        print_err(robot_response, end="", error=False, date=False)
-        print_err("getting robot response")
+    robot_response, robot_response_json = robot_get_robot(token_base91, robot_url)
+    if robot_response is False:
         return False
 
     order_id_number = robot_response_json.get("active_order_id", False)
@@ -102,12 +97,7 @@ def robot_check_expired(robot, token_base91, robot_url, robot_this_hour):
     order_info = order_dic["order_info"]
 
     robot_dir = roboauto_state["active_home"] + "/" + robot
-    orders_dir = robot_dir + "/orders"
-    if not dir_make_sure_exists(orders_dir):
-        return False
-    order_file = orders_dir + "/" + order_id
-    if not file_json_write(order_file, order_dic):
-        print_err("saving order %s to file" % order_id)
+    if not order_save_order_file(robot_dir, order_id, order_dic):
         return False
 
     print_out(robot + " " + order_id + " " + order_info["status_string"])
@@ -179,24 +169,35 @@ def order_is_this_hour(order, current_hour, current_timestamp, hour_relative, co
     return True
 
 
+def single_book_count_active_orders_this_hour(
+    current_hour, current_timestamp, hour_relative, coordinator
+):
+    additional_robots = 0
+
+    orders_active = orders_get_directory(roboauto_state["active_home"])
+    for order in orders_active:
+        if order_is_this_hour(
+            order, current_hour,
+            current_timestamp, hour_relative,
+            coordinator=coordinator
+        ):
+            additional_robots += 1
+
+    return additional_robots
+
+
 def list_orders_single_book(
     coordinator, robot_list, nicks_waiting, robot_this_hour, current_timestamp
 ):
     hour_relative = False
     current_hour = get_current_hour()
 
+    robot_this_hour += single_book_count_active_orders_this_hour(
+        current_hour, current_timestamp, hour_relative, coordinator
+    )
+
     book_response_json = get_book_response_json(coordinator, until_true=False)
     if book_response_json is False:
-        # in case book response is false count robot from local
-        orders_active = orders_get_directory(roboauto_state["active_home"])
-        for order in orders_active:
-            if order_is_this_hour(
-                order, current_hour,
-                current_timestamp, hour_relative,
-                coordinator=coordinator
-            ):
-                robot_this_hour += 1
-
         return robot_this_hour
 
     nicks = []
@@ -225,25 +226,31 @@ def list_orders_single_book(
             if robot not in nicks_waiting:
                 try:
                     with filelock.SoftFileLock(robot_get_lock_file(robot)):
+                        order = order_get_robot(robot, roboauto_state["active_home"])
+                        if order is not False and order_is_this_hour(
+                            order, current_hour, current_timestamp,
+                            hour_relative, coordinator=False
+                        ):
+                            robot_this_hour -= 1
+                            if robot_this_hour < 0:
+                                print_err("negative robot this hour")
+                                robot_this_hour = 0
                         robot_online = robot_check_expired(
                             robot, token_base91, robot_url, robot_this_hour
                         )
-                        if robot_online is not False and robot_online > 0:
-                            order = order_get_robot(robot, roboauto_state["active_home"])
-                            if order is not False:
-                                if order_is_this_hour(
-                                    order, current_hour, current_timestamp,
-                                    hour_relative, coordinator=False
-                                ):
-                                    robot_this_hour += robot_online
+                        if robot_online is False or robot_online == 0:
+                            continue
+                        order = order_get_robot(robot, roboauto_state["active_home"])
+                        if order is not False and order_is_this_hour(
+                            order, current_hour, current_timestamp,
+                            hour_relative, coordinator=False
+                        ):
+                            robot_this_hour += robot_online
                 except filelock.Timeout:
                     print_err("filelock timeout %d" % roboauto_state["filelock_timeout"])
                     continue
-        else:
-            if robot in nicks_this_hour:
-                robot_this_hour += 1
-            if robot in nicks_waiting:
-                print_err(robot + " is waiting and also active")
+        elif robot in nicks_waiting:
+            print_err(robot + " is waiting and also active")
 
     return robot_this_hour
 

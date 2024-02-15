@@ -17,10 +17,10 @@ import re
 from roboauto.logger import print_out, print_err
 from roboauto.robot import \
     robot_dir_search, robot_get_token_base91, \
-    robot_get_coordinator, robot_input_ask, \
-    token_get_base91
-from roboauto.order_local import get_order_string
-from roboauto.order import api_order_get_dic
+    robot_get_coordinator, robot_input_ask_and_dir, \
+    token_get_base91, robot_get_data, robot_get_robot
+from roboauto.order_local import get_order_string, order_save_order_file
+from roboauto.order import api_order_get_dic_handle
 from roboauto.requests_api import \
     requests_api_limits, \
     requests_api_info, requests_api_robot, \
@@ -87,22 +87,13 @@ def robot_info(argv):
         argv = argv[1:]
 
     if token_base91 is False:
-        robot, argv = robot_input_ask(argv)
+        robot, argv, robot_dir = robot_input_ask_and_dir(argv)
         if robot is False:
             return False
 
-        robot_dir = robot_dir_search(robot)
-        if robot_dir is False:
-            return False
-
-        token_base91 = robot_get_token_base91(robot, robot_dir)
+        token_base91, _, robot_url = robot_get_data(robot, robot_dir)
         if token_base91 is False:
-            print_err("getting token base91 for " + robot)
             return False
-
-        robot_url = roboauto_get_coordinator_url(
-            robot_get_coordinator(robot, robot_dir)
-        )
     else:
         if len(argv) < 1:
             print_err("insert coordinator name or link")
@@ -116,11 +107,8 @@ def robot_info(argv):
             if robot_url is False:
                 return False
 
-    robot_response = requests_api_robot(token_base91, robot_url).text
-    robot_response_json = json_loads(robot_response)
-    if robot_response_json is False:
-        print_err(robot_response, end="", error=False, date=False)
-        print_err("robot response is not json")
+    robot_response, robot_response_json = robot_get_robot(token_base91, robot_url)
+    if robot_response is False:
         return False
 
     print_out(json_dumps(robot_response_json))
@@ -138,20 +126,12 @@ def robot_info(argv):
     order_id = str(order_id_number)
 
     if order_print:
-        order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
+        order_dic = api_order_get_dic_handle(robot, token_base91, robot_url, order_id)
         if order_dic is False:
-            return False
-        if order_dic is None:
-            print_err("%s order not available" % robot)
             return False
 
         if robot_dir is not False:
-            orders_dir = robot_dir + "/orders"
-            if not dir_make_sure_exists(orders_dir):
-                return False
-            order_file = orders_dir + "/" + order_id
-            if not file_json_write(order_file, order_dic):
-                print_err("saving order %s to file" % order_id)
+            if not order_save_order_file(robot_dir, order_id, order_dic):
                 return False
 
         order_response_json = order_dic["order_response_json"]

@@ -10,11 +10,11 @@ import datetime
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import robot_list_dir, get_waiting_queue
-from roboauto.order_local import get_offer_dic, offer_dic_print, get_order_file
+from roboauto.order_local import \
+    get_offer_dic, offer_dic_print, order_get_order_dic
 from roboauto.requests_api import response_is_error, requests_api_book
 from roboauto.utils import \
-    json_loads, file_json_read, \
-    roboauto_get_multi_coordinators_from_argv
+    json_loads, roboauto_get_multi_coordinators_from_argv
 
 
 def get_hour_offer(hour_timestamp, current_timestamp, relative):
@@ -81,11 +81,8 @@ def get_offers_per_hour(relative):
         orders_dir = robot_dir + "/orders"
         if not os.path.isdir(orders_dir):
             continue
-        order_file = get_order_file(orders_dir)
-        if order_file is False:
-            return False
 
-        order_dic = file_json_read(order_file)
+        order_dic = order_get_order_dic(orders_dir)
         if order_dic is False:
             return False
 

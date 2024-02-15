@@ -45,6 +45,20 @@ def robot_input_ask(argv):
     return robot, argv
 
 
+def robot_input_ask_and_dir(argv):
+    multi_false = False, False, False
+
+    robot, argv = robot_input_ask(argv)
+    if robot is False:
+        return multi_false
+
+    robot_dir = robot_dir_search(robot)
+    if robot_dir is False:
+        return multi_false
+
+    return robot, argv, robot_dir
+
+
 def get_destination_mode(argv):
     destination_mode = "active"
 
@@ -229,12 +243,9 @@ def print_token(argv):
         if argv[0] == "--base91":
             use_base91 = True
             argv = argv[1:]
-    robot, argv = robot_input_ask(argv)
-    if robot is False:
-        return False
 
-    robot_dir = robot_dir_search(robot)
-    if robot_dir is False:
+    robot, argv, robot_dir = robot_input_ask_and_dir(argv)
+    if robot is False:
         return False
 
     if use_base91 is False:
@@ -364,6 +375,36 @@ def robot_set_dir(destination_dir, argv):
     return True
 
 
+def robot_get_data(robot, robot_dir):
+    multi_false = False, False, False
+
+    if robot_dir is False:
+        return multi_false
+
+    token_base91 = robot_get_token_base91(robot, robot_dir)
+    if token_base91 is False:
+        print_err("getting token base91 for " + robot)
+        return multi_false
+
+    coordinator = robot_get_coordinator(robot, robot_dir)
+    coordinator_url = roboauto_get_coordinator_url(coordinator)
+
+    return token_base91, coordinator, coordinator_url
+
+
+def robot_get_robot(token_base91, robot_url):
+    multi_false = False, False
+
+    robot_response = requests_api_robot(token_base91, robot_url).text
+    robot_response_json = json_loads(robot_response)
+    if robot_response_json is False:
+        print_err(robot_response, end="", error=False, date=False)
+        print_err("getting robot response")
+        return multi_false
+
+    return robot_response, robot_response_json
+
+
 # TODO: requires gpg
 def generate_robot(argv):
     coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
@@ -379,11 +420,8 @@ def generate_robot(argv):
     token = generate_random_token_base62()
     token_base91 = token_get_base91(token)
 
-    robot_response = requests_api_robot(token_base91, coordinator_url).text
-    robot_response_json = json_loads(robot_response)
-    if robot_response_json is False:
-        print_err(robot_response, end="", error=False, date=False)
-        print_err("robot response is not json")
+    robot_response, robot_response_json = robot_get_robot(token_base91, coordinator_url)
+    if robot_response is False:
         return False
 
     robot = robot_response_json.get("nickname", False)

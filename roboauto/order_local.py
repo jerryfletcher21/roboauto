@@ -5,6 +5,7 @@
 # pylint: disable=C0209 consider-using-f-string
 # pylint: disable=R0911 too-many-return-statements
 # pylint: disable=R0912 too-many-branches
+# pylint: disable=R0913 too-many-arguments
 # pylint: disable=R0914 too-many-locals
 # pylint: disable=R0915 too-many-statements
 # pylint: disable=R1703 simplifiable-if-statement
@@ -19,7 +20,7 @@ from roboauto.global_state import roboauto_state
 from roboauto.utils import \
     get_date_short, json_dumps, file_json_read, \
     file_is_executable, subprocess_run_command, \
-    is_float, get_int
+    is_float, get_int, dir_make_sure_exists, file_json_write
 from roboauto.robot import \
     robot_list_dir, robot_get_coordinator, robot_input_ask, \
     robot_dir_search
@@ -405,6 +406,30 @@ def order_info_local(argv):
     return True
 
 
+def order_save_order_file(robot_dir, order_id, order_dic):
+    orders_dir = robot_dir + "/orders"
+    if not dir_make_sure_exists(orders_dir):
+        return False
+    order_file = orders_dir + "/" + order_id
+    if not file_json_write(order_file, order_dic):
+        print_err("saving order %s to file" % order_id)
+        return False
+
+    return True
+
+
+def order_get_order_dic(orders_dir):
+    order_file = get_order_file(orders_dir)
+    if order_file is False:
+        return False
+
+    order_dic = file_json_read(order_file)
+    if order_dic is False:
+        return False
+
+    return order_dic
+
+
 def order_get_robot(robot, destination_dir):
     robot_dir = destination_dir + "/" + robot
 
@@ -412,11 +437,7 @@ def order_get_robot(robot, destination_dir):
     if not os.path.isdir(orders_dir):
         return False
 
-    order_file = get_order_file(orders_dir)
-    if order_file is False:
-        return False
-
-    order_dic = file_json_read(order_file)
+    order_dic = order_get_order_dic(orders_dir)
     if order_dic is False:
         return False
 
@@ -464,6 +485,27 @@ def robot_set_inactive(robot, order_id, other):
         print_err("message-command not found, no messages will be sent")
 
     return True
+
+
+def get_order_data(
+    type_id, currency_id,
+    amount, has_range, min_amount, max_amount,
+    payment_method, premium,
+    public_duration, escrow_duration, bond_size
+):
+    return {
+        "type":                 type_id,
+        "currency":             currency_id,
+        "amount":               amount,
+        "has_range":            has_range,
+        "min_amount":           min_amount,
+        "max_amount":           max_amount,
+        "payment_method":       payment_method,
+        "premium":              premium,
+        "public_duration":      public_duration,
+        "escrow_duration":      escrow_duration,
+        "bond_size":            bond_size
+    }
 
 
 def order_data_from_order_user(order_user):
@@ -571,16 +613,9 @@ def order_data_from_order_user(order_user):
         print_err("bond size %s is not a number between 0 and 100" % bond_size)
         return False
 
-    return {
-        "type":                 type_id,
-        "currency":             currency_id,
-        "amount":               amount,
-        "has_range":            has_range,
-        "min_amount":           min_amount,
-        "max_amount":           max_amount,
-        "payment_method":       payment_method,
-        "premium":              premium,
-        "public_duration":      public_duration,
-        "escrow_duration":      escrow_duration,
-        "bond_size":            bond_size
-    }
+    return get_order_data(
+        type_id, currency_id,
+        amount, has_range, min_amount, max_amount,
+        payment_method, premium,
+        public_duration, escrow_duration, bond_size
+    )
