@@ -12,7 +12,7 @@ from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state
 from roboauto.utils import global_setup, list_configs, update_roboauto_options
 from roboauto.robot import \
-    import_robot, remove_robot, print_token, print_coordinator, \
+    robot_import, robot_remove, robot_print_token, robot_print_coordinator, \
     robot_print_dir, waiting_queue_print, robot_set_dir
 from roboauto.order_local import order_info_local
 from roboauto.order import create_order, cancel_order, recreate_order
@@ -164,97 +164,98 @@ if update_roboauto_options() is False:
     print_err("reading the config file")
     sys.exit(1)
 
-argv_global = sys.argv[1:]
-if len(argv_global) < 1:
-    print_err("insert parameters", date=False)
+argv = sys.argv[1:]
+if len(argv) < 1:
+    print_err("insert parameters")
     sys.exit(1)
 
-while len(argv_global) > 0:
-    if argv_global[0] in ("-h", "--help"):
-        print_out(info, end="", date=False)
+while len(argv) > 0:
+    option = argv[0]
+    if option in ("-h", "--help"):
+        print_out(info, end="")
         sys.exit(0)
-    elif argv_global[0] == "--verbose-help":
-        print_out(info_verbose, end="", date=False)
+    elif option == "--verbose-help":
+        print_out(info_verbose, end="")
         sys.exit(0)
-    elif argv_global[0] in ("-v", "--version"):
-        print_out(version, date=False)
+    elif option in ("-v", "--version"):
+        print_out(version)
         sys.exit(0)
-    elif re.match('^-', argv_global[0]) is not None:
-        print_err("option " + argv_global[0] + " not recognized", date=False)
+    elif re.match('^-', option) is not None:
+        print_err("option " + option + " not recognized")
         sys.exit(1)
     else:
         break
-    argv_global = argv_global[1:]
+    argv = argv[1:]
 
-if len(argv_global) < 1:
-    print_err("insert action", date=False)
+if len(argv) < 1:
+    print_err("insert action")
     sys.exit(1)
-action = argv_global[0]
-argv_global = argv_global[1:]
+action = argv[0]
+argv = argv[1:]
 
 try:
     if action == "list-configs":
-        return_status_global = list_configs()
+        return_status = list_configs()
     elif action == "import-robot":
-        return_status_global = import_robot(argv_global)
+        return_status = robot_import(argv)
     elif action == "remove-robot":
-        return_status_global = remove_robot(argv_global)
+        return_status = robot_remove(argv)
     elif action == "print-token":
-        return_status_global = print_token(argv_global)
+        return_status = robot_print_token(argv)
     elif action == "print-coordinator":
-        return_status_global = print_coordinator(argv_global)
+        return_status = robot_print_coordinator(argv)
     elif action == "list-active":
-        return_status_global = robot_print_dir(roboauto_state["active_home"])
+        return_status = robot_print_dir(roboauto_state["active_home"])
     elif action == "list-inactive":
-        return_status_global = robot_print_dir(roboauto_state["inactive_home"])
+        return_status = robot_print_dir(roboauto_state["inactive_home"])
     elif action == "list-paused":
-        return_status_global = robot_print_dir(roboauto_state["paused_home"])
+        return_status = robot_print_dir(roboauto_state["paused_home"])
     elif action == "waiting-queue":
-        return_status_global = waiting_queue_print()
+        return_status = waiting_queue_print()
     elif action == "set-active":
-        return_status_global = robot_set_dir(roboauto_state["active_home"], argv_global)
+        return_status = robot_set_dir(roboauto_state["active_home"], argv)
     elif action == "set-inactive":
-        return_status_global = robot_set_dir(roboauto_state["inactive_home"], argv_global)
+        return_status = robot_set_dir(roboauto_state["inactive_home"], argv)
     elif action == "set-paused":
-        return_status_global = robot_set_dir(roboauto_state["paused_home"], argv_global)
+        return_status = robot_set_dir(roboauto_state["paused_home"], argv)
     elif action == "order-info-local":
-        return_status_global = order_info_local(argv_global)
+        return_status = order_info_local(argv)
     elif action == "slowly-move-to-active":
-        return_status_global = slowly_move_to_active(argv_global)
+        return_status = slowly_move_to_active(argv)
     elif action == "robosats-info":
-        return_status_global = robosats_info(argv_global)
+        return_status = robosats_info(argv)
     elif action == "robot-info":
-        return_status_global = robot_info(argv_global)
+        return_status = robot_info(argv)
     elif action == "list-limits":
-        return_status_global = list_limits(argv_global)
+        return_status = list_limits(argv)
     elif action == "list-hours-absolute":
-        return_status_global = list_offers_per_hour(False)
+        return_status = list_offers_per_hour(False)
     elif action == "list-hours-relative":
-        return_status_global = list_offers_per_hour(True)
+        return_status = list_offers_per_hour(True)
     elif action == "list-offers-all":
-        return_status_global = list_offers_all(argv_global)
+        return_status = list_offers_all(argv)
     elif action == "list-offers-buy":
-        return_status_global = list_offers_buy(argv_global)
+        return_status = list_offers_buy(argv)
     elif action == "list-offers-sell":
-        return_status_global = list_offers_sell(argv_global)
+        return_status = list_offers_sell(argv)
     elif action == "create-order":
-        return_status_global = create_order(argv_global)
+        return_status = create_order(argv)
     elif action == "cancel-order":
-        return_status_global = cancel_order(argv_global)
+        return_status = cancel_order(argv)
     elif action == "recreate-order":
-        return_status_global = recreate_order(argv_global)
+        return_status = recreate_order(argv)
     elif action == "keep-online":
-        return_status_global = keep_online()
+        return_status = keep_online()
     elif action == "keep-online-refresh":
-        return_status_global = keep_online_refresh()
+        return_status = keep_online_refresh()
     else:
-        print_err("action " + action + " not recognized", date=False)
+        print_err("action " + action + " not recognized")
         sys.exit(1)
 except KeyboardInterrupt:
-    print_out("\n", end="", date=False)
-    return_status_global = False
+    print_out("\n", end="")
+    return_status = False
 
-if return_status_global:
+if return_status:
     sys.exit(0)
 else:
     sys.exit(1)

@@ -30,7 +30,7 @@ from roboauto.robot import \
     robot_dir_search, robot_get_lock_file, \
     robot_get_token_base91, robot_set_dir, \
     robot_get_coordinator, robot_input_ask, \
-    get_waiting_queue, robot_get_data, robot_get_robot
+    get_waiting_queue, robot_get_data, robot_requests_robot
 from roboauto.requests_api import \
     requests_api_order, requests_api_cancel, requests_api_make
 from roboauto.utils import \
@@ -177,7 +177,7 @@ def robot_cancel_order(robot, token_base91):
         with filelock.SoftFileLock(
             robot_get_lock_file(robot), timeout=roboauto_state["filelock_timeout"]
         ):
-            robot_response, robot_response_json = robot_get_robot(token_base91, robot_url)
+            robot_response, robot_response_json = robot_requests_robot(token_base91, robot_url)
             if robot_response is False:
                 return False
 

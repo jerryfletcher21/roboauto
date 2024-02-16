@@ -8,7 +8,7 @@ roboauto_options = {
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; rv:102.0) Gecko/20100101 Firefox/102.0",
     "book_interval": 120,
     "bond_interval": 10,
-    "slowly_paused_interval_global": 1000,
+    "slowly_paused_interval": 1000,
     "error_interval": 5,
     "default_duration": "86400",
     "default_escrow": "28800",

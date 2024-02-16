@@ -60,19 +60,23 @@ def robot_input_ask_and_dir(argv):
 
 
 def get_destination_mode(argv):
+    multi_false = False, False
+
     destination_mode = "active"
 
     if len(argv) >= 1:
         destination_arg = argv[0]
         if destination_arg == "--inactive":
             destination_mode = "inactive"
+            argv = argv[1:]
         elif destination_arg == "--paused":
             destination_mode = "paused"
+            argv = argv[1:]
         elif re.match('^-', destination_arg) is not None:
             print_err("option %s not recognized" % destination_arg)
-            return False
+            return multi_false
 
-    return destination_mode
+    return destination_mode, argv
 
 
 def get_robot_dir_from_destination(robot, destination_mode):
@@ -102,7 +106,7 @@ def robot_dir_search(robot, error_print=True):
     return robot_dir
 
 
-def robot_write_token(robot_dir, token, coordinator):
+def robot_write_token_coordinator(robot_dir, token, coordinator):
     if os.makedirs(robot_dir) is not None:
         print_err("creating directory")
         return False
@@ -120,16 +124,14 @@ def robot_write_token(robot_dir, token, coordinator):
     return True
 
 
-def import_robot(argv):
+def robot_import(argv):
     coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator_url is False:
         return False
 
-    destination_mode = get_destination_mode(argv)
+    destination_mode, argv = get_destination_mode(argv)
     if destination_mode is False:
         return False
-    elif destination_mode != "active":
-        argv = argv[1:]
 
     robot, argv = robot_input_ask(argv)
     if robot is False:
@@ -155,10 +157,10 @@ def import_robot(argv):
         print_err("robot token not set")
         return False
 
-    return robot_write_token(robot_dir, token, coordinator)
+    return robot_write_token_coordinator(robot_dir, token, coordinator)
 
 
-def remove_robot_from_dir(directory, robot, directory_name):
+def robot_remove_from_dir(directory, robot, directory_name):
     if os.path.exists(directory):
         try:
             shutil.rmtree(directory)
@@ -170,7 +172,7 @@ def remove_robot_from_dir(directory, robot, directory_name):
         return 0
 
 
-def remove_robot(argv):
+def robot_remove(argv):
     robot, argv = robot_input_ask(argv)
     if robot is False:
         return False
@@ -178,21 +180,21 @@ def remove_robot(argv):
     robot_exists = False
 
     robot_active = roboauto_state["active_home"] + "/" + robot
-    remove_active = remove_robot_from_dir(robot_active, robot, "active")
+    remove_active = robot_remove_from_dir(robot_active, robot, "active")
     if remove_active is False:
         return False
     elif remove_active == 1:
         robot_exists = True
 
     robot_inactive = roboauto_state["inactive_home"] + "/" + robot
-    remove_inactive = remove_robot_from_dir(robot_inactive, robot, "inactive")
+    remove_inactive = robot_remove_from_dir(robot_inactive, robot, "inactive")
     if remove_inactive is False:
         return False
     elif remove_inactive == 1:
         robot_exists = True
 
     robot_paused = roboauto_state["paused_home"] + "/" + robot
-    remove_paused = remove_robot_from_dir(robot_paused, robot, "paused")
+    remove_paused = robot_remove_from_dir(robot_paused, robot, "paused")
     if remove_paused is False:
         return False
     elif remove_paused == 1:
@@ -237,7 +239,7 @@ def robot_get_coordinator(robot, robot_dir, warning_print=True):
     return coordinator
 
 
-def print_token(argv):
+def robot_print_token(argv):
     use_base91 = False
     if len(argv) >= 1:
         if argv[0] == "--base91":
@@ -263,7 +265,7 @@ def print_token(argv):
     return True
 
 
-def print_coordinator(argv):
+def robot_print_coordinator(argv):
     robot, argv = robot_input_ask(argv)
     if robot is False:
         return False
@@ -392,7 +394,7 @@ def robot_get_data(robot, robot_dir):
     return token_base91, coordinator, coordinator_url
 
 
-def robot_get_robot(token_base91, robot_url):
+def robot_requests_robot(token_base91, robot_url):
     multi_false = False, False
 
     robot_response = requests_api_robot(token_base91, robot_url).text
@@ -405,22 +407,24 @@ def robot_get_robot(token_base91, robot_url):
     return robot_response, robot_response_json
 
 
+def robot_get_lock_file(robot):
+    return roboauto_state["lock_home"] + "/" + robot
+
+
 # TODO: requires gpg
-def generate_robot(argv):
+def robot_generate(argv):
     coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator_url is False:
         return False
 
-    destination_mode = get_destination_mode(argv)
+    destination_mode, argv = get_destination_mode(argv)
     if destination_mode is False:
         return False
-    elif destination_mode != "active":
-        argv = argv[1:]
 
     token = generate_random_token_base62()
     token_base91 = token_get_base91(token)
 
-    robot_response, robot_response_json = robot_get_robot(token_base91, coordinator_url)
+    robot_response, robot_response_json = robot_requests_robot(token_base91, coordinator_url)
     if robot_response is False:
         return False
 
@@ -441,8 +445,4 @@ def generate_robot(argv):
 
     print_out("robot name: %s" % robot)
 
-    return robot_write_token(robot_dir, token, coordinator)
-
-
-def robot_get_lock_file(robot):
-    return roboauto_state["lock_home"] + "/" + robot
+    return robot_write_token_coordinator(robot_dir, token, coordinator)

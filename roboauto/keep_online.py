@@ -21,7 +21,7 @@ from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import \
     robot_set_dir, robot_get_token_base91, \
     robot_get_lock_file, robot_list_dir, robot_get_coordinator, \
-    get_waiting_queue, robot_get_robot
+    get_waiting_queue, robot_requests_robot
 from roboauto.order_local import \
     robot_set_inactive, \
     order_is_public, order_is_paused, \
@@ -42,6 +42,7 @@ from roboauto.utils import \
 
 def slowly_move_to_active(argv):
     roboauto_state["print_date"] = True
+
     if len(argv) >= 1:
         slowly_paused_interval_string = argv[0]
         argv = argv[:1]
@@ -49,7 +50,7 @@ def slowly_move_to_active(argv):
         if slowly_paused_interval is False:
             return False
     else:
-        slowly_paused_interval = roboauto_options["slowly_paused_interval_global"]
+        slowly_paused_interval = roboauto_options["slowly_paused_interval"]
 
     while len(os.listdir(roboauto_state["paused_home"])) > 0:
         robot_dir = os.listdir(roboauto_state["paused_home"])[0]
@@ -70,7 +71,7 @@ def slowly_move_to_active(argv):
 
 
 def robot_check_expired(robot, token_base91, robot_url, robot_this_hour):
-    robot_response, robot_response_json = robot_get_robot(token_base91, robot_url)
+    robot_response, robot_response_json = robot_requests_robot(token_base91, robot_url)
     if robot_response is False:
         return False
 
@@ -293,6 +294,7 @@ def keep_online_check():
 
 def keep_online():
     roboauto_state["print_date"] = True
+
     robot_list = robot_list_dir(roboauto_state["active_home"])
     if len(robot_list) < 1:
         print_out("there are no active robots", date=False)

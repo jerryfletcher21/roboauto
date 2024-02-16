@@ -10,7 +10,6 @@
 # pylint: disable=R0915 too-many-statements
 # pylint: disable=W0611 unused-import
 
-
 import sys
 import re
 
@@ -18,7 +17,7 @@ from roboauto.logger import print_out, print_err
 from roboauto.robot import \
     robot_dir_search, robot_get_token_base91, \
     robot_get_coordinator, robot_input_ask_and_dir, \
-    token_get_base91, robot_get_data, robot_get_robot
+    token_get_base91, robot_get_data, robot_requests_robot
 from roboauto.order_local import get_order_string, order_save_order_file
 from roboauto.order import api_order_get_dic_handle
 from roboauto.requests_api import \
@@ -107,7 +106,7 @@ def robot_info(argv):
             if robot_url is False:
                 return False
 
-    robot_response, robot_response_json = robot_get_robot(token_base91, robot_url)
+    robot_response, robot_response_json = robot_requests_robot(token_base91, robot_url)
     if robot_response is False:
         return False
 

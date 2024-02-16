@@ -178,7 +178,7 @@ def update_roboauto_options(print_info=False):
                     update_single_option(option, new_option, print_info=print_info)
 
             for option in (
-                "book_interval", "bond_interval", "slowly_paused_interval_global",
+                "book_interval", "bond_interval", "slowly_paused_interval",
                 "error_interval", "tab_size", "order_maximum"
             ):
                 if parser.has_option(general_section, option):
@@ -228,14 +228,14 @@ def global_setup():
     roboauto_state["check_command"] = roboauto_config + "/check-invoice"
     roboauto_state["pay_command"] = roboauto_config + "/pay-invoice"
 
-    for directory_global in (
+    for directory in (
         roboauto_home, roboauto_config,
         roboauto_state["active_home"],
         roboauto_state["inactive_home"],
         roboauto_state["paused_home"],
         roboauto_state["lock_home"]
     ):
-        if not dir_make_sure_exists(directory_global):
+        if not dir_make_sure_exists(directory):
             return False
 
     return True
