@@ -16,7 +16,7 @@ import hashlib
 import base91
 
 from roboauto.logger import print_out, print_err, print_war
-from roboauto.requests_api import requests_api_robot
+from roboauto.requests_api import requests_api_robot, response_is_error
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.utils import \
     file_read, file_write, \
@@ -397,7 +397,10 @@ def robot_get_data(robot, robot_dir):
 def robot_requests_robot(token_base91, robot_url):
     multi_false = False, False
 
-    robot_response = requests_api_robot(token_base91, robot_url).text
+    robot_response_all = requests_api_robot(token_base91, robot_url)
+    if response_is_error(robot_response_all):
+        return False
+    robot_response = robot_response_all.text
     robot_response_json = json_loads(robot_response)
     if robot_response_json is False:
         print_err(robot_response, end="", error=False, date=False)

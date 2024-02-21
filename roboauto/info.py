@@ -23,7 +23,7 @@ from roboauto.order import api_order_get_dic_handle
 from roboauto.requests_api import \
     requests_api_limits, \
     requests_api_info, requests_api_robot, \
-    requests_api_chat
+    requests_api_chat, response_is_error
 from roboauto.utils import \
     file_read, file_write, \
     file_json_read, file_json_write, \
@@ -39,7 +39,10 @@ def list_limits(argv):
     if coordinator_url is False:
         return False
 
-    limits_response = requests_api_limits(coordinator_url).text
+    limits_response_all = requests_api_limits(coordinator_url)
+    if response_is_error(limits_response_all):
+        return False
+    limits_response = limits_response_all.text
     limits_response_json = json_loads(limits_response)
     if not limits_response_json:
         print_err(limits_response, end="", error=False, date=False)
@@ -56,7 +59,10 @@ def robosats_info(argv):
     if coordinator_url is False:
         return False
 
-    info_response = requests_api_info(coordinator_url).text
+    info_response_all = requests_api_info(coordinator_url)
+    if response_is_error(info_response_all):
+        return False
+    info_response = info_response_all.text
     info_response_json = json_loads(info_response)
     if not info_response_json:
         print_err(info_response, end="", error=False, date=False)
@@ -148,7 +154,10 @@ def robot_info(argv):
 
         chat_print = False
         if chat_print:
-            chat_response = requests_api_chat(token_base91, order_id, robot_url).text
+            chat_response_all = requests_api_chat(token_base91, order_id, robot_url)
+            if response_is_error(chat_response_all):
+                return False
+            chat_response = chat_response_all.text
             chat_response_json = json_loads(chat_response)
             if not chat_response_json:
                 print_err(chat_response, end="", error=False, date=False)

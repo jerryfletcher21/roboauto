@@ -32,7 +32,7 @@ from roboauto.robot import \
     robot_get_coordinator, robot_input_ask, \
     get_waiting_queue, robot_get_data, robot_requests_robot
 from roboauto.requests_api import \
-    requests_api_order, requests_api_cancel, requests_api_make
+    requests_api_order, requests_api_cancel, requests_api_make, response_is_error
 from roboauto.utils import \
     json_dumps, file_is_executable, subprocess_run_command, \
     json_loads, file_json_write, \
@@ -56,6 +56,8 @@ def get_empty_order_user():
 
 def api_order_get_dic(robot, token_base91, robot_url, order_id):
     order_response_all = requests_api_order(token_base91, order_id, robot_url)
+    if response_is_error(order_response_all):
+        return False
     if order_response_all.status_code == 400:
         return None
     order_response = order_response_all.text
@@ -210,7 +212,10 @@ def robot_cancel_order(robot, token_base91):
 
             print_out("robot %s cancel order %s" % (robot, order_id))
 
-            order_post_response = requests_api_cancel(token_base91, order_id, robot_url).text
+            order_post_response_all = requests_api_cancel(token_base91, order_id, robot_url)
+            if response_is_error(order_post_response_all):
+                return False
+            order_post_response = order_post_response_all.text
             order_post_response_json = json_loads(order_post_response)
             if order_post_response_json is False:
                 print_err(order_post_response, end="", error=False, date=False)
@@ -336,9 +341,12 @@ def make_order(
     else:
         bond_amount = False
 
-    make_response = requests_api_make(
+    make_response_all = requests_api_make(
         token_base91, order_id, robot_url, make_data=json_dumps(make_data)
-    ).text
+    )
+    if response_is_error(make_response_all):
+        return False
+    make_response = make_response_all.text
     make_response_json = json_loads(make_response)
     if make_response_json is False:
         print_err(make_data, error=False, date=False)

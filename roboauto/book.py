@@ -129,11 +129,11 @@ def list_offers_per_hour(relative):
 
 def get_book_response_json(coordinator, until_true=False):
     base_url = roboauto_options["federation"][coordinator]
-    book_response_pre = requests_api_book(base_url, until_true=until_true)
-    if response_is_error(book_response_pre):
+    book_response_all = requests_api_book(base_url, until_true=until_true)
+    if response_is_error(book_response_all):
         print_err("connecting to coordinator %s" % coordinator)
         return False
-    book_response = book_response_pre.text
+    book_response = book_response_all.text
 
     book_response_json = json_loads(book_response)
     if not book_response_json:

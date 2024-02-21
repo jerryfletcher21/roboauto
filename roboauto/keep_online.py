@@ -293,6 +293,7 @@ def keep_online_check():
 
     return True
 
+
 def keep_online():
     roboauto_state["print_date"] = True
 
