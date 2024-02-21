@@ -252,7 +252,7 @@ try:
         print_err("action " + action + " not recognized")
         sys.exit(1)
 except KeyboardInterrupt:
-    print_out("\n", end="")
+    print_out("\n", end="", date=False)
     return_status = False
 
 if return_status:

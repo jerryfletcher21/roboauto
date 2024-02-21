@@ -53,8 +53,8 @@ def slowly_move_to_active(argv):
         slowly_paused_interval = roboauto_options["slowly_paused_interval"]
 
     while len(os.listdir(roboauto_state["paused_home"])) > 0:
-        robot_dir = os.listdir(roboauto_state["paused_home"])[0]
-        robot = robot_dir.split("/")[-1]
+        robot = os.listdir(roboauto_state["paused_home"])[0]
+        robot_dir = roboauto_state["paused_home"] + "/" + robot
 
         try:
             shutil.move(robot_dir, roboauto_state["active_home"])
@@ -146,7 +146,7 @@ def robot_check_expired(robot, token_base91, robot_url, robot_this_hour):
     return 0
 
 
-def order_is_this_hour(order, current_hour, current_timestamp, hour_relative, coordinator=False):
+def order_is_this_hour(order, current_hour, current_timestamp, coordinator=False):
     order_info = order.get("order_info", False)
     if order_info is False:
         return False
@@ -162,7 +162,10 @@ def order_is_this_hour(order, current_hour, current_timestamp, hour_relative, co
     expires_at = order_response_json.get("expires_at", False)
     if expires_at is False:
         return False
-    date_hour = get_hour_offer(expires_at, current_timestamp, hour_relative)
+    date_hour = get_hour_offer(
+        expires_at, current_timestamp,
+        roboauto_state["keep_online_hour_relative"]
+    )
     if date_hour is False:
         return False
     if date_hour != current_hour:
@@ -172,7 +175,7 @@ def order_is_this_hour(order, current_hour, current_timestamp, hour_relative, co
 
 
 def single_book_count_active_orders_this_hour(
-    current_hour, current_timestamp, hour_relative, coordinator
+    current_hour, current_timestamp, coordinator
 ):
     additional_robots = 0
 
@@ -180,7 +183,7 @@ def single_book_count_active_orders_this_hour(
     for order in orders_active:
         if order_is_this_hour(
             order, current_hour,
-            current_timestamp, hour_relative,
+            current_timestamp,
             coordinator=coordinator
         ):
             additional_robots += 1
@@ -191,12 +194,7 @@ def single_book_count_active_orders_this_hour(
 def list_orders_single_book(
     coordinator, robot_list, nicks_waiting, robot_this_hour, current_timestamp
 ):
-    hour_relative = False
     current_hour = get_current_hour_from_timestamp(current_timestamp)
-
-    robot_this_hour += single_book_count_active_orders_this_hour(
-        current_hour, current_timestamp, hour_relative, coordinator
-    )
 
     book_response_json = get_book_response_json(coordinator, until_true=False)
     if book_response_json is False:
@@ -207,7 +205,10 @@ def list_orders_single_book(
     for offer in book_response_json:
         robot = offer["maker_nick"]
         nicks.append(robot)
-        date_hour = get_hour_offer(offer["expires_at"], current_timestamp, hour_relative)
+        date_hour = get_hour_offer(
+            offer["expires_at"], current_timestamp,
+            roboauto_state["keep_online_hour_relative"]
+        )
         if date_hour is False:
             print_err("getting robot %s hour" % robot)
         else:
@@ -231,7 +232,7 @@ def list_orders_single_book(
                         order = order_get_robot(robot, roboauto_state["active_home"])
                         if order is not False and order_is_this_hour(
                             order, current_hour, current_timestamp,
-                            hour_relative, coordinator=False
+                            coordinator=False
                         ):
                             robot_this_hour -= 1
                             if robot_this_hour < 0:
@@ -245,7 +246,7 @@ def list_orders_single_book(
                         order = order_get_robot(robot, roboauto_state["active_home"])
                         if order is not False and order_is_this_hour(
                             order, current_hour, current_timestamp,
-                            hour_relative, coordinator=False
+                            coordinator=False
                         ):
                             robot_this_hour += robot_online
                 except filelock.Timeout:
@@ -326,6 +327,7 @@ def keep_online():
             )
 
         current_timestamp = get_current_timestamp()
+        current_hour = get_current_hour_from_timestamp(current_timestamp)
 
         coordinator_robot_list = {}
 
@@ -341,6 +343,11 @@ def keep_online():
             if coordinator_robot_list.get(coordinator, False) is False:
                 coordinator_robot_list.update({coordinator: []})
             coordinator_robot_list[coordinator].append(robot)
+
+        for coordinator, robot_list in coordinator_robot_list.items():
+            robot_this_hour += single_book_count_active_orders_this_hour(
+                current_hour, current_timestamp, coordinator
+            )
 
         for coordinator, robot_list in coordinator_robot_list.items():
             single_book_response = list_orders_single_book(

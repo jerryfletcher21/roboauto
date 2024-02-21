@@ -69,7 +69,7 @@ def requests_tor(url, headers, data="", until_true=True):
             request_failed += 1
             if request_failed >= max_retries:
                 print_err("maximum retries reached")
-                return False
+                return response
 
             time.sleep(roboauto_options["error_interval"])
             response = requests_tor_response(url, proxies, timeout, headers, data)

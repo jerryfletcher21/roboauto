@@ -26,3 +26,8 @@ pip install --break-system-packages .
 roboauto --help
 roboauto --verbose-help
 ```
+
+## license
+
+roboauto is released under the terms of the ISC license.
+See [LICENSE](LICENSE) for more details.
