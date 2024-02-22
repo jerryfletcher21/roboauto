@@ -18,6 +18,8 @@ from roboauto.utils import \
 
 
 def get_hour_offer(hour_timestamp, current_timestamp, relative):
+    """get the hour from the timestamp, if relative the hour relative
+    to current timestamp"""
     try:
         robosats_date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
         if relative:
@@ -128,6 +130,8 @@ def list_offers_per_hour(relative):
 
 
 def get_book_response_json(coordinator, until_true=False):
+    """wrap around requests_api_book to check if the response
+    is correct"""
     base_url = roboauto_options["federation"][coordinator]
     book_response_all = requests_api_book(base_url, until_true=until_true)
     if response_is_error(book_response_all):
@@ -156,6 +160,8 @@ def get_book_response_json(coordinator, until_true=False):
 
 
 def get_offers_unsorted(multi_book_response_json, book_type, book_currency):
+    """get offers unsorted from multi responses,
+    filtering type and currency"""
     offers = []
     for book in multi_book_response_json:
         book_response_json = book["offers"]

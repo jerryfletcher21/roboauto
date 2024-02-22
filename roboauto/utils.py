@@ -61,6 +61,7 @@ def get_coordinator_from_param(param):
 
 
 def roboauto_get_coordinator_from_argv(argv):
+    """get a single coordinator from argv"""
     multi_false = False, False, False
     coordinator = False
 
@@ -83,6 +84,7 @@ def roboauto_get_coordinator_from_argv(argv):
 
 
 def roboauto_get_multi_coordinators_from_argv(argv):
+    """get multiple coordinators from argv, with also --all"""
     multi_false = False, False
     coordinators = []
 

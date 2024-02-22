@@ -75,6 +75,7 @@ def robosats_info(argv):
 
 
 def robot_info(argv):
+    """print info about a robot and his order if --no-order is not specified"""
     robot = False
     robot_dir = False
     order_print = True

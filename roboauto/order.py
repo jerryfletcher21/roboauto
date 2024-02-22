@@ -55,6 +55,14 @@ def get_empty_order_user():
 
 
 def api_order_get_dic(robot, token_base91, robot_url, order_id):
+    """get the order_dic making a request to the coordinator
+    the order_dic is composed by 4 dictionaries:
+    order_data:  can be derived from order_user, and is the data
+                 used when creating orders
+    order_urser: data user readable, everything that can be modivied
+                 by the user
+    order_info:  everything not in order_data and order_user
+    order_response_json: the json response from the coordinator"""
     order_response_all = requests_api_order(token_base91, order_id, robot_url)
     if response_is_error(order_response_all):
         return False
@@ -156,6 +164,8 @@ def api_order_get_dic(robot, token_base91, robot_url, order_id):
 
 
 def api_order_get_dic_handle(robot, token_base91, robot_url, order_id):
+    """api_order_get_dic can return None or False, this function is
+    used when it does not matter whether None or False is returned"""
     order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
     if order_dic is False:
         return False
@@ -237,6 +247,8 @@ def robot_cancel_order(robot, token_base91):
 
 
 def bond_order(robot, token_base91, robot_url, order_id, bond_amount):
+    """bond an order, if bond amount is not False, also check invoice
+    will run the pay_command as a subprocess"""
     order_dic = api_order_get_dic_handle(robot, token_base91, robot_url, order_id)
     if order_dic is False:
         return False
@@ -328,6 +340,8 @@ def bond_order(robot, token_base91, robot_url, order_id, bond_amount):
 def make_order(
     robot, token_base91, robot_url, order_id, make_data, satoshis_now, should_bond=True
 ):
+    """make the request to the coordinator to create an order,
+    and if should_bond is true, also bond it"""
     if not make_data["bond_size"]:
         print_err("bond size percentage not defined")
         return False
@@ -374,6 +388,7 @@ def make_order(
 
 
 def order_user_from_argv(argv):
+    """get order_user's fields from argv"""
     order_user = get_empty_order_user()
 
     while len(argv) > 0:
@@ -555,6 +570,7 @@ def recreate_order(argv):
 
 
 def wait_order(robot):
+    """move robot to waiting queue"""
     nicks_waiting = get_waiting_queue()
     if nicks_waiting is False:
         return False

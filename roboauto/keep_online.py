@@ -71,6 +71,8 @@ def slowly_move_to_active(argv):
 
 
 def robot_check_expired(robot, token_base91, robot_url, robot_this_hour):
+    """check what happened to a robot that is no longer active
+    return 1 if the robot is back online, 0 if not, false if something wrong"""
     robot_response, robot_response_json = robot_requests_robot(token_base91, robot_url)
     if robot_response is False:
         return False
@@ -201,19 +203,9 @@ def list_orders_single_book(
         return robot_this_hour
 
     nicks = []
-    nicks_this_hour = []
     for offer in book_response_json:
         robot = offer["maker_nick"]
         nicks.append(robot)
-        date_hour = get_hour_offer(
-            offer["expires_at"], current_timestamp,
-            roboauto_state["keep_online_hour_relative"]
-        )
-        if date_hour is False:
-            print_err("getting robot %s hour" % robot)
-        else:
-            if date_hour == current_hour:
-                nicks_this_hour.append(robot)
 
     for robot in robot_list:
         robot_dir = roboauto_state["active_home"] + "/" + robot
