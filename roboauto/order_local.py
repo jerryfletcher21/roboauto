@@ -295,7 +295,12 @@ def offer_dic_print(offer_dic):
 
 
 def get_order_file(orders_dir):
-    order_file = orders_dir + "/" + sorted(os.listdir(orders_dir))[-1]
+    orders_list = []
+    for order_file in os.listdir(orders_dir):
+        order_number = get_int(order_file)
+        if order_number is not False:
+            orders_list.append(order_number)
+    order_file = orders_dir + "/" + str(sorted(orders_list)[-1])
     if not os.path.isfile(order_file):
         print_err("%s is not a file" % order_file)
         return False

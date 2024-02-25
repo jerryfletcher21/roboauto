@@ -46,6 +46,11 @@ insert token:
 roboauto keep-online
 ```
 
+## roadmap
+
+* create a robot (requires gpg)
+* full trading pipeline
+
 ## license
 
 roboauto is released under the terms of the ISC license.
