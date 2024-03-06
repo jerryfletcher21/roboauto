@@ -399,7 +399,7 @@ def robot_requests_robot(token_base91, robot_url):
 
     robot_response_all = requests_api_robot(token_base91, robot_url)
     if response_is_error(robot_response_all):
-        return False
+        return multi_false
     robot_response = robot_response_all.text
     robot_response_json = json_loads(robot_response)
     if robot_response_json is False:

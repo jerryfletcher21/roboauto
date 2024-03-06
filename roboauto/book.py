@@ -146,6 +146,9 @@ def get_book_response_json(coordinator, until_true=False):
         return False
 
     if not isinstance(book_response_json, list):
+        if book_response_json == {"not_found": "No orders found, be the first to make one"}:
+            return []
+
         print_err(book_response, error=False, date=False)
         print_err("book response is not a list")
         return False

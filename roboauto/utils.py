@@ -150,8 +150,9 @@ def update_federation_option(name, new_option, print_info=False):
 
     old_option = roboauto_options["federation"].get(name, False)
     if old_option is False:
-        roboauto_options["federation"].update({name, new_option})
-        print_out("new coordinator %s added with url %s" % (name, new_option))
+        roboauto_options["federation"].update({name: new_option})
+        if print_info:
+            print_out("new coordinator %s added with url %s" % (name, new_option))
     elif old_option != new_option:
         roboauto_options["federation"][name] = new_option
         if print_info:
