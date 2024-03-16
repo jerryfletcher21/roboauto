@@ -177,12 +177,18 @@ def order_is_this_hour(order, current_hour, current_timestamp, coordinator=False
 
 
 def single_book_count_active_orders_this_hour(
-    current_hour, current_timestamp, coordinator
+    current_hour, current_timestamp, coordinator, nicks_waiting
 ):
     additional_robots = 0
 
     orders_active = orders_get_directory(roboauto_state["active_home"])
     for order in orders_active:
+        order_response_json = order.get("order_response_json", False)
+        if order_response_json is not False:
+            robot = order_response_json.get("maker_nick", False)
+            if robot is not False:
+                if robot in nicks_waiting:
+                    continue
         if order_is_this_hour(
             order, current_hour,
             current_timestamp,
@@ -339,7 +345,7 @@ def keep_online():
 
         for coordinator, robot_list in coordinator_robot_list.items():
             robot_this_hour += single_book_count_active_orders_this_hour(
-                current_hour, current_timestamp, coordinator
+                current_hour, current_timestamp, coordinator, nicks_waiting
             )
 
         for coordinator, robot_list in coordinator_robot_list.items():
