@@ -13,7 +13,7 @@ from roboauto.global_state import roboauto_state
 from roboauto.utils import global_setup, list_configs, update_roboauto_options
 from roboauto.robot import \
     robot_import, robot_remove, robot_print_token, robot_print_coordinator, \
-    robot_print_dir, waiting_queue_print, robot_set_dir
+    robot_print_dir, waiting_queue_print, robot_set_dir, robot_generate
 from roboauto.order_local import order_info_local
 from roboauto.order import create_order, cancel_order, recreate_order
 from roboauto.info import robosats_info, robot_info, list_limits
@@ -40,6 +40,7 @@ set-inactive|set-paused [robot-name/--all]
 order-info-local [--full] [robot-name/--active/--paused/--inactive/directory] [order-id]
 slowly-move-to-active [seconds]
 robosats-info --{coordinator}
+generate-robot --{coordinator} [--inactive, --paused]
 robot-info [--no-order] [robot-name]
 robot-info [--no-order] --stdin|--stdin-base91 --{coordinator}|coordinator-url
 list-limits --{coordinator}
@@ -108,6 +109,9 @@ slowly-move-to-active [seconds]
 
 robosats-info --{coordinator}
     get info about robosats
+
+generate-robot --{coordinator} [--inactive, --paused]
+    generate a robot on coordinator
 
 robot-info [--no-order] [robot-name]
 robot-info [--no-order] --stdin|--stdin-base91 --{coordinator}|coordinator-url
@@ -224,6 +228,8 @@ try:
         return_status = slowly_move_to_active(argv)
     elif action == "robosats-info":
         return_status = robosats_info(argv)
+    elif action == "generate-robot":
+        return_status = robot_generate(argv)
     elif action == "robot-info":
         return_status = robot_info(argv)
     elif action == "list-limits":

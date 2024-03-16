@@ -133,6 +133,10 @@ btc
             if [ "${cword}" -eq 2 ]; then
                 OPTS="--no-bond"
             fi
+            if [ "${cword}" -eq 2 ] || { [ "${cword}" -eq 3 ] && [ "$prev" = "--no-bond" ]; }; then
+                OPTS="$OPTS
+$(___roboauto_get_robots "$paused_home")"
+            fi
         ;;
         cancel-order)
             if [ "${cword}" -eq 2 ]; then

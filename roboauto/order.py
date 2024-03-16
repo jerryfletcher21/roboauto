@@ -40,8 +40,8 @@ from roboauto.utils import \
     roboauto_get_coordinator_from_url
 
 
-def get_empty_order_user():
-    return {
+def get_empty_order_user(with_default):
+    empty_order = {
         "type":                 False,
         "currency":             False,
         "min_amount":           False,
@@ -52,6 +52,13 @@ def get_empty_order_user():
         "escrow_duration":      False,
         "bond_size":            False
     }
+
+    if with_default:
+        empty_order["public_duration"] = roboauto_options["default_duration"]
+        empty_order["escrow_duration"] = roboauto_options["default_escrow"]
+        empty_order["bond_size"] = roboauto_options["default_bond_size"]
+
+    return empty_order
 
 
 def api_order_get_dic(robot, token_base91, robot_url, order_id):
@@ -387,9 +394,9 @@ def make_order(
     return bond_order(robot, token_base91, robot_url, order_id, bond_amount)
 
 
-def order_user_from_argv(argv):
+def order_user_from_argv(argv, with_default=False):
     """get order_user's fields from argv"""
-    order_user = get_empty_order_user()
+    order_user = get_empty_order_user(with_default)
 
     while len(argv) > 0:
         param = argv[0]
@@ -421,16 +428,16 @@ def create_order(argv):
     if robot is False:
         return False
 
-    robot_dir = roboauto_state["active_home"] + "/" + robot
+    robot_dir = roboauto_state["paused_home"] + "/" + robot
     if not os.path.isdir(robot_dir):
-        print_err("robot %s is not in the active directory" % robot)
+        print_err("robot %s is not in the paused directory" % robot)
         return False
 
     token_base91, _, robot_url = robot_get_data(robot, robot_dir)
     if token_base91 is False:
         return False
 
-    order_user = order_user_from_argv(argv)
+    order_user = order_user_from_argv(argv, with_default=True)
     if order_user is False:
         return False
 
@@ -445,11 +452,17 @@ def create_order(argv):
     if order_data is False:
         return False
 
-    return make_order(
+    if make_order(
         robot, token_base91, robot_url,
         False, order_data, False,
         should_bond=should_bond
-    )
+    ) is False:
+        return False
+
+    if not robot_set_dir(roboauto_state["active_home"], [robot]):
+        return False
+
+    return True
 
 
 def cancel_order(argv):

@@ -21,7 +21,8 @@ from roboauto.global_state import roboauto_state
 from roboauto.utils import \
     get_date_short, json_dumps, file_json_read, \
     file_is_executable, subprocess_run_command, \
-    is_float, get_int, dir_make_sure_exists, file_json_write
+    is_float, get_int, dir_make_sure_exists, file_json_write, \
+    directory_get_last_number_file
 from roboauto.robot import \
     robot_list_dir, robot_get_coordinator, robot_input_ask, \
     robot_dir_search
@@ -294,20 +295,6 @@ def offer_dic_print(offer_dic):
     ))
 
 
-def get_order_file(orders_dir):
-    orders_list = []
-    for order_file in os.listdir(orders_dir):
-        order_number = get_int(order_file)
-        if order_number is not False:
-            orders_list.append(order_number)
-    order_file = orders_dir + "/" + str(sorted(orders_list)[-1])
-    if not os.path.isfile(order_file):
-        print_err("%s is not a file" % order_file)
-        return False
-
-    return order_file
-
-
 def print_robot_order(robot, robot_dir, order_id, one_line, full_mode):
     order_id_error = "------"
 
@@ -325,7 +312,7 @@ def print_robot_order(robot, robot_dir, order_id, one_line, full_mode):
         return True
 
     if order_id is False:
-        order_file = get_order_file(orders_dir)
+        order_file = directory_get_last_number_file(orders_dir)
         if order_file is False:
             return False
     else:
@@ -436,7 +423,7 @@ def order_save_order_file(robot_dir, order_id, order_dic):
 
 
 def order_get_order_dic(orders_dir):
-    order_file = get_order_file(orders_dir)
+    order_file = directory_get_last_number_file(orders_dir)
     if order_file is False:
         return False
 

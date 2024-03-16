@@ -5,18 +5,17 @@
 # pylint: disable=C0209 consider-using-f-string
 # pylint: disable=R0911 too-many-return-statements
 # pylint: disable=R0912 too-many-branches
+# pylint: disable=R0914 too-many-locals
 # pylint: disable=R1705 no-else-return
 # pylint: disable=W0511 fixme
 
 import os
 import re
 import shutil
-import hashlib
-
-import base91
 
 from roboauto.logger import print_out, print_err, print_war
-from roboauto.requests_api import requests_api_robot, response_is_error
+from roboauto.requests_api import \
+    requests_api_robot, response_is_error, requests_api_robot_generate
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.utils import \
     file_read, file_write, \
@@ -26,7 +25,10 @@ from roboauto.utils import \
     generate_random_token_base62, \
     roboauto_first_coordinator, \
     roboauto_get_coordinator_url, \
-    roboauto_get_coordinator_from_argv
+    roboauto_get_coordinator_from_argv, \
+    token_get_base91, \
+    dir_make_sure_exists
+from roboauto.gpg_key import gpg_generate_robot
 
 
 def robot_input_ask(argv):
@@ -205,10 +207,6 @@ def robot_remove(argv):
         return False
 
     return True
-
-
-def token_get_base91(token_string):
-    return base91.encode(hashlib.sha256(token_string.encode("utf-8")).digest())
 
 
 def robot_get_token_base91(robot, robot_dir):
@@ -414,7 +412,6 @@ def robot_get_lock_file(robot):
     return roboauto_state["lock_home"] + "/" + robot
 
 
-# TODO: requires gpg
 def robot_generate(argv):
     coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator_url is False:
@@ -427,13 +424,27 @@ def robot_generate(argv):
     token = generate_random_token_base62()
     token_base91 = token_get_base91(token)
 
-    robot_response, robot_response_json = robot_requests_robot(token_base91, coordinator_url)
-    if robot_response is False:
+    fingerprint, public_key, private_key = gpg_generate_robot(token)
+    if fingerprint is False:
         return False
 
-    robot = robot_response_json.get("nickname", False)
+    generate_response_all = requests_api_robot_generate(
+        token_base91, public_key, private_key,
+        coordinator_url,
+        until_true=True
+    )
+    if response_is_error(generate_response_all):
+        return False
+    generate_response = generate_response_all.text
+    generate_response_json = json_loads(generate_response)
+    if not generate_response_json:
+        print_err(generate_response, end="", error=False, date=False)
+        print_err("generate response is not json")
+        return False
+
+    robot = generate_response_json.get("nickname", False)
     if robot is False:
-        print_err(robot_response_json, error=False, date=False)
+        print_err(generate_response_json, error=False, date=False)
         print_err("getting robot name")
         return False
 
@@ -446,6 +457,25 @@ def robot_generate(argv):
             print_err("robot %s already exists" % robot_dir)
         return False
 
-    print_out("robot name: %s" % robot)
+    print_out(robot)
 
-    return robot_write_token_coordinator(robot_dir, token, coordinator)
+    if robot_write_token_coordinator(robot_dir, token, coordinator) is False:
+        return False
+
+    gpg_list_dir = robot_dir + "/gpg"
+    if dir_make_sure_exists(gpg_list_dir) is False:
+        return False
+
+    gpg_dir = gpg_list_dir + "/" + fingerprint
+    if not os.path.exists(gpg_dir):
+        if dir_make_sure_exists(gpg_dir) is False:
+            return False
+        if not file_write(gpg_dir + "/public", public_key):
+            return False
+        if not file_write(gpg_dir + "/private", private_key):
+            return False
+
+    if not file_write(robot_dir + "/current-fingerprint", fingerprint):
+        return False
+
+    return True

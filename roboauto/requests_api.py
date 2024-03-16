@@ -10,7 +10,7 @@ import time
 import requests
 
 from roboauto.logger import print_err
-from roboauto.global_state import roboauto_options
+from roboauto.global_state import roboauto_options, roboauto_state
 
 
 def response_is_error(response):
@@ -85,13 +85,13 @@ def requests_api_base(base_url, url_path, until_true=True):
         "User-Agent": roboauto_options["user_agent"],
         "Accept": "*/*",
         "Accept-Language": "en-US,en;q=0.5",
-        "Accept-Encoding": "gzip, deflate",
+        "Accept-Encoding": "gzip, deflate, br",
         "Referer": base_url,
         "Content-Type": "application/json",
         "Connection": "keep-alive",
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin"
+        "Sec-Fetch-Site": roboauto_state["fetch_site"]
     }
 
     return requests_tor(base_url + url_path, headers, until_true=until_true)
@@ -109,19 +109,40 @@ def requests_api_limits(base_url, until_true=True):
     return requests_api_base(base_url, "/api/limits/", until_true=until_true)
 
 
+def requests_api_robot_generate(token_base91, public_key, private_key, base_url, until_true=True):
+    headers = {
+        "User-Agent": roboauto_options["user_agent"],
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Content-Type": "application/json",
+        "Authorization":
+            "Token " + token_base91 +
+            " | Public " + public_key.replace("\n", "\\") +
+            " | Private " + private_key.replace("\n", "\\"),
+        "Origin": "null",
+        "Connection": "keep-alive",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": roboauto_state["fetch_site"]
+    }
+
+    return requests_tor(base_url + "/api/robot/", headers, until_true=until_true)
+
+
 def requests_api_token(token_base91, base_url, referer_path, url_path, until_true=True):
     headers = {
         "User-Agent": roboauto_options["user_agent"],
         "Accept": "*/*",
         "Accept-Language": "en-US,en;q=0.5",
-        "Accept-Encoding": "gzip, deflate",
+        "Accept-Encoding": "gzip, deflate, br",
         "Referer": base_url + referer_path,
         "Content-Type": "application/json",
         "Authorization": "Token " + token_base91,
         "Connection": "keep-alive",
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin"
+        "Sec-Fetch-Site": roboauto_state["fetch_site"]
     }
 
     return requests_tor(base_url + url_path, headers, until_true=until_true)
@@ -169,7 +190,7 @@ def requests_api_post(token_base91, base_url, referer_path, url_path, data, unti
         "Connection": "keep-alive",
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin"
+        "Sec-Fetch-Site": roboauto_state["fetch_site"]
     }
 
     return requests_tor(base_url + url_path, headers, data=data, until_true=until_true)

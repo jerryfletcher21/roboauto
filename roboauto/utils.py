@@ -11,6 +11,9 @@ import json
 import subprocess
 import configparser
 import secrets
+import hashlib
+
+import base91
 
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_options, roboauto_state
@@ -222,6 +225,7 @@ def global_setup():
     roboauto_state["inactive_home"] = roboauto_home + "/inactive"
     roboauto_state["paused_home"] = roboauto_home + "/paused"
     roboauto_state["lock_home"] = roboauto_home + "/lock"
+    roboauto_state["gnupg_home"] = roboauto_home + "/gnupg"
 
     roboauto_state["waiting_queue_file"] = roboauto_home + "/waiting-queue"
     roboauto_state["keep_online_refresh_file"] = roboauto_home + "/keep-online-refresh"
@@ -236,10 +240,19 @@ def global_setup():
         roboauto_state["active_home"],
         roboauto_state["inactive_home"],
         roboauto_state["paused_home"],
-        roboauto_state["lock_home"]
+        roboauto_state["lock_home"],
+        roboauto_state["gnupg_home"]
     ):
         if not dir_make_sure_exists(directory):
             return False
+
+    gnupg_home_permission = 0o700
+    try:
+        if os.stat(roboauto_state["gnupg_home"]).st_mode & 0o777 != gnupg_home_permission:
+            os.chmod(roboauto_state["gnupg_home"], gnupg_home_permission)
+    except OSError:
+        print_err("changing permissions on gnupg home")
+        return False
 
     return True
 
@@ -402,6 +415,24 @@ def generate_random_token_base62():
     return random_string
 
 
+def token_get_double_sha256(token_string):
+    return hashlib.sha256(
+        hashlib.sha256(
+            token_string.encode("utf-8")
+        ).hexdigest().encode("utf-8")
+    ).hexdigest()
+
+    # return hashlib.sha256(
+    #     hashlib.sha256(
+    #         token_string.encode("utf-8")
+    #     ).digest()
+    # ).hexdigest()
+
+
+def token_get_base91(token_string):
+    return base91.encode(hashlib.sha256(token_string.encode("utf-8")).digest())
+
+
 def get_date_short(date_unformat):
     try:
         date_short = date_unformat.split("T")[1].split(".")[0]
@@ -409,3 +440,19 @@ def get_date_short(date_unformat):
         date_short = "???"
 
     return date_short
+
+
+def directory_get_last_number_file(dir_number):
+    list_number = []
+    for file_number in os.listdir(dir_number):
+        order_number = get_int(file_number)
+        if order_number is not False:
+            list_number.append(order_number)
+    if len(list_number) < 1:
+        return 0
+    file_number = dir_number + "/" + str(sorted(list_number)[-1])
+    if not os.path.isfile(file_number):
+        print_err("%s is not a file" % file_number)
+        return False
+
+    return file_number

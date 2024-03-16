@@ -17,12 +17,11 @@ from roboauto.logger import print_out, print_err
 from roboauto.robot import \
     robot_dir_search, robot_get_token_base91, \
     robot_get_coordinator, robot_input_ask_and_dir, \
-    token_get_base91, robot_get_data, robot_requests_robot
+    robot_get_data, robot_requests_robot
 from roboauto.order_local import get_order_string, order_save_order_file
 from roboauto.order import api_order_get_dic_handle
 from roboauto.requests_api import \
-    requests_api_limits, \
-    requests_api_info, requests_api_robot, \
+    requests_api_limits, requests_api_info, \
     requests_api_chat, response_is_error
 from roboauto.utils import \
     file_read, file_write, \
@@ -31,7 +30,8 @@ from roboauto.utils import \
     password_ask_token, \
     roboauto_get_coordinator_url, \
     roboauto_get_coordinator_from_argv, \
-    dir_make_sure_exists
+    dir_make_sure_exists, \
+    token_get_base91, token_get_double_sha256
 
 
 def list_limits(argv):

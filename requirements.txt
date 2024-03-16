@@ -1,3 +1,4 @@
 requests[socks]
 base91
 filelock
+python-gnupg
