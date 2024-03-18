@@ -222,6 +222,7 @@ def global_setup():
     roboauto_config = config_home + "/roboauto"
 
     roboauto_state["active_home"] = roboauto_home + "/active"
+    roboauto_state["pending_home"] = roboauto_home + "/pending"
     roboauto_state["inactive_home"] = roboauto_home + "/inactive"
     roboauto_state["paused_home"] = roboauto_home + "/paused"
     roboauto_state["lock_home"] = roboauto_home + "/lock"
@@ -238,6 +239,7 @@ def global_setup():
     for directory in (
         roboauto_home, roboauto_config,
         roboauto_state["active_home"],
+        roboauto_state["pending_home"],
         roboauto_state["inactive_home"],
         roboauto_state["paused_home"],
         roboauto_state["lock_home"],

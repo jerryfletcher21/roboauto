@@ -210,6 +210,13 @@ def order_is_expired(data):
         return False
 
 
+def order_is_pending(data):
+    if data in (6, 7, 8, 9, 10, 11):
+        return True
+    else:
+        return False
+
+
 def order_is_finished(data):
     if data in (4, 12, 14, 17, 18):
         return True
@@ -389,9 +396,11 @@ def order_info_local(argv):
         return print_robot_order(
             robot, robot_dir, order_id, one_line=False, full_mode=full_mode
         )
-    elif robot in ("--active", "--paused", "--inactive"):
+    elif robot in ("--active", "--pending", "--paused", "--inactive"):
         if robot == "--active":
             destination_dir = roboauto_state["active_home"]
+        elif robot == "--pending":
+            destination_dir = roboauto_state["pending_home"]
         elif robot == "--paused":
             destination_dir = roboauto_state["paused_home"]
         elif robot == "--inactive":
@@ -460,22 +469,30 @@ def orders_get_directory(destination_dir):
     return orders
 
 
-def robot_set_inactive(robot, order_id, other):
+def robot_handle_taken(robot, status_id, order_id, other):
     robot_dir = roboauto_state["active_home"] + "/" + robot
     if not os.path.isdir(robot_dir):
         print_err(robot + " is not active")
         return False
 
+    if order_is_pending(status_id):
+        dest_dir = roboauto_state["pending_home"]
+        dest_name = "pending"
+    else:
+        dest_dir = roboauto_state["inactive_home"]
+        dest_name = "inactive"
+
+    print_out("something happened with " + robot + " " + order_id)
+    print_out("%s moved to %s" % (robot, dest_name))
+
     try:
-        shutil.move(robot_dir, roboauto_state["inactive_home"])
+        shutil.move(robot_dir, dest_dir)
     except OSError:
         print_err(
             "moving %s to %s" %
-            (robot_dir, roboauto_state["inactive_home"])
+            (robot_dir, dest_dir)
         )
         return False
-
-    print_out("something happened with " + robot + " " + order_id)
 
     if file_is_executable(roboauto_state["message_command"]):
         message_output = subprocess_run_command(

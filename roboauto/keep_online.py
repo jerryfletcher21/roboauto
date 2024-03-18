@@ -23,7 +23,7 @@ from roboauto.robot import \
     robot_get_lock_file, robot_list_dir, robot_get_coordinator, \
     get_waiting_queue, robot_requests_robot
 from roboauto.order_local import \
-    robot_set_inactive, \
+    robot_handle_taken, \
     order_is_public, order_is_paused, \
     order_is_waiting_maker_bond, order_is_waiting_taker_bond, \
     order_is_expired, order_get_robot, orders_get_directory, \
@@ -142,7 +142,7 @@ def robot_check_expired(robot, token_base91, robot_url, robot_this_hour):
             if not wait_order(robot):
                 return False
     else:
-        if not robot_set_inactive(robot, order_id, order_info["order_description"]):
+        if not robot_handle_taken(robot, status_id, order_id, order_info["order_description"]):
             return False
 
     return 0

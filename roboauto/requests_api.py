@@ -166,13 +166,11 @@ def requests_api_order(token_base91, order_id, base_url, until_true=True):
     )
 
 
-def requests_api_chat(token_base91, order_id, base_url, until_true=True):
-    offset = "2"
-
+def requests_api_chat(token_base91, order_id, base_url, offset=0, until_true=True):
     return requests_api_token(
         token_base91, base_url,
         "/order/" + order_id,
-        "api/chat/?order_id=" + order_id + "&offset=" + offset,
+        "/api/chat/?order_id=" + order_id + "&offset=" + str(offset),
         until_true=until_true
     )
 

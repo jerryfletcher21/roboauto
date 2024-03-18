@@ -61,14 +61,17 @@ def robot_input_ask_and_dir(argv):
     return robot, argv, robot_dir
 
 
-def get_destination_mode(argv):
+def get_destination_mode(argv, default_mode="active"):
     multi_false = False, False
 
-    destination_mode = "active"
+    destination_mode = default_mode
 
     if len(argv) >= 1:
         destination_arg = argv[0]
-        if destination_arg == "--inactive":
+        if destination_arg == "--pending":
+            destination_mode = "pending"
+            argv = argv[1:]
+        elif destination_arg == "--inactive":
             destination_mode = "inactive"
             argv = argv[1:]
         elif destination_arg == "--paused":
@@ -82,7 +85,9 @@ def get_destination_mode(argv):
 
 
 def get_robot_dir_from_destination(robot, destination_mode):
-    if destination_mode == "active":
+    if destination_mode == "pending":
+        robot_dir = roboauto_state["pending_home"] + "/" + robot
+    elif destination_mode == "active":
         robot_dir = roboauto_state["active_home"] + "/" + robot
     elif destination_mode == "inactive":
         robot_dir = roboauto_state["inactive_home"] + "/" + robot
@@ -95,17 +100,21 @@ def get_robot_dir_from_destination(robot, destination_mode):
 
 
 def robot_dir_search(robot, error_print=True):
-    robot_dir = roboauto_state["active_home"] + "/" + robot
-    if not os.path.isdir(robot_dir):
-        robot_dir = roboauto_state["paused_home"] + "/" + robot
-        if not os.path.isdir(robot_dir):
-            robot_dir = roboauto_state["inactive_home"] + "/" + robot
-            if not os.path.isdir(robot_dir):
-                if error_print:
-                    print_err("robot " + robot + " not found")
-                return False
+    possible_base_dirs = [
+        roboauto_state["active_home"],
+        roboauto_state["pending_home"],
+        roboauto_state["paused_home"],
+        roboauto_state["inactive_home"]
+    ]
+    for possible_base_dir in possible_base_dirs:
+        robot_dir = possible_base_dir + "/" + robot
+        if os.path.isdir(robot_dir):
+            return robot_dir
 
-    return robot_dir
+    if error_print:
+        print_err("robot " + robot + " not found")
+
+    return False
 
 
 def robot_write_token_coordinator(robot_dir, token, coordinator):
@@ -325,6 +334,7 @@ def robot_set_dir(destination_dir, argv):
 
     if destination_dir not in (
         roboauto_state["active_home"],
+        roboauto_state["pending_home"],
         roboauto_state["inactive_home"],
         roboauto_state["paused_home"]
     ):
@@ -332,25 +342,9 @@ def robot_set_dir(destination_dir, argv):
         return False
 
     if robot != "--all":
-        if destination_dir == roboauto_state["active_home"]:
-            first_dir = roboauto_state["paused_home"] + "/" + robot
-            second_dir = roboauto_state["inactive_home"] + "/" + robot
-        elif destination_dir == roboauto_state["inactive_home"]:
-            first_dir = roboauto_state["active_home"] + "/" + robot
-            second_dir = roboauto_state["paused_home"] + "/" + robot
-        elif destination_dir == roboauto_state["paused_home"]:
-            first_dir = roboauto_state["active_home"] + "/" + robot
-            second_dir = roboauto_state["inactive_home"] + "/" + robot
-
-        robot_dir = first_dir
-        if not os.path.isdir(robot_dir):
-            robot_dir = second_dir
-            if not os.path.isdir(robot_dir):
-                print_err(
-                    "%s and %s are not directories" %
-                    (first_dir, second_dir)
-                )
-                return False
+        robot_dir = robot_dir_search(robot)
+        if robot_dir is False:
+            return False
 
         try:
             shutil.move(robot_dir, destination_dir)
@@ -417,7 +411,7 @@ def robot_generate(argv):
     if coordinator_url is False:
         return False
 
-    destination_mode, argv = get_destination_mode(argv)
+    destination_mode, argv = get_destination_mode(argv, default_mode="paused")
     if destination_mode is False:
         return False
 

@@ -38,12 +38,20 @@ $(
 
         local roboauto_home="${XDG_DATA_HOME:-${XDG_LOCAL_HOME:-$HOME/.local}/share}/roboauto"
         local active_home="$roboauto_home/active"
+        local pending_home="$roboauto_home/pending"
         local inactive_home="$roboauto_home/inactive"
         local paused_home="$roboauto_home/paused"
 
-        if [ ! -d "$active_home" ] || [ ! -d "$inactive_home" ] || [ ! -d "$paused_home" ]; then
+        if
+            [ ! -d "$active_home" ] ||
+            [ ! -d "$pending_home" ] ||
+            [ ! -d "$inactive_home" ] ||
+            [ ! -d "$paused_home" ]
+        then
             return 0
         fi
+
+        set -- "$active_home" "$pending_home" "$inactive_home" "$paused_home"
 
         case "$action" in
         import-robot)
@@ -58,21 +66,18 @@ $(
         ;;
         remove-robot|print-token|print-coordinator)
             if [ "${cword}" -eq 2 ]; then
-                OPTS="$(
-                    ___roboauto_get_robots \
-                        "$active_home" "$inactive_home" "$paused_home"
-                )"
+                OPTS="$(___roboauto_get_robots "$@")"
             fi
         ;;
         set-active)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$(
                     ___roboauto_get_robots \
-                        "$inactive_home" "$paused_home"
+                        "$pending_home" "$inactive_home" "$paused_home"
                 )"
             fi
         ;;
-        set-inactive|set-paused)
+        set-pending|set-inactive|set-paused)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="
 --all
@@ -89,7 +94,7 @@ $(___roboauto_get_robots "$active_home")"
 --active
 --inactive
 --paused
-$(___roboauto_get_robots "$active_home" "$inactive_home" "$paused_home")"
+$(___roboauto_get_robots "$@")"
             fi
 
         ;;
@@ -106,7 +111,7 @@ $(___roboauto_get_robots "$active_home" "$inactive_home" "$paused_home")"
                 OPTS="$OPTS
 --stdin
 --stdin-base91
-$(___roboauto_get_robots "$active_home")"
+$(___roboauto_get_robots "$active_home" "$pending_home")"
             fi
             if [ "${cword}" -eq 3 ] || [ "${cword}" -eq 4 ]; then
                 if [ "$prev" = "--stdin" ] || [ "$prev" = "--stdin-base91" ]; then

@@ -78,11 +78,19 @@ def robot_info(argv):
     """print info about a robot and his order if --no-order is not specified"""
     robot = False
     robot_dir = False
+
+    robot_print = True
     order_print = True
+    chat_print = False
+
     token_base91 = False
     while len(argv) > 0:
         if argv[0] == "--no-order":
             order_print = False
+        elif argv[0] == "--chat":
+            robot_print = False
+            order_print = False
+            chat_print = True
         elif argv[0] == "--stdin":
             token_string = sys.stdin.readline().rstrip()
             token_base91 = token_get_base91(token_string)
@@ -117,7 +125,8 @@ def robot_info(argv):
     if robot_response is False:
         return False
 
-    print_out(json_dumps(robot_response_json))
+    if robot_print:
+        print_out(json_dumps(robot_response_json))
 
     if robot is False:
         robot = robot_response_json.get("nickname", "unknown")
@@ -131,7 +140,7 @@ def robot_info(argv):
 
     order_id = str(order_id_number)
 
-    if order_print:
+    if order_print or chat_print:
         order_dic = api_order_get_dic_handle(robot, token_base91, robot_url, order_id)
         if order_dic is False:
             return False
@@ -142,18 +151,9 @@ def robot_info(argv):
 
         order_response_json = order_dic["order_response_json"]
 
-        print_out(json_dumps(order_response_json))
+        if order_print:
+            print_out(json_dumps(order_response_json))
 
-        order_status = order_response_json.get("status", False)
-        if order_status is False:
-            print_err(json_dumps(order_response_json), error=False, date=False)
-            print_err("order getting order_status for " + robot)
-            return False
-
-        status = get_order_string(order_status)
-        print_out(robot + " " + order_id + " " + status)
-
-        chat_print = False
         if chat_print:
             chat_response_all = requests_api_chat(token_base91, order_id, robot_url)
             if response_is_error(chat_response_all):

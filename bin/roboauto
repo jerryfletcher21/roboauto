@@ -29,18 +29,18 @@ info = """\
 roboauto action [options]
 
 list-configs
-import-robot --{coordinator} [--inactive, --paused] [robot-name] [token]
+import-robot --{coordinator} [--pending, --inactive, --paused] [robot-name] [token]
 remove-robot [robot-name]
 print-token [robot-name]
 print-coordinator [robot-name]
-list-active|list-inactive|list-paused
+list-active|list-pending|list-inactive|list-paused
 waiting-queue
 set-active [robot-name]
-set-inactive|set-paused [robot-name/--all]
-order-info-local [--full] [robot-name/--active/--paused/--inactive/directory] [order-id]
+set-pending|set-inactive|set-paused [robot-name/--all]
+order-info-local [--full] [robot-name/--active/--pending/--paused/--inactive/directory] [order-id]
 slowly-move-to-active [seconds]
 robosats-info --{coordinator}
-generate-robot --{coordinator} [--inactive, --paused]
+generate-robot --{coordinator} [--active, --pending, --inactive]
 robot-info [--no-order] [robot-name]
 robot-info [--no-order] --stdin|--stdin-base91 --{coordinator}|coordinator-url
 list-limits --{coordinator}
@@ -67,7 +67,7 @@ roboauto action [options]
 list-configs
     list configs
 
-import-robot --{coordinator} [--inactive, --paused] [robot-name] [token]
+import-robot --{coordinator} [--pending, --inactive, --paused] [robot-name] [token]
     import a robot, robot-name and token are required
     if not passed as arguments roboauto will ask for them
     by default the new robot is put in the active folder
@@ -84,23 +84,23 @@ print-token [robot-name]
 print-coordinator [robot-name]
     print robot coordinator and url
 
-list-active|list-inactive|list-paused
-    list active|inactive|paused robots one per line
+list-active|list-pending|list-inactive|list-paused
+    list active|pending|inactive|paused robots one per line
 
 waiting-queue
     list waiting queue
 
 set-active [robot-name]
-    set an inactive/paused robot active
+    set a pending|inactive|paused robot active
 
-set-inactive|set-paused [robot-name/--all]
-    set an active robot inactive|paused
+set-pending|set-inactive|set-paused [robot-name/--all]
+    set an active robot active|pending|inactive|paused
     if --all, set all robot
 
-order-info-local [--full] [robot-name/--active/--paused/--inactive/directory] [order-id]
+order-info-local [--full] [robot-name/--active/--pending/--paused/--inactive/directory] [order-id]
     print info about an order from disk
     if --full is provided print all data about the order
-    if --active, --paused, --inactive or a directory is passed print
+    if --active, --pending, --paused, --inactive or a directory is passed print
     local order info about all robots in the directory
 
 slowly-move-to-active [seconds]
@@ -110,8 +110,8 @@ slowly-move-to-active [seconds]
 robosats-info --{coordinator}
     get info about robosats
 
-generate-robot --{coordinator} [--inactive, --paused]
-    generate a robot on coordinator
+generate-robot --{coordinator} [--active, --pending, --inactive]
+    generate a robot on coordinator by default in paused dir
 
 robot-info [--no-order] [robot-name]
 robot-info [--no-order] --stdin|--stdin-base91 --{coordinator}|coordinator-url
@@ -210,6 +210,8 @@ try:
         return_status = robot_print_coordinator(argv)
     elif action == "list-active":
         return_status = robot_print_dir(roboauto_state["active_home"])
+    elif action == "list-pending":
+        return_status = robot_print_dir(roboauto_state["pending_home"])
     elif action == "list-inactive":
         return_status = robot_print_dir(roboauto_state["inactive_home"])
     elif action == "list-paused":
@@ -217,6 +219,8 @@ try:
     elif action == "waiting-queue":
         return_status = waiting_queue_print()
     elif action == "set-active":
+        return_status = robot_set_dir(roboauto_state["active_home"], argv)
+    elif action == "set-pending":
         return_status = robot_set_dir(roboauto_state["active_home"], argv)
     elif action == "set-inactive":
         return_status = robot_set_dir(roboauto_state["inactive_home"], argv)

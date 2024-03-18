@@ -33,6 +33,7 @@ roboauto_state = {
     "fetch_site": "cross-site",
     # "fetch_site": "same-origin",
     "active_home": "",
+    "pending_home": "",
     "inactive_home": "",
     "paused_home": "",
     "lock_home": "",

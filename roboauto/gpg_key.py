@@ -3,8 +3,6 @@
 # pylint: disable=C0114 missing-module-docstring
 # pylint: disable=C0116 missing-function-docstring
 
-import datetime
-
 import gnupg
 
 from roboauto.global_state import roboauto_state
@@ -18,20 +16,29 @@ def gpg_generate_robot(token):
 
     key_passphrase = token
 
-    date_yesterday = (
-        datetime.datetime.now() - datetime.timedelta(days=1)
-    ).strftime("%Y%m%dT%H%M%S")
-
-    input_data = gpg.gen_key_input(
-        key_type="EDDSA",
-        key_curve="ed25519",
-        name_real="RoboSats ID " + token_double_sha256,
-        creation_date=date_yesterday,
-        passphrase=key_passphrase
-    )
+    # stupid python-gnupg put by default Name-Email which can not be removed
+    # fortunatly gen_key_input simply returns a string
+    # input_data = gpg.gen_key_input(
+    #     key_type="EDDSA",
+    #     key_curve="ed25519",
+    #     key_usage="sign",
+    #     name_real="RoboSats ID " + token_double_sha256,
+    #     passphrase=key_passphrase
+    # )
+    input_data = f"""\
+Key-Type: EDDSA
+Key-Curve: ed25519
+Key-Usage: sign
+Name-Real: RoboSats ID {token_double_sha256}
+Passphrase: {key_passphrase}
+%commit
+"""
 
     key = gpg.gen_key(input_data)
+
     fingerprint = key.fingerprint
+
+    gpg.add_subkey(fingerprint, key_passphrase, algorithm="cv25519", usage="encrypt")
 
     public_key = gpg.export_keys(fingerprint, secret=False, armor=True)
     private_key = gpg.export_keys(
