@@ -71,10 +71,12 @@ def api_order_get_dic(robot, token_base91, robot_url, order_id):
     order_info:  everything not in order_data and order_user
     order_response_json: the json response from the coordinator"""
     order_response_all = requests_api_order(token_base91, order_id, robot_url)
+    # error 500 when the old order is purged from the server
+    # maybe create last order from local if available
+    if order_response_all.status_code in (400, 500):
+        return None
     if response_is_error(order_response_all):
         return False
-    if order_response_all.status_code == 400:
-        return None
     order_response = order_response_all.text
     order_response_json = json_loads(order_response)
     if order_response_json is False:
@@ -223,7 +225,8 @@ def robot_cancel_order(robot, token_base91):
 
             if \
                 not order_is_public(status_id) and \
-                not order_is_paused(status_id):
+                not order_is_paused(status_id) and \
+                not order_is_waiting_maker_bond(status_id):
                 print_err("robot order %s %s is not public or paused" % (robot, order_id))
                 return False
 

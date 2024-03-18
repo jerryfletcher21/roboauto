@@ -157,8 +157,11 @@ $(___roboauto_get_robots "$active_home")"
             fi
             if [ "${cword}" -eq 3 ]; then
                 case "$prev" in
-                --no-cancel|--no-bond)
+                --no-cancel)
                     OPTS="$(___roboauto_get_robots "$paused_home" "$inactive_home")"
+                ;;
+                --no-bond)
+                    OPTS="$(___roboauto_get_robots "$active_home")"
                 ;;
                 esac
             fi
