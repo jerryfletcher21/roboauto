@@ -9,7 +9,7 @@ import datetime
 
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state, roboauto_options
-from roboauto.robot import robot_list_dir, get_waiting_queue
+from roboauto.robot import robot_list_dir, waiting_queue_get
 from roboauto.order_local import \
     get_offer_dic, offer_dic_print, order_get_order_dic
 from roboauto.requests_api import response_is_error, requests_api_book
@@ -78,7 +78,7 @@ def get_offers_per_hour(relative):
 
     current_timestamp = get_current_timestamp()
 
-    nicks_waiting = get_waiting_queue()
+    nicks_waiting = waiting_queue_get()
     if nicks_waiting is False:
         return False
 

@@ -94,6 +94,7 @@ $(___roboauto_get_robots "$active_home")"
 --active
 --inactive
 --paused
+--dir
 $(___roboauto_get_robots "$@")"
             fi
 

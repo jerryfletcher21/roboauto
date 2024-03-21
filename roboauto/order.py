@@ -27,20 +27,18 @@ from roboauto.order_local import \
     order_is_expired, order_data_from_order_user, \
     get_order_data, order_get_order_dic, order_save_order_file
 from roboauto.robot import \
-    robot_dir_search, robot_get_lock_file, \
-    robot_get_token_base91, robot_set_dir, \
-    robot_get_coordinator, robot_input_ask, \
-    get_waiting_queue, robot_get_data, robot_requests_robot
+    robot_get_lock_file, robot_input_from_argv, \
+    waiting_queue_get, robot_requests_robot, robot_change_dir
 from roboauto.requests_api import \
     requests_api_order, requests_api_cancel, requests_api_make, response_is_error
 from roboauto.utils import \
     json_dumps, file_is_executable, subprocess_run_command, \
     json_loads, file_json_write, \
     input_ask, roboauto_get_coordinator_url, \
-    roboauto_get_coordinator_from_url
+    roboauto_get_coordinator_from_url, token_get_base91
 
 
-def get_empty_order_user(with_default):
+def order_user_get(with_default):
     empty_order = {
         "type":                 False,
         "currency":             False,
@@ -70,6 +68,7 @@ def api_order_get_dic(robot, token_base91, robot_url, order_id):
                  by the user
     order_info:  everything not in order_data and order_user
     order_response_json: the json response from the coordinator"""
+
     order_response_all = requests_api_order(token_base91, order_id, robot_url)
     # error 500 when the old order is purged from the server
     # maybe create last order from local if available
@@ -185,14 +184,15 @@ def api_order_get_dic_handle(robot, token_base91, robot_url, order_id):
     return order_dic
 
 
-def robot_cancel_order(robot, token_base91):
-    robot_dir = roboauto_state["active_home"] + "/" + robot
-    if not os.path.isdir(robot_dir):
+def robot_cancel_order(robot_dic):
+    robot = robot_dic["name"]
+    token_base91 = token_get_base91(robot_dic["token"])
+    robot_dir = robot_dic["dir"]
+    robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
+
+    if robot_dic["state"] != "active":
         print_err("robot %s is not in the active directory" % robot)
         return False
-    robot_url = roboauto_get_coordinator_url(
-        robot_get_coordinator(robot, robot_dir)
-    )
 
     try:
         with filelock.SoftFileLock(
@@ -256,16 +256,19 @@ def robot_cancel_order(robot, token_base91):
     return True
 
 
-def bond_order(robot, token_base91, robot_url, order_id, bond_amount):
+def bond_order(robot_dic, order_id, bond_amount):
     """bond an order, if bond amount is not False, also check invoice
     will run the pay_command as a subprocess"""
+
+    robot = robot_dic["name"]
+    robot_dir = robot_dic["dir"]
+    token_base91 = token_get_base91(robot_dic["token"])
+    robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
+
     order_dic = api_order_get_dic_handle(robot, token_base91, robot_url, order_id)
     if order_dic is False:
         return False
 
-    robot_dir = robot_dir_search(robot)
-    if robot_dir is False:
-        return False
     if not order_save_order_file(robot_dir, order_id, order_dic):
         return False
 
@@ -348,10 +351,15 @@ def bond_order(robot, token_base91, robot_url, order_id, bond_amount):
 
 
 def make_order(
-    robot, token_base91, robot_url, order_id, make_data, satoshis_now, should_bond=True
+    robot_dic, order_id, make_data, satoshis_now, should_bond=True
 ):
     """make the request to the coordinator to create an order,
     and if should_bond is true, also bond it"""
+
+    robot = robot_dic["name"]
+    token_base91 = token_get_base91(robot_dic["token"])
+    robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
+
     if not make_data["bond_size"]:
         print_err("bond size percentage not defined")
         return False
@@ -394,12 +402,12 @@ def make_order(
 
     order_id = str(order_id_number)
 
-    return bond_order(robot, token_base91, robot_url, order_id, bond_amount)
+    return bond_order(robot_dic, order_id, bond_amount)
 
 
 def order_user_from_argv(argv, with_default=False):
     """get order_user's fields from argv"""
-    order_user = get_empty_order_user(with_default)
+    order_user = order_user_get(with_default)
 
     while len(argv) > 0:
         param = argv[0]
@@ -427,17 +435,14 @@ def create_order(argv):
         elif re.match('^-', argv[0]) is not None:
             print_err("option %s not recognized" % argv[0])
             return False
-    robot, argv = robot_input_ask(argv)
-    if robot is False:
+    robot_dic, argv = robot_input_from_argv(argv)
+    if robot_dic is False:
         return False
 
-    robot_dir = roboauto_state["paused_home"] + "/" + robot
-    if not os.path.isdir(robot_dir):
+    robot = robot_dic["name"]
+
+    if robot_dic["state"] != "paused":
         print_err("robot %s is not in the paused directory" % robot)
-        return False
-
-    token_base91, _, robot_url = robot_get_data(robot, robot_dir)
-    if token_base91 is False:
         return False
 
     order_user = order_user_from_argv(argv, with_default=True)
@@ -456,37 +461,33 @@ def create_order(argv):
         return False
 
     if make_order(
-        robot, token_base91, robot_url,
+        robot_dic,
         False, order_data, False,
         should_bond=should_bond
     ) is False:
         return False
 
-    if not robot_set_dir(roboauto_state["active_home"], [robot]):
+    if not robot_change_dir(robot, "active"):
         return False
 
     return True
 
 
 def cancel_order(argv):
-    robot, argv = robot_input_ask(argv)
-    if robot is False:
+    robot_dic, argv = robot_input_from_argv(argv)
+    if robot_dic is False:
         return False
 
-    robot_dir = roboauto_state["active_home"] + "/" + robot
-    if not os.path.isdir(robot_dir):
+    robot = robot_dic["name"]
+
+    if robot_dic["state"] != "active":
         print_err("robot %s is not in the active directory" % robot)
         return False
 
-    token_base91 = robot_get_token_base91(robot, robot_dir)
-    if token_base91 is False:
-        print_err("getting token base91 for " + robot)
+    if not robot_cancel_order(robot_dic):
         return False
 
-    if not robot_cancel_order(robot, token_base91):
-        return False
-
-    if not robot_set_dir(roboauto_state["inactive_home"], [robot]):
+    if not robot_change_dir(robot, "inactive"):
         return False
 
     print_out("%s moved to inactive" % robot)
@@ -507,31 +508,21 @@ def recreate_order(argv):
         elif re.match('^-', argv[0]) is not None:
             print_err("option %s not recognized" % argv[0])
             return False
-    robot, argv = robot_input_ask(argv)
-    if robot is False:
+    robot_dic, argv = robot_input_from_argv(argv)
+    if robot_dic is False:
         return False
 
+    robot = robot_dic["name"]
+    robot_dir = robot_dic["dir"]
+
     if should_cancel:
-        robot_dir = roboauto_state["active_home"] + "/" + robot
-        if not os.path.isdir(robot_dir):
+        if robot_dic["state"] != "active":
             print_err("robot %s is not in the active directory" % robot)
             return False
     else:
-        robot_dir = roboauto_state["paused_home"] + "/" + robot
-        if not os.path.isdir(robot_dir):
-            robot_dir = roboauto_state["inactive_home"] + "/" + robot
-            if not os.path.isdir(robot_dir):
-                print_err("robot %s is not in the paused or inactive directories" % robot)
-                return False
-
-    token_base91 = robot_get_token_base91(robot, robot_dir)
-    if token_base91 is False:
-        print_err("getting token base91 for " + robot)
-        return False
-
-    robot_url = roboauto_get_coordinator_url(
-        robot_get_coordinator(robot, robot_dir)
-    )
+        if robot_dic["state"] not in ("paused", "inactive"):
+            print_err("robot %s is not in the paused or inactive directories" % robot)
+            return False
 
     if len(argv) > 0:
         order_user_changed = True
@@ -543,7 +534,7 @@ def recreate_order(argv):
         return False
 
     if should_cancel:
-        if not robot_cancel_order(robot, token_base91):
+        if not robot_cancel_order(robot_dic):
             return False
 
     orders_dir = robot_dir + "/orders"
@@ -572,24 +563,26 @@ def recreate_order(argv):
         return False
 
     if not make_order(
-        robot, token_base91, robot_url,
+        robot_dic,
         order_id, order_data, satoshis_now,
         should_bond=should_bond
     ):
         return False
 
     if should_cancel is False:
-        if not robot_set_dir(roboauto_state["active_home"], [robot]):
+        if not robot_change_dir(robot, "active"):
             return False
 
     return True
 
 
-def wait_order(robot):
+def wait_order(robot_dic):
     """move robot to waiting queue"""
-    nicks_waiting = get_waiting_queue()
+    nicks_waiting = waiting_queue_get()
     if nicks_waiting is False:
         return False
+
+    robot = robot_dic["name"]
 
     nicks_waiting.append(robot)
     print_out(robot + " added to waiting queue")

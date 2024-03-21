@@ -248,10 +248,13 @@ def global_setup():
         if not dir_make_sure_exists(directory):
             return False
 
-    gnupg_home_permission = 0o700
+    all_permission = 0o777
+    gnupg_home_desired_permission = 0o700
     try:
-        if os.stat(roboauto_state["gnupg_home"]).st_mode & 0o777 != gnupg_home_permission:
-            os.chmod(roboauto_state["gnupg_home"], gnupg_home_permission)
+        gnupg_home_current_permission = \
+            os.stat(roboauto_state["gnupg_home"]).st_mode & all_permission
+        if gnupg_home_current_permission != gnupg_home_desired_permission:
+            os.chmod(roboauto_state["gnupg_home"], gnupg_home_desired_permission)
     except OSError:
         print_err("changing permissions on gnupg home")
         return False

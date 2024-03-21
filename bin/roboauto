@@ -13,7 +13,7 @@ from roboauto.global_state import roboauto_state
 from roboauto.utils import global_setup, list_configs, update_roboauto_options
 from roboauto.robot import \
     robot_import, robot_remove, robot_print_token, robot_print_coordinator, \
-    robot_print_dir, waiting_queue_print, robot_set_dir, robot_generate
+    robot_print_dir, waiting_queue_print, robot_change_dir_from_argv, robot_generate
 from roboauto.order_local import order_info_local
 from roboauto.order import create_order, cancel_order, recreate_order
 from roboauto.info import robosats_info, robot_info, list_limits
@@ -37,7 +37,9 @@ list-active|list-pending|list-inactive|list-paused
 waiting-queue
 set-active [robot-name]
 set-pending|set-inactive|set-paused [robot-name/--all]
-order-info-local [--full] [robot-name/--active/--pending/--paused/--inactive/directory] [order-id]
+order-info-local [--full] robot-name [order-id]
+order-info-local [--full] --active/--pending/--paused/--inactive
+order-info-local [--full] --dir directory
 slowly-move-to-active [seconds]
 robosats-info --{coordinator}
 generate-robot --{coordinator} [--active, --pending, --inactive]
@@ -97,7 +99,9 @@ set-pending|set-inactive|set-paused [robot-name/--all]
     set an active robot active|pending|inactive|paused
     if --all, set all robot
 
-order-info-local [--full] [robot-name/--active/--pending/--paused/--inactive/directory] [order-id]
+order-info-local [--full] robot-name [order-id]
+order-info-local [--full] --active/--pending/--paused/--inactive
+order-info-local [--full] --dir directory
     print info about an order from disk
     if --full is provided print all data about the order
     if --active, --pending, --paused, --inactive or a directory is passed print
@@ -219,13 +223,13 @@ try:
     elif action == "waiting-queue":
         return_status = waiting_queue_print()
     elif action == "set-active":
-        return_status = robot_set_dir(roboauto_state["active_home"], argv)
+        return_status = robot_change_dir_from_argv("active", argv)
     elif action == "set-pending":
-        return_status = robot_set_dir(roboauto_state["active_home"], argv)
+        return_status = robot_change_dir_from_argv("pending", argv)
     elif action == "set-inactive":
-        return_status = robot_set_dir(roboauto_state["inactive_home"], argv)
+        return_status = robot_change_dir_from_argv("inactive", argv)
     elif action == "set-paused":
-        return_status = robot_set_dir(roboauto_state["paused_home"], argv)
+        return_status = robot_change_dir_from_argv("paused", argv)
     elif action == "order-info-local":
         return_status = order_info_local(argv)
     elif action == "slowly-move-to-active":

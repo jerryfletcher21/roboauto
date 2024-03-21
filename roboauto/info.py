@@ -15,9 +15,7 @@ import re
 
 from roboauto.logger import print_out, print_err
 from roboauto.robot import \
-    robot_dir_search, robot_get_token_base91, \
-    robot_get_coordinator, robot_input_ask_and_dir, \
-    robot_get_data, robot_requests_robot
+    robot_input_from_argv, robot_requests_robot
 from roboauto.order_local import get_order_string, order_save_order_file
 from roboauto.order import api_order_get_dic_handle
 from roboauto.requests_api import \
@@ -76,7 +74,7 @@ def robosats_info(argv):
 
 def robot_info(argv):
     """print info about a robot and his order if --no-order is not specified"""
-    robot = False
+    robot_name = False
     robot_dir = False
 
     robot_print = True
@@ -84,6 +82,7 @@ def robot_info(argv):
     chat_print = False
 
     token_base91 = False
+
     while len(argv) > 0:
         if argv[0] == "--no-order":
             order_print = False
@@ -101,13 +100,14 @@ def robot_info(argv):
         argv = argv[1:]
 
     if token_base91 is False:
-        robot, argv, robot_dir = robot_input_ask_and_dir(argv)
-        if robot is False:
+        robot_dic, argv = robot_input_from_argv(argv)
+        if robot_dic is False:
             return False
 
-        token_base91, _, robot_url = robot_get_data(robot, robot_dir)
-        if token_base91 is False:
-            return False
+        robot_name = robot_dic["name"]
+        token_base91 = token_get_base91(robot_dic["token"])
+        robot_dir = robot_dic["dir"]
+        robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
     else:
         if len(argv) < 1:
             print_err("insert coordinator name or link")
@@ -128,20 +128,20 @@ def robot_info(argv):
     if robot_print:
         print_out(json_dumps(robot_response_json))
 
-    if robot is False:
-        robot = robot_response_json.get("nickname", "unknown")
+    if robot_name is False:
+        robot_name = robot_response_json.get("nickname", "unknown")
 
     order_id_number = robot_response_json.get("active_order_id", False)
     if order_id_number is False:
         order_id_number = robot_response_json.get("last_order_id", False)
         if order_id_number is False:
-            print_err(robot + " does not have active orders")
+            print_err(robot_name + " does not have active orders")
             return True
 
     order_id = str(order_id_number)
 
     if order_print or chat_print:
-        order_dic = api_order_get_dic_handle(robot, token_base91, robot_url, order_id)
+        order_dic = api_order_get_dic_handle(robot_name, token_base91, robot_url, order_id)
         if order_dic is False:
             return False
 

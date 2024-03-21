@@ -24,8 +24,8 @@ from roboauto.utils import \
     is_float, get_int, dir_make_sure_exists, file_json_write, \
     directory_get_last_number_file
 from roboauto.robot import \
-    robot_list_dir, robot_get_coordinator, robot_input_ask, \
-    robot_dir_search
+    robot_list_dir, robot_input_from_argv, \
+    robot_get_dir_dic, robot_load_from_name
 
 
 def get_type_string(target, reverse=False):
@@ -302,10 +302,11 @@ def offer_dic_print(offer_dic):
     ))
 
 
-def print_robot_order(robot, robot_dir, order_id, one_line, full_mode):
+def print_robot_order(robot, order_id, one_line, full_mode):
     order_id_error = "------"
 
-    coordinator = robot_get_coordinator(robot, robot_dir, warning_print=False)
+    robot_dir = robot["dir"]
+    coordinator = robot["coordinator"]
     coordinator_str = str(coordinator)[:3]
 
     orders_dir = robot_dir + "/orders"
@@ -367,25 +368,46 @@ def order_info_local(argv):
             full_mode = True
             argv = argv[1:]
 
-    robot, argv = robot_input_ask(argv)
-    if robot is False:
-        return False
+    first_arg = argv[0]
+    if first_arg in ("--active", "--pending", "--paused", "--inactive"):
+        argv = argv[1:]
+        destination_dir = robot_get_dir_dic()[first_arg[2:]]
 
-    if re.match('^-', robot) is None:
-        robot_dir = robot_dir_search(robot, error_print=False)
-        if robot_dir is False:
-            robot_dir = robot
-            if os.path.isdir(robot_dir):
-                for robot in os.listdir(robot_dir):
-                    if not print_robot_order(
-                        robot, robot_dir + "/" + robot, False,
-                        one_line=True, full_mode=full_mode
-                    ):
-                        return False
-                return True
-            else:
-                print_err("%s is not a robot and not a directory" % robot)
+        for robot_name in os.listdir(destination_dir):
+            robot = robot_load_from_name(robot_name, error_print=False)
+            if robot is False:
                 return False
+            if not print_robot_order(
+                robot, False,
+                one_line=True, full_mode=full_mode
+            ):
+                return False
+    elif first_arg == "--dir":
+        argv = argv[1:]
+        if len(argv) < 1:
+            print_err("insert directory")
+            return False
+        robot_dir = argv[0]
+        argv = argv[1:]
+
+        if os.path.isdir(robot_dir):
+            for robot_name in os.listdir(robot_dir):
+                robot = robot_load_from_name(robot_name, error_print=False)
+                if robot is False:
+                    return False
+                if not print_robot_order(
+                    robot, False,
+                    one_line=True, full_mode=full_mode
+                ):
+                    return False
+    elif re.match('^-', first_arg) is not None:
+        argv = argv[1:]
+        print_err("option %s not recognized" % first_arg)
+        return False
+    else:
+        robot, argv = robot_input_from_argv(argv)
+        if robot is False:
+            return False
 
         if len(argv) >= 1:
             order_id = argv[0]
@@ -393,28 +415,10 @@ def order_info_local(argv):
         else:
             order_id = False
 
-        return print_robot_order(
-            robot, robot_dir, order_id, one_line=False, full_mode=full_mode
-        )
-    elif robot in ("--active", "--pending", "--paused", "--inactive"):
-        if robot == "--active":
-            destination_dir = roboauto_state["active_home"]
-        elif robot == "--pending":
-            destination_dir = roboauto_state["pending_home"]
-        elif robot == "--paused":
-            destination_dir = roboauto_state["paused_home"]
-        elif robot == "--inactive":
-            destination_dir = roboauto_state["inactive_home"]
-
-        for robot in os.listdir(destination_dir):
-            if not print_robot_order(
-                robot, destination_dir + "/" + robot, False,
-                one_line=True, full_mode=full_mode
-            ):
-                return False
-    else:
-        print_err("option %s not recognized" % robot)
-        return False
+        if not print_robot_order(
+            robot, order_id, one_line=False, full_mode=full_mode
+        ):
+            return False
 
     return True
 

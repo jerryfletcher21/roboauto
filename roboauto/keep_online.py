@@ -19,9 +19,8 @@ import filelock
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import \
-    robot_set_dir, robot_get_token_base91, \
-    robot_get_lock_file, robot_list_dir, robot_get_coordinator, \
-    get_waiting_queue, robot_requests_robot
+    robot_get_lock_file, robot_list_dir, robot_load_from_name, \
+    waiting_queue_get, robot_requests_robot, robot_change_dir
 from roboauto.order_local import \
     robot_handle_taken, \
     order_is_public, order_is_paused, \
@@ -37,7 +36,7 @@ from roboauto.book import \
 from roboauto.utils import \
     get_uint, file_json_write, \
     update_roboauto_options, \
-    roboauto_get_coordinator_url
+    roboauto_get_coordinator_url, token_get_base91
 
 
 def slowly_move_to_active(argv):
@@ -70,9 +69,15 @@ def slowly_move_to_active(argv):
     return True
 
 
-def robot_check_expired(robot, token_base91, robot_url, robot_this_hour):
+def robot_check_expired(robot_dic, robot_this_hour):
     """check what happened to a robot that is no longer active
     return 1 if the robot is back online, 0 if not, false if something wrong"""
+
+    robot = robot_dic["name"]
+    token_base91 = token_get_base91(robot_dic["token"])
+    robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
+    robot_dir = robot_dic["dir"]
+
     robot_response, robot_response_json = robot_requests_robot(token_base91, robot_url)
     if robot_response is False:
         return False
@@ -93,14 +98,13 @@ def robot_check_expired(robot, token_base91, robot_url, robot_this_hour):
     elif order_dic is None:
         print_out(robot + " last order not available")
         print_out(robot + " moving to paused")
-        if not robot_set_dir(roboauto_state["paused_home"], [robot]):
+        if not robot_change_dir(robot, "paused"):
             print_err("moving " + robot + " to paused")
             return False
         return 0
 
     order_info = order_dic["order_info"]
 
-    robot_dir = roboauto_state["active_home"] + "/" + robot
     if not order_save_order_file(robot_dir, order_id, order_dic):
         return False
 
@@ -116,7 +120,7 @@ def robot_check_expired(robot, token_base91, robot_url, robot_this_hour):
     elif order_is_paused(status_id):
         print_out(robot + " " + order_id + " " + order_info["order_description"])
         print_out(robot + " " + order_id + " moving to paused")
-        if not robot_set_dir(roboauto_state["paused_home"], [robot]):
+        if not robot_change_dir(robot, "paused"):
             print_err("moving " + robot + " to paused")
             return False
     elif order_is_waiting_taker_bond(status_id):
@@ -124,22 +128,22 @@ def robot_check_expired(robot, token_base91, robot_url, robot_this_hour):
         return 1
     elif order_is_waiting_maker_bond(status_id):
         if robot_this_hour < maximum_per_hour:
-            if not bond_order(robot, token_base91, robot_url, order_id, False):
+            if not bond_order(robot_dic, order_id, False):
                 return False
             return 1
         else:
-            if not wait_order(robot):
+            if not wait_order(robot_dic):
                 return False
     elif order_is_expired(status_id):
         if robot_this_hour < maximum_per_hour:
             if not make_order(
-                robot, token_base91, robot_url, order_id,
+                robot_dic, order_id,
                 order_dic["order_data"], order_info["satoshis_now"]
             ):
                 return False
             return 1
         else:
-            if not wait_order(robot):
+            if not wait_order(robot_dic):
                 return False
     else:
         if not robot_handle_taken(robot, status_id, order_id, order_info["order_description"]):
@@ -214,14 +218,9 @@ def list_orders_single_book(
         nicks.append(robot)
 
     for robot in robot_list:
-        robot_dir = roboauto_state["active_home"] + "/" + robot
-        token_base91 = robot_get_token_base91(robot, robot_dir)
-        if token_base91 is False:
-            print_err("getting token base91 for " + robot)
-            continue
-        robot_url = roboauto_get_coordinator_url(
-            robot_get_coordinator(robot, robot_dir)
-        )
+        robot_dic = robot_load_from_name(robot)
+        if robot_dic is False:
+            return False
 
         if robot not in nicks:
             if robot not in nicks_waiting:
@@ -237,7 +236,7 @@ def list_orders_single_book(
                                 print_err("negative robot this hour")
                                 robot_this_hour = 0
                         robot_online = robot_check_expired(
-                            robot, token_base91, robot_url, robot_this_hour
+                            robot_dic, robot_this_hour
                         )
                         if robot_online is False or robot_online == 0:
                             continue
@@ -332,13 +331,15 @@ def keep_online():
 
         robot_this_hour = 0
 
-        nicks_waiting = get_waiting_queue()
+        nicks_waiting = waiting_queue_get()
         if nicks_waiting is False:
             return False
 
         for robot in robot_list:
-            robot_dir = roboauto_state["active_home"] + "/" + robot
-            coordinator = robot_get_coordinator(robot, robot_dir)
+            robot_dic = robot_load_from_name(robot)
+            if robot_dic is False:
+                return False
+            coordinator = robot_dic["coordinator"]
             if coordinator_robot_list.get(coordinator, False) is False:
                 coordinator_robot_list.update({coordinator: []})
             coordinator_robot_list[coordinator].append(robot)

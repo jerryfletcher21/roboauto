@@ -2,12 +2,9 @@
 
 # pylint: disable=C0114 missing-module-docstring
 # pylint: disable=C0116 missing-function-docstring
-# pylint: disable=C0209 consider-using-f-string
 # pylint: disable=R0911 too-many-return-statements
 # pylint: disable=R0912 too-many-branches
 # pylint: disable=R0914 too-many-locals
-# pylint: disable=R1705 no-else-return
-# pylint: disable=W0511 fixme
 
 import os
 import re
@@ -31,102 +28,81 @@ from roboauto.utils import \
 from roboauto.gpg_key import gpg_generate_robot
 
 
-def robot_input_ask(argv):
-    multi_false = False, False
-    if len(argv) >= 1:
-        robot = argv[0]
-        argv = argv[1:]
+def robot_get_dir_dic():
+    return {
+        "active": roboauto_state["active_home"],
+        "pending": roboauto_state["pending_home"],
+        "paused": roboauto_state["paused_home"],
+        "inactive": roboauto_state["inactive_home"]
+    }
+
+
+def robot_get_dic(robot_name, robot_state, robot_dir, token, coordinator):
+    return {
+        "name": robot_name,
+        "state": robot_state,
+        "dir": robot_dir,
+        "token": token,
+        "coordinator": coordinator
+    }
+
+
+def robot_load_from_name(robot_name, error_print=True):
+    possible_state_base_dir = robot_get_dir_dic()
+    found = False
+    for possible_state, possible_base_dir in possible_state_base_dir.items():
+        possible_dir = possible_base_dir + "/" + robot_name
+        if os.path.isdir(possible_dir):
+            if found is True:
+                if error_print:
+                    print_err(f"{robot_name} found in two directories")
+                return False
+            robot_state = possible_state
+            robot_dir = possible_dir
+            found = True
+    if found is False:
+        if error_print:
+            print_err(f"{robot_name} not found")
+        return False
+
+    token_file = robot_dir + "/token"
+    if not os.path.isfile(token_file):
+        if error_print:
+            print_err(f"{robot_name} does not have the token file")
+        return False
+    token = file_read(token_file, error_print=error_print)
+    if token is False:
+        if error_print:
+            print_err(f"{robot_name} reading the token")
+        return False
+
+    coordinator_file = robot_dir + "/coordinator"
+    if not os.path.isfile(coordinator_file):
+        if error_print:
+            print_err(f"{robot_name} does not have a coordinator, using default")
+        coordinator = roboauto_first_coordinator()
     else:
-        robot = input_ask_robot()
-        if robot is False:
-            return multi_false
-    if robot == "":
-        print_err("robot name not set")
-        return multi_false
+        coordinator = file_read(coordinator_file, error_print=error_print)
+        if coordinator is False:
+            if error_print:
+                print_war(f"{robot_name} reading coordinator, using default")
+            coordinator = roboauto_first_coordinator()
 
-    return robot, argv
-
-
-def robot_input_ask_and_dir(argv):
-    multi_false = False, False, False
-
-    robot, argv = robot_input_ask(argv)
-    if robot is False:
-        return multi_false
-
-    robot_dir = robot_dir_search(robot)
-    if robot_dir is False:
-        return multi_false
-
-    return robot, argv, robot_dir
+    return robot_get_dic(robot_name, robot_state, robot_dir, token, coordinator)
 
 
-def get_destination_mode(argv, default_mode="active"):
-    multi_false = False, False
-
-    destination_mode = default_mode
-
-    if len(argv) >= 1:
-        destination_arg = argv[0]
-        if destination_arg == "--pending":
-            destination_mode = "pending"
-            argv = argv[1:]
-        elif destination_arg == "--inactive":
-            destination_mode = "inactive"
-            argv = argv[1:]
-        elif destination_arg == "--paused":
-            destination_mode = "paused"
-            argv = argv[1:]
-        elif re.match('^-', destination_arg) is not None:
-            print_err("option %s not recognized" % destination_arg)
-            return multi_false
-
-    return destination_mode, argv
-
-
-def get_robot_dir_from_destination(robot, destination_mode):
-    if destination_mode == "pending":
-        robot_dir = roboauto_state["pending_home"] + "/" + robot
-    elif destination_mode == "active":
-        robot_dir = roboauto_state["active_home"] + "/" + robot
-    elif destination_mode == "inactive":
-        robot_dir = roboauto_state["inactive_home"] + "/" + robot
-    elif destination_mode == "paused":
-        robot_dir = roboauto_state["paused_home"] + "/" + robot
-    else:
-        robot_dir = False
-
-    return robot_dir
-
-
-def robot_dir_search(robot, error_print=True):
-    possible_base_dirs = [
-        roboauto_state["active_home"],
-        roboauto_state["pending_home"],
-        roboauto_state["paused_home"],
-        roboauto_state["inactive_home"]
-    ]
-    for possible_base_dir in possible_base_dirs:
-        robot_dir = possible_base_dir + "/" + robot
-        if os.path.isdir(robot_dir):
-            return robot_dir
-
-    if error_print:
-        print_err("robot " + robot + " not found")
-
-    return False
-
-
-def robot_write_token_coordinator(robot_dir, token, coordinator):
+def robot_save_to_disk(robot):
+    robot_dir = robot["dir"]
     if os.makedirs(robot_dir) is not None:
         print_err("creating directory")
         return False
 
+    coordinator = robot["coordinator"]
     if roboauto_options["federation"].get(coordinator, False) is False:
-        print_err("coordinator %s does not exists" % coordinator)
+        print_err(f"coordinator {coordinator} does not exists")
         return False
 
-    if file_write(robot_dir + "/token", token) is False:
+    if file_write(robot_dir + "/token", robot["token"]) is False:
         return False
 
     if file_write(robot_dir + "/coordinator", coordinator) is False:
@@ -135,26 +111,70 @@ def robot_write_token_coordinator(robot_dir, token, coordinator):
     return True
 
 
-def robot_import(argv):
-    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
-    if coordinator_url is False:
-        return False
+def robot_input_from_argv(argv, just_name=False, error_print=True):
+    multi_false = False, False
+    if len(argv) >= 1:
+        robot_name = argv[0]
+        argv = argv[1:]
+    else:
+        robot_name = input_ask_robot()
+        if robot_name is False:
+            return multi_false
+    if robot_name == "":
+        print_err("robot name not set")
+        return multi_false
 
-    destination_mode, argv = get_destination_mode(argv)
-    if destination_mode is False:
-        return False
+    if just_name:
+        return robot_name, argv
 
-    robot, argv = robot_input_ask(argv)
+    robot = robot_load_from_name(robot_name, error_print=error_print)
     if robot is False:
+        return multi_false
+
+    return robot, argv
+
+
+def robot_get_state_from_argv(argv, default_state="active"):
+    multi_false = False, False
+
+    robot_state = default_state
+
+    if len(argv) >= 1:
+        state_arg = argv[0]
+        if state_arg in ("--active", "--pending", "--inactive", "--paused"):
+            robot_state = state_arg[2:]
+            argv = argv[1:]
+        elif re.match('^-', state_arg) is not None:
+            print_err(f"option {state_arg} not recognized")
+            return multi_false
+
+    return robot_state, argv
+
+
+def robot_get_lock_file(robot):
+    return roboauto_state["lock_home"] + "/" + robot
+
+
+def robot_import(argv):
+    coordinator, _, argv = roboauto_get_coordinator_from_argv(argv)
+    if coordinator is False:
         return False
 
-    robot_dir = get_robot_dir_from_destination(robot, destination_mode)
+    robot_state, argv = robot_get_state_from_argv(argv)
+    if robot_state is False:
+        return False
+
+    robot_name, argv = robot_input_from_argv(argv, just_name=True)
+    if robot_name is False:
+        return False
+
+    robot_dir = robot_get_dir_dic()[robot_state] + "/" + robot_name
 
     if os.path.exists(robot_dir):
         if not os.path.isdir(robot_dir):
-            print_err("%s exists and is not a directory" % robot_dir)
+            print_err(f"{robot_dir} exists and is not a directory")
         else:
-            print_err("robot %s already exists" % robot_dir)
+            print_err(f"robot {robot_name} already exists")
         return False
 
     if len(argv) >= 1:
@@ -168,82 +188,32 @@ def robot_import(argv):
         print_err("robot token not set")
         return False
 
-    return robot_write_token_coordinator(robot_dir, token, coordinator)
-
-
-def robot_remove_from_dir(directory, robot, directory_name):
-    if os.path.exists(directory):
-        try:
-            shutil.rmtree(directory)
-        except OSError:
-            return False
-        print_out("%s removed from %s directory" % (robot, directory_name))
-        return 1
-    else:
-        return 0
+    return robot_save_to_disk(robot_get_dic(
+        robot_name, robot_state, robot_dir, token, coordinator
+    ))
 
 
 def robot_remove(argv):
-    robot, argv = robot_input_ask(argv)
+    robot, argv = robot_input_from_argv(argv)
     if robot is False:
         return False
 
-    robot_exists = False
+    robot_name = robot["name"]
+    robot_state = robot["state"]
+    robot_dir = robot["dir"]
 
-    robot_active = roboauto_state["active_home"] + "/" + robot
-    remove_active = robot_remove_from_dir(robot_active, robot, "active")
-    if remove_active is False:
+    if not os.path.exists(robot_dir):
+        print_err(f"{robot_name} does not exists")
         return False
-    elif remove_active == 1:
-        robot_exists = True
 
-    robot_inactive = roboauto_state["inactive_home"] + "/" + robot
-    remove_inactive = robot_remove_from_dir(robot_inactive, robot, "inactive")
-    if remove_inactive is False:
+    try:
+        shutil.rmtree(robot_dir)
+    except OSError:
         return False
-    elif remove_inactive == 1:
-        robot_exists = True
 
-    robot_paused = roboauto_state["paused_home"] + "/" + robot
-    remove_paused = robot_remove_from_dir(robot_paused, robot, "paused")
-    if remove_paused is False:
-        return False
-    elif remove_paused == 1:
-        robot_exists = True
-
-    if not robot_exists:
-        print_err("robot %s does not exists" % robot)
-        return False
+    print_out(f"{robot_name} removed from {robot_state} directory")
 
     return True
-
-
-def robot_get_token_base91(robot, robot_dir):
-    if not os.path.isdir(robot_dir):
-        print_err(robot + " does not exists")
-        return False
-
-    token_string = file_read(robot_dir + "/token")
-    if token_string is False:
-        print_err(robot + " does not have the token")
-        return False
-
-    return token_get_base91(token_string)
-
-
-def robot_get_coordinator(robot, robot_dir, warning_print=True):
-    if not os.path.isdir(robot_dir):
-        if warning_print:
-            print_war(robot + " does not exists, using default coordinator")
-        return roboauto_first_coordinator()
-
-    coordinator = file_read(robot_dir + "/coordinator", error_print=False)
-    if coordinator is False:
-        if warning_print:
-            print_war(robot + " does not have a coordinator, using default")
-        return roboauto_first_coordinator()
-
-    return coordinator
 
 
 def robot_print_token(argv):
@@ -253,37 +223,26 @@ def robot_print_token(argv):
             use_base91 = True
             argv = argv[1:]
 
-    robot, argv, robot_dir = robot_input_ask_and_dir(argv)
+    robot, argv = robot_input_from_argv(argv)
     if robot is False:
         return False
 
-    if use_base91 is False:
-        token_string = file_read(robot_dir + "/token")
-        if token_string is False:
-            print_err(robot + " does not have the token")
-            return False
-    else:
-        token_string = robot_get_token_base91(robot, robot_dir)
-        if token_string is False:
-            return False
+    token = robot["token"]
 
-    print_out(token_string)
+    if use_base91:
+        print_out(token_get_base91(token))
+    else:
+        print_out(token)
 
     return True
 
 
 def robot_print_coordinator(argv):
-    robot, argv = robot_input_ask(argv)
+    robot, argv = robot_input_from_argv(argv)
     if robot is False:
         return False
 
-    robot_dir = robot_dir_search(robot)
-    if robot_dir is False:
-        return False
-
-    coordinator = robot_get_coordinator(robot, robot_dir)
-    if robot_dir is False:
-        return False
+    coordinator = robot["coordinator"]
 
     print_out(coordinator)
     print_out(roboauto_get_coordinator_url(coordinator))
@@ -294,6 +253,7 @@ def robot_print_coordinator(argv):
 def robot_list_dir(robot_dir):
     full_path_list = os.listdir(robot_dir)
     name_list = [full_path.split("/")[-1] for full_path in full_path_list]
+
     return sorted(name_list)
 
 
@@ -304,55 +264,22 @@ def robot_print_dir(robot_dir):
     return True
 
 
-def get_waiting_queue():
-    if os.path.isfile(roboauto_state["waiting_queue_file"]):
-        nicks_waiting = file_json_read(roboauto_state["waiting_queue_file"])
-        if nicks_waiting is False:
-            print_err("reading waiting queue")
+def robot_change_dir(robot_name, destination_state):
+    if destination_state not in robot_get_dir_dic():
+        print_err(f"{destination_state} is not an available destination directory")
+        return False
+
+    destination_dir = robot_get_dir_dic()[destination_state]
+
+    if robot_name != "--all":
+        robot = robot_load_from_name(robot_name)
+        if robot is False:
             return False
-    else:
-        nicks_waiting = []
-
-    return nicks_waiting
-
-
-def waiting_queue_print():
-    nicks_waiting = get_waiting_queue()
-    if nicks_waiting is False:
-        return False
-
-    for nick in nicks_waiting:
-        print_out("%s" % nick)
-
-    return True
-
-
-def robot_set_dir(destination_dir, argv):
-    robot, argv = robot_input_ask(argv)
-    if robot is False:
-        return False
-
-    if destination_dir not in (
-        roboauto_state["active_home"],
-        roboauto_state["pending_home"],
-        roboauto_state["inactive_home"],
-        roboauto_state["paused_home"]
-    ):
-        print_err("%s is not an available destination directory" % destination_dir)
-        return False
-
-    if robot != "--all":
-        robot_dir = robot_dir_search(robot)
-        if robot_dir is False:
-            return False
-
+        robot_dir = robot["dir"]
         try:
             shutil.move(robot_dir, destination_dir)
         except OSError:
-            print_err(
-                "moving %s to %s" %
-                (robot_dir, destination_dir)
-            )
+            print_err("moving {robot_dir} to {destination_dir}")
             return False
     else:
         if destination_dir == roboauto_state["active_home"]:
@@ -363,27 +290,22 @@ def robot_set_dir(destination_dir, argv):
             try:
                 shutil.move(robot_dir, destination_dir)
             except OSError:
-                print_err("moving %s to %s" % (robot_dir, destination_dir))
+                print_err(f"moving {robot_dir} to {destination_dir}")
                 return False
 
     return True
 
 
-def robot_get_data(robot, robot_dir):
-    multi_false = False, False, False
+def robot_change_dir_from_argv(destination_dir, argv):
+    if argv[0] == "--all":
+        robot_name = argv[0]
+        argv = argv[1:]
+    else:
+        robot_name, argv = robot_input_from_argv(argv, just_name=True)
+        if robot_name is False:
+            return False
 
-    if robot_dir is False:
-        return multi_false
-
-    token_base91 = robot_get_token_base91(robot, robot_dir)
-    if token_base91 is False:
-        print_err("getting token base91 for " + robot)
-        return multi_false
-
-    coordinator = robot_get_coordinator(robot, robot_dir)
-    coordinator_url = roboauto_get_coordinator_url(coordinator)
-
-    return token_base91, coordinator, coordinator_url
+    return robot_change_dir(robot_name, destination_dir)
 
 
 def robot_requests_robot(token_base91, robot_url):
@@ -402,17 +324,13 @@ def robot_requests_robot(token_base91, robot_url):
     return robot_response, robot_response_json
 
 
-def robot_get_lock_file(robot):
-    return roboauto_state["lock_home"] + "/" + robot
-
-
 def robot_generate(argv):
     coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator_url is False:
         return False
 
-    destination_mode, argv = get_destination_mode(argv, default_mode="paused")
-    if destination_mode is False:
+    robot_state, argv = robot_get_state_from_argv(argv, default_state="paused")
+    if robot_state is False:
         return False
 
     token = generate_random_token_base62()
@@ -436,24 +354,26 @@ def robot_generate(argv):
         print_err("generate response is not json")
         return False
 
-    robot = generate_response_json.get("nickname", False)
-    if robot is False:
+    robot_name = generate_response_json.get("nickname", False)
+    if robot_name is False:
         print_err(generate_response_json, error=False, date=False)
         print_err("getting robot name")
         return False
 
-    robot_dir = get_robot_dir_from_destination(robot, destination_mode)
+    robot_dir = robot_get_dir_dic()[robot_state] + "/" + robot_name
 
     if os.path.exists(robot_dir):
         if not os.path.isdir(robot_dir):
-            print_err("%s exists and is not a directory" % robot_dir)
+            print_err(f"{robot_dir} exists and is not a directory")
         else:
-            print_err("robot %s already exists" % robot_dir)
+            print_err("robot {robot_name} already exists")
         return False
 
-    print_out(robot)
+    print_out(robot_name)
 
-    if robot_write_token_coordinator(robot_dir, token, coordinator) is False:
+    if not robot_save_to_disk(robot_get_dic(
+        robot_name, robot_state, robot_dir, token, coordinator
+    )):
         return False
 
     gpg_list_dir = robot_dir + "/gpg"
@@ -471,5 +391,28 @@ def robot_generate(argv):
 
     if not file_write(robot_dir + "/current-fingerprint", fingerprint):
         return False
+
+    return True
+
+
+def waiting_queue_get():
+    if os.path.isfile(roboauto_state["waiting_queue_file"]):
+        nicks_waiting = file_json_read(roboauto_state["waiting_queue_file"])
+        if nicks_waiting is False:
+            print_err("reading waiting queue")
+            return False
+    else:
+        nicks_waiting = []
+
+    return nicks_waiting
+
+
+def waiting_queue_print():
+    nicks_waiting = waiting_queue_get()
+    if nicks_waiting is False:
+        return False
+
+    for nick in nicks_waiting:
+        print_out(f"{nick}")
 
     return True
