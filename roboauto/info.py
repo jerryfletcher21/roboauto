@@ -128,19 +128,19 @@ def robot_info(argv):
     if robot_print:
         print_out(json_dumps(robot_response_json))
 
-    if robot_name is False:
-        robot_name = robot_response_json.get("nickname", "unknown")
-
-    order_id_number = robot_response_json.get("active_order_id", False)
-    if order_id_number is False:
-        order_id_number = robot_response_json.get("last_order_id", False)
-        if order_id_number is False:
-            print_err(robot_name + " does not have active orders")
-            return True
-
-    order_id = str(order_id_number)
-
     if order_print or chat_print:
+        if robot_name is False:
+            robot_name = robot_response_json.get("nickname", "unknown")
+
+        order_id_number = robot_response_json.get("active_order_id", False)
+        if order_id_number is False:
+            order_id_number = robot_response_json.get("last_order_id", False)
+            if order_id_number is False:
+                print_err(robot_name + " does not have active orders")
+                return True
+
+        order_id = str(order_id_number)
+
         order_dic = api_order_get_dic_handle(robot_name, token_base91, robot_url, order_id)
         if order_dic is False:
             return False
