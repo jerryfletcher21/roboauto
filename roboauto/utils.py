@@ -250,7 +250,7 @@ def global_setup():
     roboauto_state["waiting_queue_file"] = roboauto_home + "/waiting-queue"
 
     roboauto_state["config_file"] = roboauto_config + "/config.ini"
-    roboauto_state["message_command"] = roboauto_config + "/message-send"
+    roboauto_state["message_command"] = roboauto_config + "/message-notification"
     roboauto_state["check_command"] = roboauto_config + "/check-invoice"
     roboauto_state["pay_command"] = roboauto_config + "/pay-invoice"
 

@@ -251,9 +251,24 @@ def robot_list_dir(robot_dir):
     return sorted(name_list)
 
 
-def robot_print_dir(robot_dir):
-    for robot_name in robot_list_dir(robot_dir):
-        print_out(robot_name)
+def robot_print_dir_argv(robot_state, argv):
+    print_coordinator = False
+    if len(argv) > 0 and argv[0] == "--coordinator":
+        print_coordinator = True
+        argv = argv[1:]
+
+    dir_home = robot_get_dir_dic()[robot_state]
+    for robot_name in robot_list_dir(dir_home):
+        if print_coordinator is False:
+            print_out(robot_name)
+        else:
+            robot_dic = robot_load_from_name(robot_name)
+            if robot_dic is False:
+                return False
+
+            coordinator = robot_dic["coordinator"]
+
+            print_out(f"{robot_name} {coordinator}")
 
     return True
 

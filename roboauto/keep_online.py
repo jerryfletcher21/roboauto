@@ -326,14 +326,14 @@ def keep_online():
                 coordinator_robot_list.update({coordinator: []})
             coordinator_robot_list[coordinator].append(robot_name)
 
-        for coordinator, robot_list in coordinator_robot_list.items():
+        for coordinator, _ in coordinator_robot_list.items():
             robot_this_hour += single_book_count_active_orders_this_hour(
                 current_hour, current_timestamp, coordinator, nicks_waiting
             )
 
-        for coordinator, robot_list in coordinator_robot_list.items():
+        for coordinator, coord_robot_list in coordinator_robot_list.items():
             single_book_response = list_orders_single_book(
-                coordinator, robot_list, nicks_waiting, robot_this_hour, current_timestamp
+                coordinator, coord_robot_list, nicks_waiting, robot_this_hour, current_timestamp
             )
             if single_book_response is not False:
                 robot_this_hour = single_book_response
@@ -346,8 +346,6 @@ def keep_online():
             if file_json_write(roboauto_state["waiting_queue_file"], nicks_waiting) is False:
                 print_err("writing waiting queue")
                 return False
-
-        robot_list = robot_list_dir(roboauto_state["active_home"])
 
         sleeping_periods = int(
             roboauto_options["book_interval"] / roboauto_state["sleep_interval"]

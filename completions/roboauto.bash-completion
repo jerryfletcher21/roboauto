@@ -69,6 +69,11 @@ $(
                 OPTS="$(___roboauto_get_robots "$@")"
             fi
         ;;
+        list-active|list-pending|list-inactive|list-paused)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="--coordinator"
+            fi
+        ;;
         set-active)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$(
@@ -132,6 +137,11 @@ $(___roboauto_get_robots "$pending_home")"
         message-send)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$(___roboauto_get_robots "$pending_home")"
+            fi
+        ;;
+        list-hours)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="--relative"
             fi
         ;;
         list-offers-all|list-offers-buy|list-offers-sell)

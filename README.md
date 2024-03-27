@@ -5,7 +5,7 @@ a [robosats](https://github.com/RoboSats/robosats) command-line interface
 Main function is keep-online, after you have imported one or more robots from
 different coordinators, run roboauto keep-online to automatically recreate the
 orders when they expires, and get notified if the order is taken, running the
-message-send script. An example for simplex is provided
+message-notification script. An example for simplex is provided
 
 ## installation
 
@@ -25,7 +25,7 @@ $ pip install --break-system-packages .
 
 copy config/config.ini in ~/.config/roboauto/ and edit it
 
-create scripts pay-invoide, check-invoice and message-send in ~/.config/roboauto/,
+create scripts pay-invoide, check-invoice and message-notification in ~/.config/roboauto/,
 some examples are in data/
 
 source completions/roboauto.bash-completion in ~/.bashrc

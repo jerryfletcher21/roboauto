@@ -125,6 +125,15 @@ def list_offers_per_hour(relative):
     return True
 
 
+def list_offers_per_hour_argv(argv):
+    hour_relative = False
+    if len(argv) > 0 and argv[0] == "--relative":
+        hour_relative = True
+        argv = argv[1:]
+
+    return list_offers_per_hour(hour_relative)
+
+
 def get_book_response_json(coordinator, until_true=False):
     """wrap around requests_api_book to check if the response
     is correct"""

@@ -3,7 +3,7 @@
 # pylint: disable=C0114 missing-module-docstring
 
 
-# default configs
+# options that can be changed in config file
 roboauto_options = {
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; rv:102.0) Gecko/20100101 Firefox/102.0",
     "book_interval": 120,
@@ -25,6 +25,7 @@ roboauto_options = {
     }
 }
 
+# program state and options that can not be changed in the config file
 roboauto_state = {
     "print_date": False,
     "keep_online_hour_relative": False,
