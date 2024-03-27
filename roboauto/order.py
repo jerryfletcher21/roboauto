@@ -259,9 +259,9 @@ def robot_cancel_order(robot_dic):
     return True
 
 
-def bond_order(robot_dic, order_id, bond_amount):
-    """bond an order, if bond amount is not False, also check invoice
-    will run the pay_command as a subprocess"""
+def bond_order(robot_dic, order_id):
+    """bond an order, after checking the invoice with check_command
+    will run check_command and pay_command as subprocesses"""
 
     robot_name = robot_dic["name"]
     robot_dir = robot_dic["dir"]
@@ -277,6 +277,7 @@ def bond_order(robot_dic, order_id, bond_amount):
 
     order_user = order_dic["order_user"]
     order_info = order_dic["order_info"]
+    order_response_json = order_dic["order_response_json"]
 
     if not order_is_waiting_maker_bond(order_info["status"]):
         print_err(robot_name + " " + order_id + " is not expired")
@@ -284,23 +285,27 @@ def bond_order(robot_dic, order_id, bond_amount):
 
     print_out(robot_name + " " + order_id + " " + order_info["order_description"])
 
-    if bond_amount is not False:
-        if not file_is_executable(roboauto_state["check_command"]):
-            print_err(roboauto_state["check_command"] + " is not an executable script")
-            return False
-        check_output = subprocess_run_command(
-            [roboauto_state["check_command"], order_info["invoice"], str(bond_amount)]
+    bond_satoshis = order_response_json.get("bond_satoshis", False)
+    if bond_satoshis is False:
+        print_err("%s %s bond_satoshis not present, invoice will not be checked" % (
+            robot_name, order_id
+        ))
+        return False
+
+    if not file_is_executable(roboauto_state["check_command"]):
+        print_err(roboauto_state["check_command"] + " is not an executable script")
+        return False
+    check_output = subprocess_run_command(
+        [roboauto_state["check_command"], order_info["invoice"], str(bond_satoshis)]
+    )
+    if check_output is False:
+        print_err(
+            "check-command returned false, "
+            "invoce will not be paid and robot will be moved to inactive"
         )
-        if check_output is False:
-            print_err(
-                "check-command returned false, "
-                "invoce will not be paid and robot will be moved to inactive"
-            )
-            return False
-        print_out(check_output.decode(), end="", date=False)
-        print_out("invoice checked successfully")
-    else:
-        print_out("%s %s invoice will not be checked" % (robot_name, order_id))
+        return False
+    print_out(check_output.decode(), end="", date=False)
+    print_out("invoice checked successfully")
 
     if not file_is_executable(roboauto_state["pay_command"]):
         print_err(roboauto_state["pay_command"] + " is not an executable script")
@@ -356,7 +361,7 @@ def bond_order(robot_dic, order_id, bond_amount):
 
 
 def make_order(
-    robot_dic, order_id, make_data, satoshis_now, should_bond=True
+    robot_dic, order_id, make_data, should_bond=True
 ):
     """make the request to the coordinator to create an order,
     and if should_bond is true, also bond it"""
@@ -368,15 +373,6 @@ def make_order(
     if not make_data["bond_size"]:
         print_err("bond size percentage not defined")
         return False
-
-    if satoshis_now:
-        try:
-            bond_amount = int(satoshis_now * float(make_data["bond_size"]) / 100)
-        except TypeError:
-            print_err("bond size not a float")
-            return False
-    else:
-        bond_amount = False
 
     make_response_all = requests_api_make(
         token_base91, order_id, robot_url, make_data=json_dumps(make_data)
@@ -407,7 +403,7 @@ def make_order(
         print_out(f"order {order_id} will not be bonded")
         return True
 
-    return bond_order(robot_dic, order_id, bond_amount)
+    return bond_order(robot_dic, order_id)
 
 
 def order_user_from_argv(argv, with_default=False):
@@ -467,7 +463,7 @@ def create_order(argv):
 
     if make_order(
         robot_dic,
-        False, order_data, False,
+        False, order_data,
         should_bond=should_bond
     ) is False:
         return False
@@ -531,11 +527,6 @@ def recreate_order(argv):
             print_err("robot %s is not in the paused or inactive directories" % robot_name)
             return False
 
-    if len(argv) > 0:
-        order_user_changed = True
-    else:
-        order_user_changed = False
-
     order_user = order_user_from_argv(argv)
     if order_user is False:
         return False
@@ -550,10 +541,6 @@ def recreate_order(argv):
 
     order_info = order_dic["order_info"]
     order_id = order_info["order_id"]
-    if order_user_changed or not should_cancel:
-        satoshis_now = False
-    else:
-        satoshis_now = order_info["satoshis_now"]
 
     order_user_old = order_dic["order_user"]
     for key, value in order_user.items():
@@ -566,7 +553,7 @@ def recreate_order(argv):
 
     if not make_order(
         robot_dic,
-        order_id, order_data, satoshis_now,
+        order_id, order_data,
         should_bond=should_bond
     ):
         return False

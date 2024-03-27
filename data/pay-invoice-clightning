@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# pay the invoice with clightning
+
 if [ "$#" -lt 6 ]; then
     echo "error: there are not enough parameters" >&2
     exit 1

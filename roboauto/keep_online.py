@@ -130,7 +130,7 @@ def robot_check_expired(robot_dic, robot_this_hour):
         return 1
     elif order_is_waiting_maker_bond(status_id):
         if robot_this_hour < maximum_per_hour:
-            if not bond_order(robot_dic, order_id, False):
+            if not bond_order(robot_dic, order_id):
                 return False
             return 1
         else:
@@ -140,7 +140,7 @@ def robot_check_expired(robot_dic, robot_this_hour):
         if robot_this_hour < maximum_per_hour:
             if not make_order(
                 robot_dic, order_id,
-                order_dic["order_data"], order_info["satoshis_now"]
+                order_dic["order_data"]
             ):
                 return False
             return 1
