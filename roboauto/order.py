@@ -30,7 +30,8 @@ from roboauto.robot import \
     robot_get_lock_file, robot_input_from_argv, \
     waiting_queue_get, robot_requests_robot, robot_change_dir
 from roboauto.requests_api import \
-    requests_api_order, requests_api_cancel, requests_api_make, response_is_error
+    requests_api_order, requests_api_cancel, \
+    requests_api_make, response_is_error
 from roboauto.utils import \
     json_dumps, file_is_executable, subprocess_run_command, \
     json_loads, file_json_write, \
@@ -59,7 +60,7 @@ def order_user_get(with_default):
     return empty_order
 
 
-def api_order_get_dic(robot, token_base91, robot_url, order_id):
+def api_order_get_dic(robot_name, token_base91, robot_url, order_id):
     """get the order_dic making a request to the coordinator
     the order_dic is composed by 4 dictionaries:
     order_data:  can be derived from order_user, and is the data
@@ -80,7 +81,7 @@ def api_order_get_dic(robot, token_base91, robot_url, order_id):
     order_response_json = json_loads(order_response)
     if order_response_json is False:
         print_err(order_response, end="", error=False, date=False)
-        print_err("getting order info for " + robot + " " + order_id)
+        print_err("getting order info for " + robot_name + " " + order_id)
         return False
 
     coordinator = roboauto_get_coordinator_from_url(robot_url)
@@ -171,51 +172,53 @@ def api_order_get_dic(robot, token_base91, robot_url, order_id):
     }
 
 
-def api_order_get_dic_handle(robot, token_base91, robot_url, order_id):
+def api_order_get_dic_handle(robot_name, token_base91, robot_url, order_id):
     """api_order_get_dic can return None or False, this function is
     used when it does not matter whether None or False is returned"""
-    order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
+    order_dic = api_order_get_dic(robot_name, token_base91, robot_url, order_id)
     if order_dic is False:
         return False
     if order_dic is None:
-        print_err("%s order %s not available" % (robot, str(order_id)))
+        print_err("%s order %s not available" % (robot_name, str(order_id)))
         return False
 
     return order_dic
 
 
 def robot_cancel_order(robot_dic):
-    robot = robot_dic["name"]
+    robot_name = robot_dic["name"]
     token_base91 = token_get_base91(robot_dic["token"])
     robot_dir = robot_dic["dir"]
     robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
 
     if robot_dic["state"] != "active":
-        print_err("robot %s is not in the active directory" % robot)
+        print_err("robot %s is not in the active directory" % robot_name)
         return False
 
     try:
         with filelock.SoftFileLock(
-            robot_get_lock_file(robot), timeout=roboauto_state["filelock_timeout"]
+            robot_get_lock_file(robot_name), timeout=roboauto_state["filelock_timeout"]
         ):
-            robot_response, robot_response_json = robot_requests_robot(token_base91, robot_url)
+            robot_response, robot_response_json = robot_requests_robot(
+                token_base91, robot_url, robot_dic
+            )
             if robot_response is False:
                 return False
 
             order_id_num = robot_response_json.get("active_order_id", False)
             if order_id_num is False:
                 print_err(robot_response, error=False, date=False)
-                print_err("getting active order_id for " + robot)
+                print_err("getting active order_id for " + robot_name)
                 return False
 
             order_id = str(order_id_num)
 
-            order_dic = api_order_get_dic(robot, token_base91, robot_url, order_id)
+            order_dic = api_order_get_dic(robot_name, token_base91, robot_url, order_id)
             if order_dic is False:
-                print_err("order data is false %s %s" % (robot, order_id))
+                print_err("order data is false %s %s" % (robot_name, order_id))
                 return False
             elif order_dic is None:
-                print_err("%s last order not available" % robot)
+                print_err("%s last order not available" % robot_name)
                 return False
 
             if not order_save_order_file(robot_dir, order_id, order_dic):
@@ -227,10 +230,10 @@ def robot_cancel_order(robot_dic):
                 not order_is_public(status_id) and \
                 not order_is_paused(status_id) and \
                 not order_is_waiting_maker_bond(status_id):
-                print_err("robot order %s %s is not public or paused" % (robot, order_id))
+                print_err("robot order %s %s is not public or paused" % (robot_name, order_id))
                 return False
 
-            print_out("robot %s cancel order %s" % (robot, order_id))
+            print_out("robot %s cancel order %s" % (robot_name, order_id))
 
             order_post_response_all = requests_api_cancel(token_base91, order_id, robot_url)
             if response_is_error(order_post_response_all):
@@ -239,13 +242,13 @@ def robot_cancel_order(robot_dic):
             order_post_response_json = json_loads(order_post_response)
             if order_post_response_json is False:
                 print_err(order_post_response, end="", error=False, date=False)
-                print_err("cancelling order %s %s" % (robot, token_base91))
+                print_err("cancelling order %s %s" % (robot_name, token_base91))
                 return False
 
             bad_requets = order_post_response_json.get("bad_request", False)
             if bad_requets is False:
                 print_err(order_post_response, end="", error=False, date=False)
-                print_err("getting cancel response %s %s" % (robot, order_id))
+                print_err("getting cancel response %s %s" % (robot_name, order_id))
                 return False
 
             print_out(bad_requets)
@@ -260,12 +263,12 @@ def bond_order(robot_dic, order_id, bond_amount):
     """bond an order, if bond amount is not False, also check invoice
     will run the pay_command as a subprocess"""
 
-    robot = robot_dic["name"]
+    robot_name = robot_dic["name"]
     robot_dir = robot_dic["dir"]
     token_base91 = token_get_base91(robot_dic["token"])
     robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
 
-    order_dic = api_order_get_dic_handle(robot, token_base91, robot_url, order_id)
+    order_dic = api_order_get_dic_handle(robot_name, token_base91, robot_url, order_id)
     if order_dic is False:
         return False
 
@@ -276,10 +279,10 @@ def bond_order(robot_dic, order_id, bond_amount):
     order_info = order_dic["order_info"]
 
     if not order_is_waiting_maker_bond(order_info["status"]):
-        print_err(robot + " " + order_id + " is not expired")
+        print_err(robot_name + " " + order_id + " is not expired")
         return False
 
-    print_out(robot + " " + order_id + " " + order_info["order_description"])
+    print_out(robot_name + " " + order_id + " " + order_info["order_description"])
 
     if bond_amount is not False:
         if not file_is_executable(roboauto_state["check_command"]):
@@ -297,14 +300,14 @@ def bond_order(robot_dic, order_id, bond_amount):
         print_out(check_output.decode(), end="", date=False)
         print_out("invoice checked successfully")
     else:
-        print_out("%s %s invoice will not be checked" % (robot, order_id))
+        print_out("%s %s invoice will not be checked" % (robot_name, order_id))
 
     if not file_is_executable(roboauto_state["pay_command"]):
         print_err(roboauto_state["pay_command"] + " is not an executable script")
         return False
 
     pay_subprocess_command = [
-        roboauto_state["pay_command"], order_info["invoice"], robot, order_id,
+        roboauto_state["pay_command"], order_info["invoice"], robot_name, order_id,
         order_user["type"], order_user["currency"],
         order_info["amount_string"]
     ]
@@ -313,7 +316,9 @@ def bond_order(robot_dic, order_id, bond_amount):
             while True:
                 print_out("checking if order is bonded...")
 
-                order_dic = api_order_get_dic_handle(robot, token_base91, robot_url, order_id)
+                order_dic = api_order_get_dic_handle(
+                    robot_name, token_base91, robot_url, order_id
+                )
                 if order_dic is False:
                     return False
 
@@ -325,15 +330,15 @@ def bond_order(robot_dic, order_id, bond_amount):
                 order_status = order_response_json.get("status", False)
                 if order_status is False:
                     print_err(json_dumps(order_response_json), error=False, date=False)
-                    print_err("getting order_status of " + robot + " " + order_id)
+                    print_err("getting order_status of " + robot_name + " " + order_id)
                     return False
 
                 if not order_is_waiting_maker_bond(order_status):
                     if not order_is_expired(order_status):
-                        print_out("bonded successfully, order is public for " + robot)
+                        print_out("bonded successfully, order is public for " + robot_name)
                         return_status = True
                     else:
-                        print_err("bond expired, will retry next loop for " + robot)
+                        print_err("bond expired, will retry next loop for " + robot_name)
                         return_status = False
                     try:
                         os.killpg(os.getpgid(pay_subprocess.pid), signal.SIGTERM)
@@ -356,7 +361,7 @@ def make_order(
     """make the request to the coordinator to create an order,
     and if should_bond is true, also bond it"""
 
-    robot = robot_dic["name"]
+    robot_name = robot_dic["name"]
     token_base91 = token_get_base91(robot_dic["token"])
     robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
 
@@ -382,7 +387,7 @@ def make_order(
     make_response_json = json_loads(make_response)
     if make_response_json is False:
         print_err(make_data, error=False, date=False)
-        print_err("getting response make order for " + robot)
+        print_err("getting response make order for " + robot_name)
         return False
     order_id_number = make_response_json.get("id", False)
     if order_id_number is False:
@@ -393,14 +398,14 @@ def make_order(
         else:
             print_err(make_response, end="", error=False, date=False)
             print_err(make_data, error=False, date=False)
-            print_err("getting id of new order for " + robot)
+            print_err("getting id of new order for " + robot_name)
         return False
 
-    if not should_bond:
-        print_out("order will not be bonded")
-        return True
-
     order_id = str(order_id_number)
+
+    if not should_bond:
+        print_out(f"order {order_id} will not be bonded")
+        return True
 
     return bond_order(robot_dic, order_id, bond_amount)
 
@@ -439,10 +444,10 @@ def create_order(argv):
     if robot_dic is False:
         return False
 
-    robot = robot_dic["name"]
+    robot_name = robot_dic["name"]
 
     if robot_dic["state"] != "paused":
-        print_err("robot %s is not in the paused directory" % robot)
+        print_err("robot %s is not in the paused directory" % robot_name)
         return False
 
     order_user = order_user_from_argv(argv, with_default=True)
@@ -467,7 +472,9 @@ def create_order(argv):
     ) is False:
         return False
 
-    if not robot_change_dir(robot, "active"):
+    print_out(f"{robot_name} order created successfully")
+
+    if not robot_change_dir(robot_name, "active"):
         return False
 
     return True
@@ -478,19 +485,19 @@ def cancel_order(argv):
     if robot_dic is False:
         return False
 
-    robot = robot_dic["name"]
+    robot_name = robot_dic["name"]
 
     if robot_dic["state"] != "active":
-        print_err("robot %s is not in the active directory" % robot)
+        print_err("robot %s is not in the active directory" % robot_name)
         return False
 
     if not robot_cancel_order(robot_dic):
         return False
 
-    if not robot_change_dir(robot, "inactive"):
+    if not robot_change_dir(robot_name, "inactive"):
         return False
 
-    print_out("%s moved to inactive" % robot)
+    print_out("%s moved to inactive" % robot_name)
 
     return True
 
@@ -512,16 +519,16 @@ def recreate_order(argv):
     if robot_dic is False:
         return False
 
-    robot = robot_dic["name"]
+    robot_name = robot_dic["name"]
     robot_dir = robot_dic["dir"]
 
     if should_cancel:
         if robot_dic["state"] != "active":
-            print_err("robot %s is not in the active directory" % robot)
+            print_err("robot %s is not in the active directory" % robot_name)
             return False
     else:
         if robot_dic["state"] not in ("paused", "inactive"):
-            print_err("robot %s is not in the paused or inactive directories" % robot)
+            print_err("robot %s is not in the paused or inactive directories" % robot_name)
             return False
 
     if len(argv) > 0:
@@ -537,12 +544,7 @@ def recreate_order(argv):
         if not robot_cancel_order(robot_dic):
             return False
 
-    orders_dir = robot_dir + "/orders"
-    if not os.path.isdir(orders_dir):
-        print_err("%s is not a dir" % orders_dir)
-        return False
-
-    order_dic = order_get_order_dic(orders_dir)
+    order_dic = order_get_order_dic(robot_dir)
     if order_dic is False:
         return False
 
@@ -570,7 +572,7 @@ def recreate_order(argv):
         return False
 
     if should_cancel is False:
-        if not robot_change_dir(robot, "active"):
+        if not robot_change_dir(robot_name, "active"):
             return False
 
     return True
@@ -582,10 +584,10 @@ def wait_order(robot_dic):
     if nicks_waiting is False:
         return False
 
-    robot = robot_dic["name"]
+    robot_name = robot_dic["name"]
 
-    nicks_waiting.append(robot)
-    print_out(robot + " added to waiting queue")
+    nicks_waiting.append(robot_name)
+    print_out(robot_name + " added to waiting queue")
     if file_json_write(roboauto_state["waiting_queue_file"], nicks_waiting) is False:
         print_err("writing waiting queue")
         return False

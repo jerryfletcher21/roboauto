@@ -16,7 +16,7 @@ from roboauto.requests_api import \
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.utils import \
     file_read, file_write, \
-    file_json_read, \
+    file_json_read, file_json_write, \
     json_loads, \
     input_ask_robot, password_ask_token, \
     generate_random_token_base62, \
@@ -24,8 +24,9 @@ from roboauto.utils import \
     roboauto_get_coordinator_url, \
     roboauto_get_coordinator_from_argv, \
     token_get_base91, \
-    dir_make_sure_exists
-from roboauto.gpg_key import gpg_generate_robot
+    dir_make_sure_exists, \
+    string_from_multiline_format, string_to_multiline_format
+from roboauto.gpg_key import gpg_generate_robot, gpg_import_key
 
 
 def robot_get_dir_dic():
@@ -38,6 +39,17 @@ def robot_get_dir_dic():
 
 
 def robot_get_dic(robot_name, robot_state, robot_dir, token, coordinator):
+    if robot_get_dir_dic()[robot_state] + "/" + robot_name != robot_dir:
+        print_err(f"{robot_name} wrong state and directory")
+        return False
+
+    if not os.path.isdir(robot_dir):
+        print_err(f"{robot_name} directory not present")
+        return False
+
+    if roboauto_get_coordinator_url(coordinator) is False:
+        return False
+
     return {
         "name": robot_name,
         "state": robot_state,
@@ -91,24 +103,22 @@ def robot_load_from_name(robot_name, error_print=True):
     return robot_get_dic(robot_name, robot_state, robot_dir, token, coordinator)
 
 
-def robot_save_to_disk(robot):
-    robot_dir = robot["dir"]
+def robot_save_to_disk_and_get_dic(robot_name, robot_state, robot_dir, token, coordinator):
     if os.makedirs(robot_dir) is not None:
         print_err("creating directory")
         return False
 
-    coordinator = robot["coordinator"]
     if roboauto_options["federation"].get(coordinator, False) is False:
         print_err(f"coordinator {coordinator} does not exists")
         return False
 
-    if file_write(robot_dir + "/token", robot["token"]) is False:
+    if file_write(robot_dir + "/token", token) is False:
         return False
 
     if file_write(robot_dir + "/coordinator", coordinator) is False:
         return False
 
-    return True
+    return robot_get_dic(robot_name, robot_state, robot_dir, token, coordinator)
 
 
 def robot_input_from_argv(argv, just_name=False, error_print=True):
@@ -127,11 +137,11 @@ def robot_input_from_argv(argv, just_name=False, error_print=True):
     if just_name:
         return robot_name, argv
 
-    robot = robot_load_from_name(robot_name, error_print=error_print)
-    if robot is False:
+    robot_dic = robot_load_from_name(robot_name, error_print=error_print)
+    if robot_dic is False:
         return multi_false
 
-    return robot, argv
+    return robot_dic, argv
 
 
 def robot_get_state_from_argv(argv, default_state="active"):
@@ -151,8 +161,8 @@ def robot_get_state_from_argv(argv, default_state="active"):
     return robot_state, argv
 
 
-def robot_get_lock_file(robot):
-    return roboauto_state["lock_home"] + "/" + robot
+def robot_get_lock_file(robot_name):
+    return roboauto_state["lock_home"] + "/" + robot_name
 
 
 def robot_import(argv):
@@ -188,30 +198,10 @@ def robot_import(argv):
         print_err("robot token not set")
         return False
 
-    return robot_save_to_disk(robot_get_dic(
+    if robot_save_to_disk_and_get_dic(
         robot_name, robot_state, robot_dir, token, coordinator
-    ))
-
-
-def robot_remove(argv):
-    robot, argv = robot_input_from_argv(argv)
-    if robot is False:
+    ) is False:
         return False
-
-    robot_name = robot["name"]
-    robot_state = robot["state"]
-    robot_dir = robot["dir"]
-
-    if not os.path.exists(robot_dir):
-        print_err(f"{robot_name} does not exists")
-        return False
-
-    try:
-        shutil.rmtree(robot_dir)
-    except OSError:
-        return False
-
-    print_out(f"{robot_name} removed from {robot_state} directory")
 
     return True
 
@@ -223,11 +213,11 @@ def robot_print_token(argv):
             use_base91 = True
             argv = argv[1:]
 
-    robot, argv = robot_input_from_argv(argv)
-    if robot is False:
+    robot_dic, argv = robot_input_from_argv(argv)
+    if robot_dic is False:
         return False
 
-    token = robot["token"]
+    token = robot_dic["token"]
 
     if use_base91:
         print_out(token_get_base91(token))
@@ -238,14 +228,18 @@ def robot_print_token(argv):
 
 
 def robot_print_coordinator(argv):
-    robot, argv = robot_input_from_argv(argv)
-    if robot is False:
+    robot_dic, argv = robot_input_from_argv(argv)
+    if robot_dic is False:
         return False
 
-    coordinator = robot["coordinator"]
+    coordinator = robot_dic["coordinator"]
+
+    coordinator_url = roboauto_get_coordinator_url(coordinator)
+    if coordinator_url is False:
+        return False
 
     print_out(coordinator)
-    print_out(roboauto_get_coordinator_url(coordinator))
+    print_out(coordinator_url)
 
     return True
 
@@ -258,8 +252,8 @@ def robot_list_dir(robot_dir):
 
 
 def robot_print_dir(robot_dir):
-    for robot in robot_list_dir(robot_dir):
-        print_out(robot)
+    for robot_name in robot_list_dir(robot_dir):
+        print_out(robot_name)
 
     return True
 
@@ -272,14 +266,18 @@ def robot_change_dir(robot_name, destination_state):
     destination_dir = robot_get_dir_dic()[destination_state]
 
     if robot_name != "--all":
-        robot = robot_load_from_name(robot_name)
-        if robot is False:
+        robot_dic = robot_load_from_name(robot_name)
+        if robot_dic is False:
             return False
-        robot_dir = robot["dir"]
+        robot_state = robot_dic["state"]
+        robot_dir = robot_dic["dir"]
+        if robot_state == destination_state:
+            print_err(f"{robot_name} is already {destination_state}")
+            return False
         try:
             shutil.move(robot_dir, destination_dir)
         except OSError:
-            print_err("moving {robot_dir} to {destination_dir}")
+            print_err(f"moving {robot_name} to {destination_state}")
             return False
     else:
         if destination_dir == roboauto_state["active_home"]:
@@ -290,14 +288,14 @@ def robot_change_dir(robot_name, destination_state):
             try:
                 shutil.move(robot_dir, destination_dir)
             except OSError:
-                print_err(f"moving {robot_dir} to {destination_dir}")
+                print_err(f"moving {robot_name} to {destination_state}")
                 return False
 
     return True
 
 
 def robot_change_dir_from_argv(destination_dir, argv):
-    if argv[0] == "--all":
+    if len(argv) > 0 and argv[0] == "--all":
         robot_name = argv[0]
         argv = argv[1:]
     else:
@@ -308,7 +306,7 @@ def robot_change_dir_from_argv(destination_dir, argv):
     return robot_change_dir(robot_name, destination_dir)
 
 
-def robot_requests_robot(token_base91, robot_url):
+def robot_requests_robot(token_base91, robot_url, robot_dic):
     multi_false = False, False
 
     robot_response_all = requests_api_robot(token_base91, robot_url)
@@ -321,7 +319,105 @@ def robot_requests_robot(token_base91, robot_url):
         print_err("getting robot response")
         return multi_false
 
+    if robot_dic is not None:
+        robot_dir = robot_dic["dir"]
+        robot_response_file = robot_dir + "/robot-response"
+        if not file_json_write(robot_response_file, robot_response_json):
+            return multi_false
+
+        if robot_save_gpg_public_private(robot_dic, robot_response_json) is False:
+            return multi_false
+
     return robot_response, robot_response_json
+
+
+def robot_save_gpg_keys(robot_dir, public_key, private_key, fingerprint, set_default=False):
+    gpg_list_dir = robot_dir + "/gpg"
+    if dir_make_sure_exists(gpg_list_dir) is False:
+        return False
+
+    gpg_dir = gpg_list_dir + "/" + fingerprint
+    if not os.path.exists(gpg_dir):
+        if dir_make_sure_exists(gpg_dir) is False:
+            return False
+        if not file_write(gpg_dir + "/public", public_key):
+            return False
+        if not file_write(gpg_dir + "/private", private_key):
+            return False
+
+    if set_default:
+        if not file_write(robot_dir + "/current-fingerprint", fingerprint):
+            return False
+
+    return True
+
+
+def robot_get_current_fingerprint(robot_dir):
+    fingerprint_dir = robot_dir + "/current-fingerprint"
+    if not os.path.isfile(fingerprint_dir):
+        print_err("robot does not have a current fingerprint")
+        return False
+
+    return file_read(fingerprint_dir)
+
+
+def robot_save_peer_gpg_public_key(robot_dir, peer_key, fingerprint, set_default=False):
+    gpg_list_dir = robot_dir + "/gpg-peer"
+    if dir_make_sure_exists(gpg_list_dir) is False:
+        return False
+
+    gpg_dir = gpg_list_dir + "/" + fingerprint
+    if not os.path.exists(gpg_dir):
+        if dir_make_sure_exists(gpg_dir) is False:
+            return False
+        if not file_write(gpg_dir + "/public", peer_key):
+            return False
+
+    if set_default:
+        if not file_write(robot_dir + "/peer-fingerprint", fingerprint):
+            return False
+
+    return True
+
+
+def robot_get_peer_fingerprint(robot_dir):
+    fingerprint_dir = robot_dir + "/peer-fingerprint"
+    if not os.path.isfile(fingerprint_dir):
+        print_err("robot does not have a peer fingerprint")
+        return False
+
+    return file_read(fingerprint_dir)
+
+
+def robot_save_gpg_public_private(robot_dic, robot_response_json):
+    robot_name = robot_dic["name"]
+    robot_dir = robot_dic["dir"]
+    token = robot_dic["token"]
+
+    public_key = string_from_multiline_format(
+        robot_response_json.get("public_key", False)
+    )
+    if public_key is False:
+        print_err(f"{robot_name} getting public key")
+        return False
+
+    private_key = string_from_multiline_format(
+        robot_response_json.get("encrypted_private_key", False)
+    )
+    if private_key is False:
+        print_err(f"{robot_name} getting private key")
+        return False
+
+    fingerprint = gpg_import_key(private_key, token)
+    if fingerprint is False:
+        return False
+
+    if not robot_save_gpg_keys(
+        robot_dir, public_key, private_key, fingerprint, set_default=False
+    ):
+        return False
+
+    return True
 
 
 def robot_generate(argv):
@@ -341,7 +437,9 @@ def robot_generate(argv):
         return False
 
     generate_response_all = requests_api_robot_generate(
-        token_base91, public_key, private_key,
+        token_base91,
+        string_to_multiline_format(public_key),
+        string_to_multiline_format(private_key),
         coordinator_url,
         until_true=True
     )
@@ -349,7 +447,7 @@ def robot_generate(argv):
         return False
     generate_response = generate_response_all.text
     generate_response_json = json_loads(generate_response)
-    if not generate_response_json:
+    if generate_response_json is False:
         print_err(generate_response, end="", error=False, date=False)
         print_err("generate response is not json")
         return False
@@ -371,25 +469,15 @@ def robot_generate(argv):
 
     print_out(robot_name)
 
-    if not robot_save_to_disk(robot_get_dic(
+    robot_dic = robot_save_to_disk_and_get_dic(
         robot_name, robot_state, robot_dir, token, coordinator
-    )):
+    )
+    if robot_dic is False:
         return False
 
-    gpg_list_dir = robot_dir + "/gpg"
-    if dir_make_sure_exists(gpg_list_dir) is False:
-        return False
-
-    gpg_dir = gpg_list_dir + "/" + fingerprint
-    if not os.path.exists(gpg_dir):
-        if dir_make_sure_exists(gpg_dir) is False:
-            return False
-        if not file_write(gpg_dir + "/public", public_key):
-            return False
-        if not file_write(gpg_dir + "/private", private_key):
-            return False
-
-    if not file_write(robot_dir + "/current-fingerprint", fingerprint):
+    if not robot_save_gpg_keys(
+        robot_dir, public_key, private_key, fingerprint, set_default=True
+    ):
         return False
 
     return True

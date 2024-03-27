@@ -3,9 +3,12 @@
 # pylint: disable=C0114 missing-module-docstring
 # pylint: disable=C0116 missing-function-docstring
 # pylint: disable=C0209 consider-using-f-string
+# pylint: disable=R0912 too-many-branches
+# pylint: disable=R1703 simplifiable-if-statement
 
 import os
 import re
+import datetime
 import getpass
 import json
 import subprocess
@@ -23,11 +26,13 @@ def roboauto_first_coordinator():
     return next(iter(roboauto_options["federation"]))
 
 
+# if this is called with robot_dic["coordinator"] do not check for False
+# already checked when creating the robot_dic in robot_get_dic
 def roboauto_get_coordinator_url(coordinator):
     url = roboauto_options["federation"].get(coordinator, False)
     if url is False:
         print_err("coordinator %s not valid" % coordinator)
-        return roboauto_options["federation"][roboauto_first_coordinator()]
+        return False
 
     return url
 
@@ -151,18 +156,32 @@ def update_federation_option(name, new_option, print_info=False):
             print_err("coordinator name %s not valid, similar to %s" % (name, key))
             return False
 
+    if new_option in ("false", "False", "FALSE", "none", "None", "NONE"):
+        new_option_is_none = True
+    else:
+        new_option_is_none = False
+
     old_option = roboauto_options["federation"].get(name, False)
     if old_option is False:
-        roboauto_options["federation"].update({name: new_option})
-        if print_info:
-            print_out("new coordinator %s added with url %s" % (name, new_option))
+        if new_option_is_none is False:
+            roboauto_options["federation"].update({name: new_option})
+            if print_info:
+                print_out("new coordinator %s added with url %s" % (name, new_option))
     elif old_option != new_option:
-        roboauto_options["federation"][name] = new_option
-        if print_info:
-            print_out(
-                "option %s changed from %s to %s" %
-                (name, str(old_option), str(new_option))
-            )
+        if new_option_is_none is True:
+            del roboauto_options["federation"][name]
+            if print_info:
+                print_out(
+                    "coordinator %s deactivated old url %s" %
+                    (name, str(old_option))
+                )
+        else:
+            roboauto_options["federation"][name] = new_option
+            if print_info:
+                print_out(
+                    "coordinator %s changed from %s to %s" %
+                    (name, str(old_option), str(new_option))
+                )
 
     return True
 
@@ -229,7 +248,6 @@ def global_setup():
     roboauto_state["gnupg_home"] = roboauto_home + "/gnupg"
 
     roboauto_state["waiting_queue_file"] = roboauto_home + "/waiting-queue"
-    roboauto_state["keep_online_refresh_file"] = roboauto_home + "/keep-online-refresh"
 
     roboauto_state["config_file"] = roboauto_config + "/config.ini"
     roboauto_state["message_command"] = roboauto_config + "/message-send"
@@ -305,14 +323,14 @@ def file_is_executable(file_path):
     return os.access(file_path, os.X_OK)
 
 
-def subprocess_run_command(program, print_error=True):
+def subprocess_run_command(program, error_print=True):
     try:
         process = subprocess.run(program, capture_output=True, check=False)
     except FileNotFoundError:
         print_err("error: command %s does not exists" % program[0])
         return False
     if process.returncode != 0:
-        if print_error:
+        if error_print:
             print_err(process.stderr.decode(), end="", error=False, date=False)
         return False
 
@@ -447,7 +465,7 @@ def get_date_short(date_unformat):
     return date_short
 
 
-def directory_get_last_number_file(dir_number):
+def directory_get_last_number_file(dir_number, error_print=True):
     list_number = []
     for file_number in os.listdir(dir_number):
         order_number = get_int(file_number)
@@ -457,7 +475,28 @@ def directory_get_last_number_file(dir_number):
         return 0
     file_number = dir_number + "/" + str(sorted(list_number)[-1])
     if not os.path.isfile(file_number):
-        print_err("%s is not a file" % file_number)
+        if error_print:
+            print_err("%s is not a file" % file_number)
         return False
 
     return file_number
+
+
+def string_from_multiline_format(string):
+    if string is False or string is None:
+        return string
+
+    return string.replace("\\", "\n")
+
+
+def string_to_multiline_format(string):
+    if string is False or string is None:
+        return string
+
+    return string.replace("\n", "\\")
+
+
+def date_to_format(date_string):
+    return datetime.datetime.strptime(
+        date_string, roboauto_state["robot_date_format"]
+    ).strftime(roboauto_options["date_format"])

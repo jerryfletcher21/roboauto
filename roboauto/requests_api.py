@@ -10,6 +10,7 @@ import time
 import requests
 
 from roboauto.logger import print_err
+from roboauto.utils import json_dumps
 from roboauto.global_state import roboauto_options, roboauto_state
 
 
@@ -36,7 +37,7 @@ def requests_tor_response(url, proxies, timeout, headers, data):
                 headers=headers, data=data
             )
     except requests.exceptions.RequestException as e:
-        print_err(e, error=False, date=False)
+        print_err(e, date=False, error=False)
         return False
 
 
@@ -56,7 +57,7 @@ def requests_tor(url, headers, data="", until_true=True):
         while response_is_error(response):
             error_happened = True
             if hasattr(response, "text"):
-                print_err(response.text, error=False)
+                print_err(response.text, date=False, error=False)
             if hasattr(response, "status_code"):
                 status_code = str(response.status_code)
             else:
@@ -207,7 +208,9 @@ def requests_api_order_post(token_base91, order_id, base_url, order_action, unti
 def requests_api_cancel(token_base91, order_id, base_url, until_true=True):
     return requests_api_order_post(
         token_base91, order_id, base_url,
-        '{ "action": "cancel" }',
+        json_dumps({
+            "action": "cancel"
+        }),
         until_true=until_true
     )
 
@@ -222,5 +225,18 @@ def requests_api_make(token_base91, order_id, base_url, make_data, until_true=Tr
         base_url, referer_path,
         "/api/make/",
         make_data,
+        until_true=until_true
+    )
+
+
+def requests_api_chat_post(token_base91, order_id, base_url, message, until_true=True):
+    return requests_api_post(
+        token_base91, base_url,
+        "/order/" + order_id,
+        "/api/chat/",
+        json_dumps({
+            "PGP_message": message,
+            "order_id": order_id
+        }),
         until_true=until_true
     )

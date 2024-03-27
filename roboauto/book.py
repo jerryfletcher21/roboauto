@@ -3,25 +3,25 @@
 # pylint: disable=C0114 missing-module-docstring
 # pylint: disable=C0116 missing-function-docstring
 # pylint: disable=C0209 consider-using-f-string
+# pylint: disable=R0911 too-many-return-statements
 
-import os
 import datetime
 
 from roboauto.logger import print_out, print_err
-from roboauto.global_state import roboauto_state, roboauto_options
+from roboauto.global_state import roboauto_state
 from roboauto.robot import robot_list_dir, waiting_queue_get
 from roboauto.order_local import \
     get_offer_dic, offer_dic_print, order_get_order_dic
 from roboauto.requests_api import response_is_error, requests_api_book
 from roboauto.utils import \
-    json_loads, roboauto_get_multi_coordinators_from_argv
+    json_loads, roboauto_get_multi_coordinators_from_argv, roboauto_get_coordinator_url
 
 
 def get_hour_offer(hour_timestamp, current_timestamp, relative):
     """get the hour from the timestamp, if relative the hour relative
     to current timestamp"""
     try:
-        robosats_date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
+        robosats_date_format = roboauto_state["robot_date_format"]
         if relative:
             unix_time = int(
                 datetime.datetime.strptime(
@@ -84,27 +84,23 @@ def get_offers_per_hour(relative):
 
     hours[24] = nicks_waiting
 
-    for robot in robot_list_dir(roboauto_state["active_home"]):
-        if robot in nicks_waiting:
+    for robot_name in robot_list_dir(roboauto_state["active_home"]):
+        if robot_name in nicks_waiting:
             continue
 
-        robot_dir = roboauto_state["active_home"] + "/" + robot
+        robot_dir = roboauto_state["active_home"] + "/" + robot_name
 
-        orders_dir = robot_dir + "/orders"
-        if not os.path.isdir(orders_dir):
-            continue
-
-        order_dic = order_get_order_dic(orders_dir)
+        order_dic = order_get_order_dic(robot_dir, error_print=False)
         if order_dic is False:
-            return False
+            continue
 
         expires_at = order_dic["order_response_json"]["expires_at"]
         date_hour = get_hour_offer(expires_at, current_timestamp, relative)
         if date_hour is False:
-            print_err("robot %s getting expire hour" % robot)
+            print_err("robot %s getting expire hour" % robot_name)
             return False
 
-        hours[date_hour].append(robot)
+        hours[date_hour].append(robot_name)
 
     return hours
 
@@ -132,7 +128,10 @@ def list_offers_per_hour(relative):
 def get_book_response_json(coordinator, until_true=False):
     """wrap around requests_api_book to check if the response
     is correct"""
-    base_url = roboauto_options["federation"][coordinator]
+    base_url = roboauto_get_coordinator_url(coordinator)
+    if base_url is False:
+        return False
+
     book_response_all = requests_api_book(base_url, until_true=until_true)
     if response_is_error(book_response_all):
         print_err("connecting to coordinator %s" % coordinator)
@@ -140,7 +139,7 @@ def get_book_response_json(coordinator, until_true=False):
     book_response = book_response_all.text
 
     book_response_json = json_loads(book_response)
-    if not book_response_json:
+    if book_response_json is False:
         print_err(book_response, error=False, date=False)
         print_err("getting book")
         return False

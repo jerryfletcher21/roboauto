@@ -11,13 +11,18 @@
 # pylint: disable=W0611 unused-import
 
 import sys
+import os
 import re
 
 from roboauto.logger import print_out, print_err
+from roboauto.gpg_key import gpg_import_key, gpg_decrypt_check_message
 from roboauto.robot import \
-    robot_input_from_argv, robot_requests_robot
+    robot_input_from_argv, robot_requests_robot, \
+    robot_save_peer_gpg_public_key
 from roboauto.order_local import get_order_string, order_save_order_file
 from roboauto.order import api_order_get_dic_handle
+from roboauto.chat import \
+    robot_requests_chat, chat_print_encrypted_messages, chat_print_single_message
 from roboauto.requests_api import \
     requests_api_limits, requests_api_info, \
     requests_api_chat, response_is_error
@@ -29,7 +34,8 @@ from roboauto.utils import \
     roboauto_get_coordinator_url, \
     roboauto_get_coordinator_from_argv, \
     dir_make_sure_exists, \
-    token_get_base91, token_get_double_sha256
+    token_get_base91, token_get_double_sha256, \
+    string_from_multiline_format, date_to_format
 
 
 def list_limits(argv):
@@ -42,7 +48,7 @@ def list_limits(argv):
         return False
     limits_response = limits_response_all.text
     limits_response_json = json_loads(limits_response)
-    if not limits_response_json:
+    if limits_response_json is False:
         print_err(limits_response, end="", error=False, date=False)
         print_err("limits response is not json")
         return False
@@ -62,7 +68,7 @@ def robosats_info(argv):
         return False
     info_response = info_response_all.text
     info_response_json = json_loads(info_response)
-    if not info_response_json:
+    if info_response_json is False:
         print_err(info_response, end="", error=False, date=False)
         print_err("info response is not json")
         return False
@@ -73,26 +79,22 @@ def robosats_info(argv):
 
 
 def robot_info(argv):
-    """print info about a robot and his order if --no-order is not specified"""
-    robot_name = False
-    robot_dir = False
+    """print info about a robot and his order --no-robot --no-order options"""
+    robot_name = None
+    robot_dic = None
 
     robot_print = True
     order_print = True
-    chat_print = False
 
     token_base91 = False
 
     while len(argv) > 0:
-        if argv[0] == "--no-order":
-            order_print = False
-        elif argv[0] == "--chat":
+        if argv[0] == "--no-robot":
             robot_print = False
+        elif argv[0] == "--no-order":
             order_print = False
-            chat_print = True
         elif argv[0] == "--stdin":
-            token_string = sys.stdin.readline().rstrip()
-            token_base91 = token_get_base91(token_string)
+            token_base91 = token_get_base91(sys.stdin.readline().rstrip())
         elif argv[0] == "--stdin-base91":
             token_base91 = sys.stdin.readline().rstrip()
         else:
@@ -121,15 +123,17 @@ def robot_info(argv):
             if robot_url is False:
                 return False
 
-    robot_response, robot_response_json = robot_requests_robot(token_base91, robot_url)
+    robot_response, robot_response_json = robot_requests_robot(
+        token_base91, robot_url, robot_dic
+    )
     if robot_response is False:
         return False
 
     if robot_print:
         print_out(json_dumps(robot_response_json))
 
-    if order_print or chat_print:
-        if robot_name is False:
+    if order_print:
+        if robot_name is None:
             robot_name = robot_response_json.get("nickname", "unknown")
 
         order_id_number = robot_response_json.get("active_order_id", False)
@@ -145,26 +149,68 @@ def robot_info(argv):
         if order_dic is False:
             return False
 
-        if robot_dir is not False:
+        if robot_dic is not None:
             if not order_save_order_file(robot_dir, order_id, order_dic):
                 return False
 
         order_response_json = order_dic["order_response_json"]
 
-        if order_print:
-            print_out(json_dumps(order_response_json))
+        print_out(json_dumps(order_response_json))
 
-        if chat_print:
-            chat_response_all = requests_api_chat(token_base91, order_id, robot_url)
-            if response_is_error(chat_response_all):
-                return False
-            chat_response = chat_response_all.text
-            chat_response_json = json_loads(chat_response)
-            if not chat_response_json:
-                print_err(chat_response, end="", error=False, date=False)
-                print_err("chat response is not json")
+    return True
+
+
+def robot_chat(argv):
+    from_local = False
+    if len(argv) > 0 and argv[0] == "--local":
+        from_local = True
+        argv = argv[1:]
+
+    robot_dic, argv = robot_input_from_argv(argv)
+    if robot_dic is False:
+        return False
+
+    robot_dir = robot_dic["dir"]
+    token = robot_dic["token"]
+    token_base91 = token_get_base91(token)
+    robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
+
+    if from_local is False:
+        chat_response, chat_response_json = robot_requests_chat(
+            robot_dir, token_base91, robot_url
+        )
+        if chat_response is False:
+            return False
+
+        if not chat_print_encrypted_messages(chat_response_json, robot_dir, token):
+            return False
+    else:
+        decrypted_messages_file = robot_dir + "/messages-decrypted"
+        chat_response_file = robot_dir + "/chat-response"
+
+        if os.path.isfile(decrypted_messages_file):
+            decrypted_messages = file_json_read(decrypted_messages_file)
+            if decrypted_messages is False:
                 return False
 
-            print_out(json_dumps(chat_response_json))
+            first_message = True
+            for message_dic in decrypted_messages:
+                if first_message:
+                    first_message = False
+                else:
+                    print_out("\n", end="")
+
+                if chat_print_single_message(message_dic) is False:
+                    return False
+        elif os.path.isfile(chat_response_file):
+            chat_response_json = file_json_read(chat_response_file)
+            if chat_response_json is False:
+                return False
+
+            if not chat_print_encrypted_messages(chat_response_json, robot_dir, token):
+                return False
+        else:
+            print_err("there are no local messages")
+            return False
 
     return True

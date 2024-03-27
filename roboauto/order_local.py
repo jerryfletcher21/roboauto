@@ -302,11 +302,12 @@ def offer_dic_print(offer_dic):
     ))
 
 
-def print_robot_order(robot, order_id, one_line, full_mode):
+def print_robot_order(robot_dic, order_id, one_line, full_mode):
     order_id_error = "------"
 
-    robot_dir = robot["dir"]
-    coordinator = robot["coordinator"]
+    robot_name = robot_dic["name"]
+    robot_dir = robot_dic["dir"]
+    coordinator = robot_dic["coordinator"]
     coordinator_str = str(coordinator)[:3]
 
     orders_dir = robot_dir + "/orders"
@@ -315,7 +316,7 @@ def print_robot_order(robot, order_id, one_line, full_mode):
             print_out(json_dumps({"error": "no order dir"}))
         else:
             print_out("%-3s %-6s %-24s no order dir" % (
-                coordinator_str, order_id_error, robot
+                coordinator_str, order_id_error, robot_name
             ))
         return True
 
@@ -326,7 +327,7 @@ def print_robot_order(robot, order_id, one_line, full_mode):
     else:
         order_file = orders_dir + "/" + order_id
         if not os.path.isfile(order_file):
-            print_err("%s does not have order %s" % (robot, order_id))
+            print_err("%s does not have order %s" % (robot_name, order_id))
             return False
 
     order_dic = file_json_read(order_file)
@@ -355,7 +356,7 @@ def print_robot_order(robot, order_id, one_line, full_mode):
             ))
         else:
             print_out("%-3s %-6s %-24s no order response" % (
-                coordinator_str, order_id_error, robot
+                coordinator_str, order_id_error, robot_dic
             ))
 
     return True
@@ -374,11 +375,11 @@ def order_info_local(argv):
         destination_dir = robot_get_dir_dic()[first_arg[2:]]
 
         for robot_name in os.listdir(destination_dir):
-            robot = robot_load_from_name(robot_name, error_print=False)
-            if robot is False:
+            robot_dic = robot_load_from_name(robot_name, error_print=False)
+            if robot_dic is False:
                 return False
             if not print_robot_order(
-                robot, False,
+                robot_dic, False,
                 one_line=True, full_mode=full_mode
             ):
                 return False
@@ -392,11 +393,11 @@ def order_info_local(argv):
 
         if os.path.isdir(robot_dir):
             for robot_name in os.listdir(robot_dir):
-                robot = robot_load_from_name(robot_name, error_print=False)
-                if robot is False:
+                robot_dic = robot_load_from_name(robot_name, error_print=False)
+                if robot_dic is False:
                     return False
                 if not print_robot_order(
-                    robot, False,
+                    robot_dic, False,
                     one_line=True, full_mode=full_mode
                 ):
                     return False
@@ -405,8 +406,8 @@ def order_info_local(argv):
         print_err("option %s not recognized" % first_arg)
         return False
     else:
-        robot, argv = robot_input_from_argv(argv)
-        if robot is False:
+        robot_dic, argv = robot_input_from_argv(argv)
+        if robot_dic is False:
             return False
 
         if len(argv) >= 1:
@@ -416,7 +417,7 @@ def order_info_local(argv):
             order_id = False
 
         if not print_robot_order(
-            robot, order_id, one_line=False, full_mode=full_mode
+            robot_dic, order_id, one_line=False, full_mode=full_mode
         ):
             return False
 
@@ -435,9 +436,19 @@ def order_save_order_file(robot_dir, order_id, order_dic):
     return True
 
 
-def order_get_order_dic(orders_dir):
-    order_file = directory_get_last_number_file(orders_dir)
-    if order_file is False:
+def order_get_order_dic(robot_dir, error_print=True):
+    orders_dir = robot_dir + "/orders"
+    if not os.path.isdir(orders_dir):
+        if error_print:
+            print_err("%s is not a dir" % orders_dir)
+        return False
+
+    order_file = directory_get_last_number_file(orders_dir, error_print=error_print)
+    if order_file == 0:
+        if error_print:
+            print_err("orders dir is empty")
+        return False
+    elif order_file is False:
         return False
 
     order_dic = file_json_read(order_file)
@@ -447,24 +458,10 @@ def order_get_order_dic(orders_dir):
     return order_dic
 
 
-def order_get_robot(robot, destination_dir):
-    robot_dir = destination_dir + "/" + robot
-
-    orders_dir = robot_dir + "/orders"
-    if not os.path.isdir(orders_dir):
-        return False
-
-    order_dic = order_get_order_dic(orders_dir)
-    if order_dic is False:
-        return False
-
-    return order_dic
-
-
 def orders_get_directory(destination_dir):
     orders = []
-    for robot in os.listdir(destination_dir):
-        order_dic = order_get_robot(robot, destination_dir)
+    for robot_name in os.listdir(destination_dir):
+        order_dic = order_get_order_dic(destination_dir + "/" + robot_name, error_print=False)
         if order_dic is False:
             continue
 
@@ -473,10 +470,10 @@ def orders_get_directory(destination_dir):
     return orders
 
 
-def robot_handle_taken(robot, status_id, order_id, other):
-    robot_dir = roboauto_state["active_home"] + "/" + robot
+def robot_handle_taken(robot_name, status_id, order_id, other):
+    robot_dir = roboauto_state["active_home"] + "/" + robot_name
     if not os.path.isdir(robot_dir):
-        print_err(robot + " is not active")
+        print_err(robot_name + " is not active")
         return False
 
     if order_is_pending(status_id):
@@ -486,8 +483,8 @@ def robot_handle_taken(robot, status_id, order_id, other):
         dest_dir = roboauto_state["inactive_home"]
         dest_name = "inactive"
 
-    print_out("something happened with " + robot + " " + order_id)
-    print_out("%s moved to %s" % (robot, dest_name))
+    print_out("something happened with " + robot_name + " " + order_id)
+    print_out("%s moved to %s" % (robot_name, dest_name))
 
     try:
         shutil.move(robot_dir, dest_dir)
@@ -500,7 +497,7 @@ def robot_handle_taken(robot, status_id, order_id, other):
 
     if file_is_executable(roboauto_state["message_command"]):
         message_output = subprocess_run_command(
-            [roboauto_state["message_command"], robot, order_id, other]
+            [roboauto_state["message_command"], robot_name, order_id, other]
         )
         if message_output is False:
             print_err("sending message")
