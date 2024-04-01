@@ -195,16 +195,17 @@ def update_roboauto_options(print_info=False):
 
         if parser.has_section(general_section):
             for option in (
-                "user_agent", "default_duration",
-                "default_escrow", "date_format"
+                "user_agent",
+                "default_duration", "default_escrow",
+                "default_bond_size", "date_format"
             ):
                 if parser.has_option(general_section, option):
                     new_option = parser.get(general_section, option).strip("'\"")
                     update_single_option(option, new_option, print_info=print_info)
 
             for option in (
-                "book_interval", "bond_interval", "slowly_paused_interval",
-                "error_interval", "tab_size", "order_maximum"
+                "book_interval", "pending_interval", "bond_interval", "error_interval",
+                "time_zone", "tab_size", "order_maximum"
             ):
                 if parser.has_option(general_section, option):
                     try:

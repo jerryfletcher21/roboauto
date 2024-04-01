@@ -28,14 +28,13 @@ from roboauto.order_local import \
     get_order_data, order_get_order_dic, order_save_order_file
 from roboauto.robot import \
     robot_get_lock_file, robot_input_from_argv, \
-    waiting_queue_get, robot_requests_robot, robot_change_dir
+    robot_requests_robot, robot_change_dir
 from roboauto.requests_api import \
     requests_api_order, requests_api_cancel, \
     requests_api_make, response_is_error
 from roboauto.utils import \
     json_dumps, file_is_executable, subprocess_run_command, \
-    json_loads, file_json_write, \
-    input_ask, roboauto_get_coordinator_url, \
+    json_loads, input_ask, roboauto_get_coordinator_url, \
     roboauto_get_coordinator_from_url, token_get_base91
 
 
@@ -563,20 +562,3 @@ def recreate_order(argv):
             return False
 
     return True
-
-
-def wait_order(robot_dic):
-    """move robot to waiting queue"""
-    nicks_waiting = waiting_queue_get()
-    if nicks_waiting is False:
-        return False
-
-    robot_name = robot_dic["name"]
-
-    nicks_waiting.append(robot_name)
-    print_out(robot_name + " added to waiting queue")
-    if file_json_write(roboauto_state["waiting_queue_file"], nicks_waiting) is False:
-        print_err("writing waiting queue")
-        return False
-
-    return False

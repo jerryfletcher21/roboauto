@@ -8,7 +8,7 @@
 import datetime
 
 from roboauto.logger import print_out, print_err
-from roboauto.global_state import roboauto_state
+from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import robot_list_dir, waiting_queue_get
 from roboauto.order_local import \
     get_offer_dic, offer_dic_print, order_get_order_dic
@@ -32,16 +32,16 @@ def get_hour_offer(hour_timestamp, current_timestamp, relative):
             )
             date_hour = (23 - int((current_timestamp - unix_time) / 3600)) % 24
         else:
+            time_zone = roboauto_options["time_zone"]
             date_hour = int(
                 datetime.datetime.strptime(
                     hour_timestamp, robosats_date_format
                 ).replace(
-                    tzinfo=datetime.timezone(datetime.timedelta(hours=-1))
+                    tzinfo=datetime.timezone(datetime.timedelta(hours=time_zone))
                 ).astimezone(datetime.timezone.utc).strftime(
                     "%H"
                 )
             )
-            # date_hour = int(get_date_short(hour_timestamp).split(":")[0])
     except (ValueError, TypeError):
         print_err("getting hour")
         return False
@@ -79,8 +79,6 @@ def get_offers_per_hour(relative):
     current_timestamp = get_current_timestamp()
 
     nicks_waiting = waiting_queue_get()
-    if nicks_waiting is False:
-        return False
 
     hours[24] = nicks_waiting
 

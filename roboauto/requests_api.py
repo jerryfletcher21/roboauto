@@ -24,7 +24,7 @@ def response_is_error(response):
     return False
 
 
-def requests_tor_response(url, proxies, timeout, headers, data):
+def requests_tor_response(url, proxies, timeout, headers, data, error_print=True):
     try:
         if data == "":
             return requests.get(
@@ -37,11 +37,12 @@ def requests_tor_response(url, proxies, timeout, headers, data):
                 headers=headers, data=data
             )
     except requests.exceptions.RequestException as e:
-        print_err(e, date=False, error=False)
+        if error_print:
+            print_err(e, date=False, error=False)
         return False
 
 
-def requests_tor(url, headers, data="", until_true=True):
+def requests_tor(url, headers, data="", until_true=True, error_print=True):
     proxies = {
         "http": "socks5h://127.0.0.1:9050",
         "https": "socks5h://127.0.0.1:9050"
@@ -56,32 +57,35 @@ def requests_tor(url, headers, data="", until_true=True):
         request_failed = 0
         while response_is_error(response):
             error_happened = True
-            if hasattr(response, "text"):
-                print_err(response.text, date=False, error=False)
-            if hasattr(response, "status_code"):
-                status_code = str(response.status_code)
-            else:
-                status_code = "error"
-            print_err(
-                "requests retrying " + url + " status code " + status_code,
-                error=False
-            )
+            if error_print:
+                if hasattr(response, "text"):
+                    print_err(response.text, date=False, error=False)
+                if hasattr(response, "status_code"):
+                    status_code = str(response.status_code)
+                else:
+                    status_code = "error"
+                print_err(
+                    "requests retrying " + url + " status code " + status_code,
+                    error=False
+                )
 
             request_failed += 1
             if request_failed >= max_retries:
-                print_err("maximum retries reached")
+                if error_print:
+                    print_err("maximum retries reached")
                 return False
 
             time.sleep(roboauto_options["error_interval"])
             response = requests_tor_response(url, proxies, timeout, headers, data)
         if error_happened:
-            print_err("requests success " + url, error=False)
+            if error_print:
+                print_err("requests success " + url, error=False)
         return response
     else:
         return requests_tor_response(url, proxies, timeout, headers, data)
 
 
-def requests_api_base(base_url, url_path, until_true=True):
+def requests_api_base(base_url, url_path, until_true=True, error_print=True):
     headers = {
         "User-Agent": roboauto_options["user_agent"],
         "Accept": "*/*",
@@ -95,22 +99,33 @@ def requests_api_base(base_url, url_path, until_true=True):
         "Sec-Fetch-Site": roboauto_state["fetch_site"]
     }
 
-    return requests_tor(base_url + url_path, headers, until_true=until_true)
+    return requests_tor(
+        base_url + url_path, headers, until_true=until_true, error_print=error_print
+    )
 
 
-def requests_api_info(base_url, until_true=True):
-    return requests_api_base(base_url, "/api/info/", until_true=until_true)
+def requests_api_info(base_url, until_true=True, error_print=True):
+    return requests_api_base(
+        base_url, "/api/info/", until_true=until_true, error_print=error_print
+    )
 
 
-def requests_api_book(base_url, until_true=True):
-    return requests_api_base(base_url, "/api/book/?currency=0&type=2", until_true=until_true)
+def requests_api_book(base_url, until_true=True, error_print=True):
+    return requests_api_base(
+        base_url, "/api/book/?currency=0&type=2",
+        until_true=until_true, error_print=error_print
+    )
 
 
-def requests_api_limits(base_url, until_true=True):
-    return requests_api_base(base_url, "/api/limits/", until_true=until_true)
+def requests_api_limits(base_url, until_true=True, error_print=True):
+    return requests_api_base(
+        base_url, "/api/limits/", until_true=until_true, error_print=error_print
+    )
 
 
-def requests_api_robot_generate(token_base91, public_key, private_key, base_url, until_true=True):
+def requests_api_robot_generate(
+    token_base91, public_key, private_key, base_url, until_true=True, error_print=True
+):
     headers = {
         "User-Agent": roboauto_options["user_agent"],
         "Accept": "*/*",
@@ -128,10 +143,14 @@ def requests_api_robot_generate(token_base91, public_key, private_key, base_url,
         "Sec-Fetch-Site": roboauto_state["fetch_site"]
     }
 
-    return requests_tor(base_url + "/api/robot/", headers, until_true=until_true)
+    return requests_tor(
+        base_url + "/api/robot/", headers, until_true=until_true, error_print=error_print
+    )
 
 
-def requests_api_token(token_base91, base_url, referer_path, url_path, until_true=True):
+def requests_api_token(
+    token_base91, base_url, referer_path, url_path, until_true=True, error_print=True
+):
     headers = {
         "User-Agent": roboauto_options["user_agent"],
         "Accept": "*/*",
@@ -146,37 +165,43 @@ def requests_api_token(token_base91, base_url, referer_path, url_path, until_tru
         "Sec-Fetch-Site": roboauto_state["fetch_site"]
     }
 
-    return requests_tor(base_url + url_path, headers, until_true=until_true)
+    return requests_tor(
+        base_url + url_path, headers, until_true=until_true, error_print=error_print
+    )
 
 
-def requests_api_robot(token_base91, base_url, until_true=True):
+def requests_api_robot(token_base91, base_url, until_true=True, error_print=True):
     return requests_api_token(
         token_base91, base_url,
         "/robot/",
         "/api/robot/",
-        until_true=until_true
+        until_true=until_true, error_print=error_print
     )
 
 
-def requests_api_order(token_base91, order_id, base_url, until_true=True):
+def requests_api_order(token_base91, order_id, base_url, until_true=True, error_print=True):
     return requests_api_token(
         token_base91, base_url,
         "/order/" + order_id,
         "/api/order/?order_id=" + order_id,
-        until_true=until_true
+        until_true=until_true, error_print=error_print
     )
 
 
-def requests_api_chat(token_base91, order_id, base_url, offset=0, until_true=True):
+def requests_api_chat(
+    token_base91, order_id, base_url, offset=0, until_true=True, error_print=True
+):
     return requests_api_token(
         token_base91, base_url,
         "/order/" + order_id,
         "/api/chat/?order_id=" + order_id + "&offset=" + str(offset),
-        until_true=until_true
+        until_true=until_true, error_print=error_print
     )
 
 
-def requests_api_post(token_base91, base_url, referer_path, url_path, data, until_true=True):
+def requests_api_post(
+    token_base91, base_url, referer_path, url_path, data, until_true=True, error_print=True
+):
     headers = {
         "User-Agent": roboauto_options["user_agent"],
         "Accept": "*/*",
@@ -192,30 +217,36 @@ def requests_api_post(token_base91, base_url, referer_path, url_path, data, unti
         "Sec-Fetch-Site": roboauto_state["fetch_site"]
     }
 
-    return requests_tor(base_url + url_path, headers, data=data, until_true=until_true)
+    return requests_tor(
+        base_url + url_path, headers, data=data, until_true=until_true, error_print=error_print
+    )
 
 
-def requests_api_order_post(token_base91, order_id, base_url, order_action, until_true=True):
+def requests_api_order_post(
+    token_base91, order_id, base_url, order_action, until_true=True, error_print=True
+):
     return requests_api_post(
         token_base91, base_url,
         "/order/" + order_id,
         "/api/order/?order_id=" + order_id,
         order_action,
-        until_true=until_true
+        until_true=until_true, error_print=error_print
 )
 
 
-def requests_api_cancel(token_base91, order_id, base_url, until_true=True):
+def requests_api_cancel(token_base91, order_id, base_url, until_true=True, error_print=True):
     return requests_api_order_post(
         token_base91, order_id, base_url,
         json_dumps({
             "action": "cancel"
         }),
-        until_true=until_true
+        until_true=until_true, error_print=error_print
     )
 
 
-def requests_api_make(token_base91, order_id, base_url, make_data, until_true=True):
+def requests_api_make(
+    token_base91, order_id, base_url, make_data, until_true=True, error_print=True
+):
     if order_id:
         referer_path = "/order/" + order_id
     else:
@@ -225,11 +256,12 @@ def requests_api_make(token_base91, order_id, base_url, make_data, until_true=Tr
         base_url, referer_path,
         "/api/make/",
         make_data,
-        until_true=until_true
+        until_true=until_true, error_print=error_print
     )
 
 
-def requests_api_chat_post(token_base91, order_id, base_url, message, until_true=True):
+def requests_api_chat_post(
+    token_base91, order_id, base_url, message, until_true=True, error_print=True):
     return requests_api_post(
         token_base91, base_url,
         "/order/" + order_id,
@@ -238,5 +270,5 @@ def requests_api_chat_post(token_base91, order_id, base_url, message, until_true
             "PGP_message": message,
             "order_id": order_id
         }),
-        until_true=until_true
+        until_true=until_true, error_print=error_print
     )

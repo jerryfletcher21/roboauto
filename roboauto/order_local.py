@@ -210,8 +210,15 @@ def order_is_expired(data):
         return False
 
 
+def order_is_in_dispute(data):
+    if data in (11, 16):
+        return True
+    else:
+        return False
+
+
 def order_is_pending(data):
-    if data in (6, 7, 8, 9, 10, 11):
+    if data in (6, 7, 8, 9, 10, 11, 13, 15, 16):
         return True
     else:
         return False
@@ -456,18 +463,6 @@ def order_get_order_dic(robot_dir, error_print=True):
         return False
 
     return order_dic
-
-
-def orders_get_directory(destination_dir):
-    orders = []
-    for robot_name in os.listdir(destination_dir):
-        order_dic = order_get_order_dic(destination_dir + "/" + robot_name, error_print=False)
-        if order_dic is False:
-            continue
-
-        orders.append(order_dic)
-
-    return orders
 
 
 def robot_handle_taken(robot_name, status_id, order_id, other):

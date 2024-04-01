@@ -59,6 +59,17 @@ def robot_get_dic(robot_name, robot_state, robot_dir, token, coordinator):
     }
 
 
+def robot_var_from_dic(robot_dic):
+    return \
+        robot_dic["name"], \
+        robot_dic["state"], \
+        robot_dic["dir"], \
+        robot_dic["token"], \
+        robot_dic["coordinator"], \
+        token_get_base91(robot_dic["token"]), \
+        roboauto_get_coordinator_url(robot_dic["coordinator"])
+
+
 def robot_load_from_name(robot_name, error_print=True):
     possible_state_base_dir = robot_get_dir_dic()
     found = False
@@ -244,11 +255,13 @@ def robot_print_coordinator(argv):
     return True
 
 
-def robot_list_dir(robot_dir):
+def robot_list_dir(robot_dir, get_set=False):
     full_path_list = os.listdir(robot_dir)
-    name_list = [full_path.split("/")[-1] for full_path in full_path_list]
 
-    return sorted(name_list)
+    if get_set:
+        return {full_path.split("/")[-1] for full_path in full_path_list}
+
+    return sorted([full_path.split("/")[-1] for full_path in full_path_list])
 
 
 def robot_print_dir_argv(robot_state, argv):
@@ -503,7 +516,7 @@ def waiting_queue_get():
         nicks_waiting = file_json_read(roboauto_state["waiting_queue_file"])
         if nicks_waiting is False:
             print_err("reading waiting queue")
-            return False
+            return []
     else:
         nicks_waiting = []
 
@@ -512,10 +525,47 @@ def waiting_queue_get():
 
 def waiting_queue_print():
     nicks_waiting = waiting_queue_get()
-    if nicks_waiting is False:
-        return False
 
     for nick in nicks_waiting:
         print_out(f"{nick}")
+
+    return True
+
+
+def robot_wait(robot_name):
+    """move robot to waiting queue"""
+    nicks_waiting = waiting_queue_get()
+
+    nicks_waiting.append(robot_name)
+    print_out(robot_name + " added to waiting queue")
+    if file_json_write(roboauto_state["waiting_queue_file"], nicks_waiting) is False:
+        print_err("writing waiting queue")
+        return False
+
+    return False
+
+
+def robot_unwait(robot_name=None):
+    """remove robot or first in the list from the waiting queue"""
+    nicks_waiting = waiting_queue_get()
+
+    if robot_name is not None:
+        try:
+            nicks_waiting.remove(robot_name)
+        except ValueError:
+            print_err(f"{robot_name} is not in the waiting queue")
+            return False
+
+        print_out(f"{robot_name} removed from waiting queue because it was active")
+    else:
+        robot_activate = nicks_waiting.pop(0)
+
+        print_out(f"{robot_activate} removed from waiting queue")
+
+    if file_json_write(
+        roboauto_state["waiting_queue_file"], nicks_waiting
+    ) is False:
+        print_err("writing waiting queue")
+        return False
 
     return True

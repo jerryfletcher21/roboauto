@@ -20,8 +20,7 @@ from roboauto.chat import robot_send_chat_message_argv
 from roboauto.info import robosats_info, robot_info, list_limits, robot_chat
 from roboauto.book import \
     list_offers_per_hour_argv, list_offers_all, list_offers_buy, list_offers_sell
-from roboauto.keep_online import \
-    slowly_move_to_active, keep_online
+from roboauto.keep_online import keep_online
 
 
 version = "0.1"
@@ -40,7 +39,6 @@ set-pending|set-inactive|set-paused [robot-name/--all]
 order-info-local [--full] robot-name [order-id]
 order-info-local [--full] --active/--pending/--paused/--inactive
 order-info-local [--full] --dir directory
-slowly-move-to-active [seconds]
 robosats-info --{coordinator-name}
 generate-robot --{coordinator-name} [--active, --pending, --inactive]
 robot-info [--no-order] [robot-name]
@@ -104,10 +102,6 @@ order-info-local [--full] --dir directory
     if --full is provided print all data about the order
     if --active, --pending, --paused, --inactive or a directory is passed print
     local order info about all robots in the directory
-
-slowly-move-to-active [seconds]
-    slowly move robots to active from paused
-    if seconds is not present $slowly_paused_interval is used
 
 robosats-info --{coordinator-name}
     get info about robosats
@@ -230,8 +224,6 @@ try:
         return_status = robot_change_dir_from_argv("paused", argv)
     elif action == "order-info-local":
         return_status = order_info_local(argv)
-    elif action == "slowly-move-to-active":
-        return_status = slowly_move_to_active(argv)
     elif action == "robosats-info":
         return_status = robosats_info(argv)
     elif action == "generate-robot":

@@ -49,6 +49,12 @@ def robot_requests_chat(robot_dir, token_base91, robot_url):
         print_err("chat response is not json")
         return multi_false
 
+    bad_request = chat_response_json.get("bad_request", False)
+    if bad_request is not False:
+        print_err(bad_request, date=False, error=False)
+        print_err("getting chat messages")
+        return multi_false
+
     chat_response_file = robot_dir + "/chat-response"
     if not file_json_write(chat_response_file, chat_response_json):
         return multi_false
