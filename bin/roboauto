@@ -9,7 +9,9 @@ import re
 import signal
 
 from roboauto.logger import print_out, print_err
-from roboauto.utils import global_setup, list_configs, update_roboauto_options
+from roboauto.utils import \
+    global_setup, global_shutdown, \
+    list_configs, update_roboauto_options
 from roboauto.robot import \
     robot_import, robot_print_token, robot_print_coordinator, \
     robot_print_dir_argv, waiting_queue_print, robot_change_dir_from_argv, robot_generate
@@ -159,13 +161,6 @@ keep-online
 
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-if global_setup() is False:
-    sys.exit(1)
-
-if update_roboauto_options() is False:
-    print_err("reading the config file")
-    sys.exit(1)
-
 argv = sys.argv[1:]
 if len(argv) < 1:
     print_err("insert parameters")
@@ -195,7 +190,14 @@ if len(argv) < 1:
 action = argv[0]
 argv = argv[1:]
 
+if global_setup() is False:
+    sys.exit(1)
+
 try:
+    if update_roboauto_options() is False:
+        print_err("reading the config file")
+        sys.exit(1)
+
     if action == "list-configs":
         return_status = list_configs()
     elif action == "import-robot":
@@ -258,6 +260,8 @@ try:
 except KeyboardInterrupt:
     print_out("\n", end="", date=False)
     return_status = False
+finally:
+    global_shutdown()
 
 if return_status:
     sys.exit(0)

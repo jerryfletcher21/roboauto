@@ -296,7 +296,7 @@ def offer_dic_print(offer_dic):
     printf_string = \
         "%-3s %-6s %-24s %-4s %-3s %3sh %5s %6.2f%% %3s " + \
         offer_dic["amount_format"] + " " + offer_dic["amount_format"] + \
-        " %5s %s"
+        " %8s %s"
     print_out(printf_string % (
         offer_dic["coordinator"][:3],
         offer_dic["offer_id"], offer_dic["maker_nick"],
@@ -309,23 +309,13 @@ def offer_dic_print(offer_dic):
     ))
 
 
-def print_robot_order(robot_dic, order_id, one_line, full_mode):
-    order_id_error = "------"
-
+def order_dic_from_robot_dic(robot_dic, order_id):
     robot_name = robot_dic["name"]
     robot_dir = robot_dic["dir"]
-    coordinator = robot_dic["coordinator"]
-    coordinator_str = str(coordinator)[:3]
 
     orders_dir = robot_dir + "/orders"
     if not os.path.isdir(orders_dir):
-        if not one_line:
-            print_out(json_dumps({"error": "no order dir"}))
-        else:
-            print_out("%-3s %-6s %-24s no order dir" % (
-                coordinator_str, order_id_error, robot_name
-            ))
-        return True
+        return None
 
     if order_id is False:
         order_file = directory_get_last_number_file(orders_dir)
@@ -341,6 +331,29 @@ def print_robot_order(robot_dic, order_id, one_line, full_mode):
     if order_dic is False:
         return False
 
+    return order_dic
+
+
+def robot_order_not_complete_print(robot_name, coordinator, error_string):
+    print_out(
+        "%-3s %-6s %-24s %4s %3s %4s %5s %7s %3s %7s %7s %8s %s" % (
+            str(coordinator)[:3], "------", robot_name,
+            "----", "---", "----", "-----", "-------",
+            "---", "-------", "-------", "--------",
+            error_string
+        )
+    )
+
+
+def robot_no_order_dir_print(robot_name, coordinator):
+    robot_order_not_complete_print(robot_name, coordinator, "no order dir")
+
+
+def robot_no_order_response_print(robot_name, coordinator):
+    robot_order_not_complete_print(robot_name, coordinator, "no order response")
+
+
+def order_dic_print(order_dic, robot_name, coordinator, one_line, full_mode):
     if not one_line:
         if full_mode:
             print_out(json_dumps(order_dic))
@@ -348,23 +361,78 @@ def print_robot_order(robot_dic, order_id, one_line, full_mode):
             if "order_user" not in order_dic and "order_info" not in order_dic:
                 print_out(json_dumps({"error": "no order user and info"}))
             else:
-                order_dic_print = {}
+                order_dic_list = {}
                 if "order_info" in order_dic:
                     for key in ("coordinator", "order_id", "status_string"):
                         if key in order_dic["order_info"]:
-                            order_dic_print.update({key: order_dic["order_info"][key]})
+                            order_dic_list.update({key: order_dic["order_info"][key]})
                 if "order_user" in order_dic:
-                    order_dic_print.update(order_dic["order_user"])
-                print_out(json_dumps(order_dic_print))
+                    order_dic_list.update(order_dic["order_user"])
+                print_out(json_dumps(order_dic_list))
     else:
         if "order_response_json" in order_dic:
             offer_dic_print(get_offer_dic(
                 order_dic["order_response_json"], coordinator
             ))
         else:
-            print_out("%-3s %-6s %-24s no order response" % (
-                coordinator_str, order_id_error, robot_dic
-            ))
+            robot_no_order_response_print(robot_name, coordinator)
+
+
+def robot_order_print(robot_dic, order_id, one_line, full_mode):
+    robot_name = robot_dic["name"]
+    coordinator = robot_dic["coordinator"]
+
+    order_dic = order_dic_from_robot_dic(robot_dic, order_id)
+    if order_dic is None:
+        if not one_line:
+            print_out(json_dumps({"error": "no order dir"}))
+        else:
+            robot_no_order_dir_print(robot_name, coordinator)
+        return True
+    elif order_dic is False:
+        return False
+
+    order_dic_print(order_dic, robot_name, coordinator, one_line, full_mode)
+
+    return True
+
+
+def order_info_local_print_ordered_list(robot_list, full_mode):
+    order_list_unsorted = []
+    robot_list_no_response = []
+    robot_list_no_dir = []
+    for robot_name in robot_list:
+        robot_dic = robot_load_from_name(robot_name, error_print=False)
+        if robot_dic is False:
+            continue
+
+        order_dic = order_dic_from_robot_dic(robot_dic, False)
+        if order_dic is None:
+            robot_list_no_dir.append(robot_dic)
+        elif order_dic is not False:
+            if order_dic.get("order_response_json", False) is not False:
+                order_list_unsorted.append({
+                    "order_dic": order_dic,
+                    "robot_name": robot_name,
+                    "coordinator": robot_dic["coordinator"]
+                })
+            else:
+                robot_list_no_response.append(robot_dic)
+
+    for robot_dic in robot_list_no_dir:
+        robot_no_order_dir_print(robot_dic["name"], robot_dic["coordinator"])
+    for robot_dic in robot_list_no_response:
+        robot_no_order_response_print(robot_dic["name"], robot_dic["coordinator"])
+
+    order_list_sorted = sorted(
+        order_list_unsorted,
+        key=lambda order_data: float(order_data["order_dic"]["order_response_json"]["premium"])
+    )
+    for order_data in order_list_sorted:
+        order_dic_print(
+            order_data["order_dic"], order_data["robot_name"], order_data["coordinator"],
+            one_line=True, full_mode=full_mode
+        )
 
     return True
 
@@ -381,15 +449,10 @@ def order_info_local(argv):
         argv = argv[1:]
         destination_dir = robot_get_dir_dic()[first_arg[2:]]
 
-        for robot_name in os.listdir(destination_dir):
-            robot_dic = robot_load_from_name(robot_name, error_print=False)
-            if robot_dic is False:
-                return False
-            if not print_robot_order(
-                robot_dic, False,
-                one_line=True, full_mode=full_mode
-            ):
-                return False
+        if order_info_local_print_ordered_list(
+            os.listdir(destination_dir), full_mode
+        ) is False:
+            return False
     elif first_arg == "--dir":
         argv = argv[1:]
         if len(argv) < 1:
@@ -398,16 +461,13 @@ def order_info_local(argv):
         robot_dir = argv[0]
         argv = argv[1:]
 
-        if os.path.isdir(robot_dir):
-            for robot_name in os.listdir(robot_dir):
-                robot_dic = robot_load_from_name(robot_name, error_print=False)
-                if robot_dic is False:
-                    return False
-                if not print_robot_order(
-                    robot_dic, False,
-                    one_line=True, full_mode=full_mode
-                ):
-                    return False
+        if not os.path.isdir(robot_dir):
+            print_err(f"{robot_dir} is not a directory")
+            return False
+        if order_info_local_print_ordered_list(
+            os.listdir(robot_dir), full_mode
+        ) is False:
+            return False
     elif re.match('^-', first_arg) is not None:
         argv = argv[1:]
         print_err("option %s not recognized" % first_arg)
@@ -423,7 +483,7 @@ def order_info_local(argv):
         else:
             order_id = False
 
-        if not print_robot_order(
+        if not robot_order_print(
             robot_dic, order_id, one_line=False, full_mode=full_mode
         ):
             return False
@@ -490,16 +550,16 @@ def robot_handle_taken(robot_name, status_id, order_id, other):
         )
         return False
 
-    if file_is_executable(roboauto_state["message_command"]):
+    if file_is_executable(roboauto_state["message_notification_command"]):
         message_output = subprocess_run_command(
-            [roboauto_state["message_command"], robot_name, order_id, other]
+            [roboauto_state["message_notification_command"], robot_name, order_id, other]
         )
         if message_output is False:
             print_err("sending message")
             return False
         print_out(message_output.decode(), end="", date=False)
     else:
-        print_err("message-command not found, no messages will be sent")
+        print_err("message notification command not found, no messages will be sent")
 
     return True
 

@@ -13,20 +13,41 @@ def get_date():
     return datetime.datetime.today().strftime(roboauto_options["date_format"])
 
 
+def print_and_log(arg, end="\n", file=None):
+    if file is not None:
+        print(arg, end=end)
+    else:
+        print(arg, end=end, file=file)
+
+    if roboauto_state["should_log"] is True:
+        if roboauto_state["logger"] is None:
+            try:
+                # pylint: disable=R1732 consider-using-with
+                roboauto_state["logger"] = open(
+                    roboauto_state["log_file"], "a", encoding="utf8"
+                )
+            except OSError:
+                return False
+
+        print(arg, end=end, file=roboauto_state["logger"])
+
+    return True
+
+
 def print_out(arg, end="\n", date=True):
-    if roboauto_state["print_date"] and date:
+    if roboauto_state["should_log"] and date:
         date_current = get_date()
-        print("[" + date_current + "] ", end="")
-    print(arg, end=end)
+        print_and_log("[" + date_current + "] ", end="")
+    print_and_log(arg, end=end)
 
 
 def print_stderr(error_string, arg, end="\n", date=True, error=True):
-    if roboauto_state["print_date"] and date:
+    if roboauto_state["should_log"] and date:
         date_current = get_date()
-        print("[" + date_current + "] ", end="", file=sys.stderr)
+        print_and_log("[" + date_current + "] ", end="", file=sys.stderr)
     if error:
-        print(error_string, end="", file=sys.stderr)
-    print(arg, end=end, file=sys.stderr)
+        print_and_log(error_string, end="", file=sys.stderr)
+    print_and_log(arg, end=end, file=sys.stderr)
 
 
 def print_war(arg, end="\n", date=True, error=True):

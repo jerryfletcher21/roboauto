@@ -371,7 +371,7 @@ def robot_pending_dic_update(pending_dic):
 
 
 def keep_online():
-    roboauto_state["print_date"] = True
+    roboauto_state["should_log"] = True
 
     active_list = robot_list_dir(roboauto_state["active_home"])
     pending_list = robot_list_dir(roboauto_state["pending_home"])
@@ -482,6 +482,9 @@ def keep_online():
         if len(active_set) < 1 and len(pending_dic) < 1:
             print_out("there are no active or pending robots", date=False)
             return True
+
+        if roboauto_state["logger"] is not None:
+            roboauto_state["logger"].flush()
 
         time.sleep(roboauto_state["sleep_interval"])
 

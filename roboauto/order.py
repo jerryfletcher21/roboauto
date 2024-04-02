@@ -33,7 +33,7 @@ from roboauto.requests_api import \
     requests_api_order, requests_api_cancel, \
     requests_api_make, response_is_error
 from roboauto.utils import \
-    json_dumps, file_is_executable, subprocess_run_command, \
+    json_dumps, subprocess_run_command, \
     json_loads, input_ask, roboauto_get_coordinator_url, \
     roboauto_get_coordinator_from_url, token_get_base91
 
@@ -72,7 +72,10 @@ def api_order_get_dic(robot_name, token_base91, robot_url, order_id):
     order_response_all = requests_api_order(token_base91, order_id, robot_url)
     # error 500 when the old order is purged from the server
     # maybe create last order from local if available
-    if order_response_all.status_code in (400, 500):
+    if \
+        order_response_all is False or \
+        (hasattr(order_response_all, "status_code") and \
+        order_response_all.status_code in (400, 500)):
         return None
     if response_is_error(order_response_all):
         return False
@@ -259,8 +262,8 @@ def robot_cancel_order(robot_dic):
 
 
 def bond_order(robot_dic, order_id):
-    """bond an order, after checking the invoice with check_command
-    will run check_command and pay_command as subprocesses"""
+    """bond an order, after checking the invoice with lightning-node check
+    will run lightning-node check and lightning-node pay as subprocesses"""
 
     robot_name = robot_dic["name"]
     robot_dir = robot_dic["dir"]
@@ -291,27 +294,22 @@ def bond_order(robot_dic, order_id):
         ))
         return False
 
-    if not file_is_executable(roboauto_state["check_command"]):
-        print_err(roboauto_state["check_command"] + " is not an executable script")
-        return False
     check_output = subprocess_run_command(
-        [roboauto_state["check_command"], order_info["invoice"], str(bond_satoshis)]
+        [roboauto_state["lightning_node_command"], "check",
+        order_info["invoice"], str(bond_satoshis)]
     )
     if check_output is False:
         print_err(
-            "check-command returned false, "
+            "lightning-node check returned false, "
             "invoce will not be paid and robot will be moved to inactive"
         )
         return False
     print_out(check_output.decode(), end="", date=False)
     print_out("invoice checked successfully")
 
-    if not file_is_executable(roboauto_state["pay_command"]):
-        print_err(roboauto_state["pay_command"] + " is not an executable script")
-        return False
-
     pay_subprocess_command = [
-        roboauto_state["pay_command"], order_info["invoice"], robot_name, order_id,
+        roboauto_state["lightning_node_command"], "pay",
+        order_info["invoice"], robot_name, order_id,
         order_user["type"], order_user["currency"],
         order_info["amount_string"]
     ]

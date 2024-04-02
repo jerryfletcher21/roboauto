@@ -249,11 +249,11 @@ def global_setup():
     roboauto_state["gnupg_home"] = roboauto_home + "/gnupg"
 
     roboauto_state["waiting_queue_file"] = roboauto_home + "/waiting-queue"
+    roboauto_state["log_file"] = roboauto_home + "/roboauto.log"
 
     roboauto_state["config_file"] = roboauto_config + "/config.ini"
-    roboauto_state["message_command"] = roboauto_config + "/message-notification"
-    roboauto_state["check_command"] = roboauto_config + "/check-invoice"
-    roboauto_state["pay_command"] = roboauto_config + "/pay-invoice"
+    roboauto_state["message_notification_command"] = roboauto_config + "/message-notification"
+    roboauto_state["lightning_node_command"] = roboauto_config + "/lightning-node"
 
     for directory in (
         roboauto_home, roboauto_config,
@@ -267,6 +267,10 @@ def global_setup():
         if not dir_make_sure_exists(directory):
             return False
 
+    if not file_is_executable(roboauto_state["lightning_node_command"]):
+        print_err(roboauto_state["lightning_node_command"] + " is not an executable script")
+        return False
+
     all_permission = 0o777
     gnupg_home_desired_permission = 0o700
     try:
@@ -279,6 +283,11 @@ def global_setup():
         return False
 
     return True
+
+
+def global_shutdown():
+    if roboauto_state["logger"] is not None:
+        roboauto_state["logger"].close()
 
 
 def get_int(string_number):

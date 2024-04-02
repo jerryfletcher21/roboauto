@@ -25,13 +25,12 @@ $ pip install --break-system-packages .
 
 copy config/config.ini in ~/.config/roboauto/ and edit it
 
-create scripts check-invoide, pay-invoice and message-notification in ~/.config/roboauto/,
+create scripts lightning-node and message-notification in ~/.config/roboauto/,
 some examples are in data/
 
 if you use clightning and simplex for notifications:
 ```
-cp data/check-invoice-clightning ~/.config/roboauto/check-invoice
-cp data/pay-invoice-clightning ~/.config/roboauto/pay-invoice
+cp data/lightning-node-clightning ~/.config/roboauto/lightning-node
 cp data/message-notification-simplex ~/.config/roboauto/message-notification
 ```
 
@@ -55,8 +54,7 @@ roboauto keep-online
 
 ## roadmap
 
-* create a robot (requires gpg)
-* full trading pipeline
+* full exchange pipeline
 
 ## license
 

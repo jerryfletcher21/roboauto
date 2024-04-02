@@ -1,0 +1,102 @@
+#!/bin/sh
+
+is_uint() {
+    case "$1" in
+        ''|*[!0-9]*)
+            return 1
+        ;;
+        *)
+            return 0
+        ;;
+    esac
+}
+
+clightning() {
+    # change if clightning binary is different
+    lightning-cli "$@"
+}
+
+# check that the invoice is for the correct amount
+# decoding the invoice with clightning
+lightning_check() {
+    if [ "$#" -lt 2 ]; then
+        echo "error: there are not enough parameters" >&2
+        return 1
+    fi
+    invoice="$1"
+    bond_amount="$2"
+    shift 2
+
+    invoice_amount_msat="$(clightning decode "$invoice" | jq -r '.amount_msat')"
+    if ! is_uint "$invoice_amount_msat"; then
+        echo "error: getting invoice amount msat" >&2
+        return 1
+    fi
+
+    invoice_amount="$(echo "scale=0; $invoice_amount_msat / 1000" | bc)"
+    if ! is_uint "$invoice_amount"; then
+        echo "error: getting invoice amount" >&2
+        return 1
+    fi
+
+    if [ "$invoice_amount" -ne "$bond_amount" ]; then
+        echo "bond amount: $bond_amount invoice amount: $invoice_amount" >&2
+        if [ "$invoice_amount" -gt "$bond_amount" ]; then
+            echo "error: invoice amount is too big" >&2
+        elif [ "$invoice_amount" -lt "$bond_amount" ]; then
+            echo "error: invoice amount is too small" >&2
+        fi
+        return 1
+    fi
+
+    # optionally also check if the bond amount is greater than a maximum amount
+
+    # maximum_bond_amount="10000000"
+    # if [ "$invoice_amount" -gt "$maximum_bond_amount" ]; then
+    #     echo "invoice amount: $invoice_amount maximum amount: $maximum_bond_amount" >&2
+    #     echo "error: invoice amount is greater than maximum amount" >&2
+    #     return 1
+    # fi
+
+    return 0
+}
+
+# pay the invoice with clightning
+lightning_pay() {
+    if [ "$#" -lt 6 ]; then
+        echo "error: there are not enough parameters" >&2
+        return 1
+    fi
+    invoice="$1"
+    robot="$2"
+    order_id="$3"
+    type_string="$4"
+    currency="$5"
+    amount_string="$6"
+    shift 6
+
+    clightning -k pay \
+        bolt11="$invoice" \
+        label="bond-${robot}-${order_id}-${type_string}-${currency}-${amount_string}" \
+        &
+}
+
+if [ "$#" -lt 1 ]; then
+    echo "error: insert action" >&2
+    return 1
+fi
+action="$1"
+shift 1
+
+case "$action" in
+    check)
+        lightning_check "$@"
+    ;;
+    pay)
+        lightning_pay "$@"
+    ;;
+    *)
+        echo "error: action $action not available" >&2
+        exit 1
+    ;;
+esac
