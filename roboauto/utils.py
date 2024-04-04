@@ -15,8 +15,7 @@ import subprocess
 import configparser
 import secrets
 import hashlib
-
-import base91
+import struct
 
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_options, roboauto_state
@@ -462,8 +461,46 @@ def token_get_double_sha256(token_string):
     # ).hexdigest()
 
 
+# from python base91 package
+def base91_encode(bindata):
+    """encode a bytearray to a base91 string"""
+    base91_alphabet = [
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+        'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+        'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+        'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '!', '#', '$',
+        '%', '&', '(', ')', '*', '+', ',', '.', '/', ':', ';', '<', '=',
+        '>', '?', '@', '[', ']', '^', '_', '`', '{', '|', '}', '~', '"'
+   ]
+
+    b = 0
+    n = 0
+    out = ""
+    for count in range(len(bindata)):
+        byte = bindata[count:count + 1]
+        b |= struct.unpack("B", byte)[0] << n
+        n += 8
+        if n > 13:
+            v = b & 8191
+            if v > 88:
+                b >>= 13
+                n -= 13
+            else:
+                v = b & 16383
+                b >>= 14
+                n -= 14
+            out += base91_alphabet[v % 91] + base91_alphabet[v // 91]
+    if n:
+        out += base91_alphabet[b % 91]
+        if n > 7 or b > 90:
+            out += base91_alphabet[b // 91]
+
+    return out
+
+
 def token_get_base91(token_string):
-    return base91.encode(hashlib.sha256(token_string.encode("utf-8")).digest())
+    return base91_encode(hashlib.sha256(token_string.encode("utf-8")).digest())
 
 
 def get_date_short(date_unformat):

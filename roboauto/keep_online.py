@@ -200,7 +200,10 @@ def list_orders_single_book(
         if robot_name not in nicks:
             if robot_name not in nicks_waiting:
                 try:
-                    with filelock.SoftFileLock(robot_get_lock_file(robot_name)):
+                    with filelock.SoftFileLock(
+                        robot_get_lock_file(robot_name),
+                        timeout=roboauto_state["filelock_timeout"]
+                    ):
                         robot_dir = roboauto_state["active_home"] + "/" + robot_name
                         order = order_get_order_dic(robot_dir, error_print=False)
                         if order is not False and order_is_this_hour(
@@ -370,7 +373,7 @@ def robot_pending_dic_update(pending_dic):
     return True
 
 
-def keep_online():
+def keep_online_no_lock():
     roboauto_state["should_log"] = True
 
     active_list = robot_list_dir(roboauto_state["active_home"])
@@ -489,3 +492,16 @@ def keep_online():
         time.sleep(roboauto_state["sleep_interval"])
 
     return True
+
+
+def keep_online():
+    try:
+        with filelock.SoftFileLock(
+            robot_get_lock_file(roboauto_state["lock_home"] + "/" + "keep-online"),
+            timeout=0
+        ):
+            return keep_online_no_lock()
+    except filelock.Timeout:
+        print_err("keep online is already running")
+
+    return False
