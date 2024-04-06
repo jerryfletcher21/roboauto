@@ -24,7 +24,7 @@ from roboauto.order import \
 from roboauto.chat import robot_send_chat_message_argv
 from roboauto.info import robosats_info, robot_info, list_limits, robot_chat
 from roboauto.book import \
-    list_offers_per_hour_argv, list_offers_all, list_offers_buy, list_offers_sell
+    list_offers_per_hour_argv, list_offers_argv
 from roboauto.keep_online import keep_online
 
 
@@ -38,7 +38,7 @@ import-robot --{coordinator-name} [--pending, --inactive, --paused] [robot-name]
 print-token [robot-name]
 print-coordinator [robot-name]
 list-active|list-pending|list-inactive|list-paused [--coordinator]
-waiting-queue
+list-waiting-queue
 set-active [robot-name]
 set-pending|set-inactive|set-paused [robot-name/--all]
 order-info-local [--full] robot-name [order-id]
@@ -48,11 +48,11 @@ robosats-info --{coordinator-name}
 generate-robot --{coordinator-name} [--active, --pending, --inactive]
 robot-info [--no-order] [robot-name]
 robot-info [--no-order] --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
-robot-chat [--local] [robot-name]
+chat-print [--local] [robot-name]
 message-send [robot-name]
 list-limits --{coordinator-name}
 list-hours [--relative]
-list-offers-all|list-offers-buy|list-offers-sell --{coordinators}/--all [currency] [search]
+list-offers --{coordinators}/--all [--sell|--buy] [currency] [search]
 create-order [--no-bond] [robot-name] [key=value]
 cancel-order [robot-name]
 recreate-order [--no-cancel, --no-bond] robot-name key=value
@@ -97,7 +97,7 @@ list-active|list-pending|list-inactive|list-paused [--coordinator]
     list active|pending|inactive|paused robots one per line
     if --coordinator is specified also print the coordinator name or every robot
 
-waiting-queue
+list-waiting-queue
     list waiting queue
 
 set-active [robot-name]
@@ -128,7 +128,7 @@ robot-info [--no-order] --stdin|--stdin-base91 --{coordinator-name}|coordinator-
     if instead of robot-name --stdin or --stdin-base91 is passed
     token is taken from stdin and coordinator is also required
 
-robot-chat [--local] [robot-name]
+chat-print [--local] [robot-name]
     print messages of robot-name
     if --local print from local, after having previously run without --local
 
@@ -143,9 +143,10 @@ list-hours [--relative]
     list orders per hours of the day
     if --relative is passed list orders per hours relative from current time
 
-list-offers-all|list-offers-buy|list-offers-sell --{coordinators}/--all [currency] [search]
+list-offers --{coordinators}/--all [--sell|--buy] [currency] [search]
     list all [buy|sell] offers in the order book
     multiple coordinators can be specified or --all
+    search is the string to be searched in the payment method
 
 create-order [--no-bond] [robot-name] [key=value]
     create a new order
@@ -249,7 +250,7 @@ try:
         return_status = robot_print_dir_argv("inactive", argv)
     elif action == "list-paused":
         return_status = robot_print_dir_argv("paused", argv)
-    elif action == "waiting-queue":
+    elif action == "list-waiting-queue":
         return_status = waiting_queue_print()
     elif action == "set-active":
         return_status = robot_change_dir_from_argv("active", argv)
@@ -267,7 +268,7 @@ try:
         return_status = robot_generate(argv)
     elif action == "robot-info":
         return_status = robot_info(argv)
-    elif action == "robot-chat":
+    elif action == "chat-print":
         return_status = robot_chat(argv)
     elif action == "message-send":
         return_status = robot_send_chat_message_argv(argv)
@@ -275,12 +276,8 @@ try:
         return_status = list_limits(argv)
     elif action == "list-hours":
         return_status = list_offers_per_hour_argv(argv)
-    elif action == "list-offers-all":
-        return_status = list_offers_all(argv)
-    elif action == "list-offers-buy":
-        return_status = list_offers_buy(argv)
-    elif action == "list-offers-sell":
-        return_status = list_offers_sell(argv)
+    elif action == "list-offers":
+        return_status = list_offers_argv(argv)
     elif action == "create-order":
         return_status = create_order(argv)
     elif action == "cancel-order":

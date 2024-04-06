@@ -144,19 +144,24 @@ $(___roboauto_get_robots "$pending_home")"
                 OPTS="--relative"
             fi
         ;;
-        list-offers-all|list-offers-buy|list-offers-sell)
+        list-offers)
             possible_coordinatos="
 --all
 $(___roboauto_get_coordinators)"
+            possible_currencies="
+all
+eur
+usd
+btc"
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$possible_coordinatos"
             elif [ "${cword}" -eq 3 ]; then
                 OPTS="
-all
-eur
-usd
-btc
-"
+--buy
+--sell
+$possible_currencies"
+            elif [ "${cword}" -eq 4 ] && { [ "$prev" = "--sell" ] || [ "$prev" = "--buy" ]; }; then
+                OPTS="$possible_currencies"
             fi
         ;;
         create-order)

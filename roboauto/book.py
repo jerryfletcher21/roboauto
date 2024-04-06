@@ -10,7 +10,7 @@ from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import robot_list_dir, waiting_queue_get
 from roboauto.order_local import \
-    get_offer_dic, offer_dic_print, order_get_order_dic
+    get_offer_dic, offer_dic_print, order_get_order_dic, get_currency_string
 from roboauto.requests_api import response_is_error, requests_api_book
 from roboauto.utils import \
     json_loads, roboauto_get_multi_coordinators_from_argv, roboauto_get_coordinator_url
@@ -248,62 +248,31 @@ def get_multi_book_response_json(coordinators):
     return multi_book_response_json
 
 
-def list_offers_buy(argv):
+def list_offers_argv(argv):
+    # pylint: disable=R0912 too-many-branches
+
     coordinators, argv = roboauto_get_multi_coordinators_from_argv(argv)
     if coordinators is False:
         return False
+
+    which_offers = "all"
+    if len(argv) >= 1:
+        if argv[0] == "--sell":
+            which_offers = "sell"
+            argv = argv[1:]
+        elif argv[0] == "--buy":
+            which_offers = "sell"
+            argv = argv[1:]
 
     if len(argv) >= 1:
         currency = argv[0]
         argv = argv[1:]
     else:
         currency = "all"
-    if len(argv) >= 1:
-        search_element = argv[0]
-        argv = argv[1:]
-    else:
-        search_element = ""
-
-    multi_book_response_json = get_multi_book_response_json(coordinators)
-    if multi_book_response_json is False:
+    if get_currency_string(currency, reverse=True) < 0:
+        print_err(f"currency {currency} is not valid")
         return False
 
-    return list_offers_general(multi_book_response_json, 0, currency, search_element)
-
-
-def list_offers_sell(argv):
-    coordinators, argv = roboauto_get_multi_coordinators_from_argv(argv)
-    if coordinators is False:
-        return False
-
-    if len(argv) >= 1:
-        currency = argv[0]
-        argv = argv[1:]
-    else:
-        currency = "all"
-    if len(argv) >= 1:
-        search_element = argv[0]
-        argv = argv[1:]
-    else:
-        search_element = ""
-
-    multi_book_response_json = get_multi_book_response_json(coordinators)
-    if multi_book_response_json is False:
-        return False
-
-    return list_offers_general(multi_book_response_json, 1, currency, search_element)
-
-
-def list_offers_all(argv):
-    coordinators, argv = roboauto_get_multi_coordinators_from_argv(argv)
-    if coordinators is False:
-        return False
-
-    if len(argv) >= 1:
-        currency = argv[0]
-        argv = argv[1:]
-    else:
-        currency = "all"
     if len(argv) >= 1:
         search_element = argv[0]
         argv = argv[1:]
@@ -316,16 +285,19 @@ def list_offers_all(argv):
 
     return_status = True
 
-    if list_offers_general(
-        multi_book_response_json, 0, currency, search_element
-    ) is False:
-        return_status = False
+    if which_offers in ("all", "buy"):
+        if list_offers_general(
+            multi_book_response_json, 0, currency, search_element
+        ) is False:
+            return_status = False
 
-    print_out("\n", end="")
+    if which_offers == "all":
+        print_out("\n", end="")
 
-    if list_offers_general(
-        multi_book_response_json, 1, currency, search_element
-    ) is False:
-        return_status = False
+    if which_offers in ("all", "sell"):
+        if list_offers_general(
+            multi_book_response_json, 1, currency, search_element
+        ) is False:
+            return_status = False
 
     return return_status
