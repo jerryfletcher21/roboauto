@@ -634,7 +634,8 @@ def order_buyer_update_invoice(argv):
             print_err(f"{robot_name} {order_id} is not waiting for buyer")
             return False
 
-        print_out(f"{robot_name} {order_id} + {order_info["order_description"]}")
+        order_description = order_info["order_description"]
+        print_out(f"{robot_name} {order_id} + {order_description}")
 
         invoice_amount = order_response_json.get("invoice_amount", False)
         if invoice_amount is False:
@@ -716,7 +717,8 @@ def order_seller_bond_escrow(argv):
             print_err(f"{robot_name} {order_id} is not waiting for seller")
             return False
 
-        print_out(f"{robot_name} {order_id} + {order_info["order_description"]}")
+        order_description = order_info["order_description"]
+        print_out(f"{robot_name} {order_id} + {order_description}")
 
         escrow_invoice = order_response_json.get("escrow_invoice", False)
         if escrow_invoice is False:
