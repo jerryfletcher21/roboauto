@@ -2,18 +2,16 @@
 
 # send a notification message with simplex using tor
 
-if [ "$#" -lt 3 ]; then
+if [ "$#" -lt 1 ]; then
     echo "error: there are not enough parameters" >&2
     exit 1
 fi
-robot="$1"
-order_id="$2"
-other="$3"
-shift 3
+message="$1"
+shift 1
 
 contact="satoshi-nakamoto"
 timeout="32"
 
 simplex-chat -x \
-    -e "@${contact} $robot $order_id $other" \
+    -e "@${contact} $message" \
     -t "$timeout"

@@ -17,7 +17,8 @@ from roboauto.robot import \
     robot_print_dir_argv, waiting_queue_print, robot_change_dir_from_argv, robot_generate
 from roboauto.order_local import order_info_local
 from roboauto.order import \
-    create_order, cancel_order, recreate_order
+    create_order, cancel_order, recreate_order, \
+    order_buyer_update_invoice, order_seller_bond_escrow
 from roboauto.chat import robot_send_chat_message_argv
 from roboauto.info import robosats_info, robot_info, list_limits, robot_chat
 from roboauto.book import \
@@ -53,6 +54,8 @@ list-offers-all|list-offers-buy|list-offers-sell --{coordinators}/--all [currenc
 create-order [--no-bond] [robot-name] [key=value]
 cancel-order [robot-name]
 recreate-order [--no-cancel, --no-bond] robot-name key=value
+escrow-pay [robot-name]
+invoice-send [robot-name]
 keep-online
 """
 
@@ -153,6 +156,12 @@ recreate-order [--no-cancel, --no-bond] robot-name key=value
     provide a list of key=value of parameters to change in the
     new order
 
+escrow-pay [robot-name]
+    pay the escrow of a sell order
+
+invoice-send [robot-name]
+    generate and send invoice of a buy order
+
 keep-online
     keep the offers of the robots in the active directory online
     if message-notification program is present, send a message when
@@ -252,6 +261,10 @@ try:
         return_status = cancel_order(argv)
     elif action == "recreate-order":
         return_status = recreate_order(argv)
+    elif action == "escrow-pay":
+        return_status = order_seller_bond_escrow(argv)
+    elif action == "invoice-send":
+        return_status = order_buyer_update_invoice(argv)
     elif action == "keep-online":
         return_status = keep_online()
     else:

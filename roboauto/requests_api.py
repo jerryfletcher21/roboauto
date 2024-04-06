@@ -244,6 +244,19 @@ def requests_api_cancel(token_base91, order_id, base_url, until_true=True, error
     )
 
 
+def requests_api_order_invoice(
+    token_base91, order_id, base_url, signed_invoice, until_true=True, error_print=True
+):
+    return requests_api_order_post(
+        token_base91, order_id, base_url,
+        json_dumps({
+            "action": "update_invoice",
+            "invoice": signed_invoice
+        }),
+        until_true=until_true, error_print=error_print
+    )
+
+
 def requests_api_make(
     token_base91, order_id, base_url, make_data, until_true=True, error_print=True
 ):

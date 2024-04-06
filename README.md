@@ -44,12 +44,34 @@ $ roboauto --verbose-help
 ```
 
 ```
+# generate robot and order
+
+$ roboauto generate-robot --exp
+RobotName
+
+$ roboauto create-order RobotName type=sell currency=eur min_amount=300 max_amount=900 payment_method="Instant SEPA" premium=5
+RobotName order-id sell eur 300-900 5.00 Instant SEPA Waiting for maker bond
+invoice checked successfully
+checking if order is bonded...
+checking if order is bonded...
+bonded successfully, order is public for RobotName
+RobotName order created successfully
+
+$ roboauto print-token RobotName
+************************************
+# this can be imported in robosats website
+
+
+# or import robot from robosats website to roboauto
+
 $ roboauto import-robot --exp
 insert robot name:
 insert token:
 
-# with tmux
-roboauto keep-online
+
+# then (with tmux, it will keep running)
+
+$ roboauto keep-online
 ```
 
 ## roadmap

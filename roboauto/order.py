@@ -25,17 +25,20 @@ from roboauto.order_local import \
     get_order_string, get_type_string, get_currency_string, \
     order_is_public, order_is_paused, order_is_waiting_maker_bond, \
     order_is_expired, order_data_from_order_user, \
-    get_order_data, order_get_order_dic, order_save_order_file
+    get_order_data, order_get_order_dic, order_save_order_file, \
+    order_is_waiting_seller_buyer, order_is_waiting_buyer, order_is_waiting_seller
 from roboauto.robot import \
     robot_get_lock_file, robot_input_from_argv, \
-    robot_requests_robot, robot_change_dir
+    robot_requests_robot, robot_change_dir, robot_var_from_dic, \
+    robot_get_current_fingerprint
 from roboauto.requests_api import \
     requests_api_order, requests_api_cancel, \
-    requests_api_make, response_is_error
+    requests_api_make, response_is_error, requests_api_order_invoice
 from roboauto.utils import \
     json_dumps, subprocess_run_command, \
     json_loads, input_ask, roboauto_get_coordinator_url, \
     roboauto_get_coordinator_from_url, token_get_base91
+from roboauto.gpg_key import gpg_sign_message
 
 
 def order_user_get(with_default):
@@ -187,11 +190,51 @@ def api_order_get_dic_handle(robot_name, token_base91, robot_url, order_id):
     return order_dic
 
 
+def robot_requests_get_order_id(robot_dic):
+    robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+
+    robot_response, robot_response_json = robot_requests_robot(
+        token_base91, robot_url, robot_dic
+    )
+    if robot_response is False:
+        return False
+
+    order_id_number = robot_response_json.get("active_order_id", False)
+    if order_id_number is False:
+        order_id_number = robot_response_json.get("last_order_id", False)
+        if order_id_number is False:
+            print_err(robot_response, error=False, date=False)
+            print_err("getting order_id for " + robot_name)
+            return False
+
+    order_id = str(order_id_number)
+
+    return order_id
+
+
+def robot_requests_get_order_dic(robot_dic):
+    robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+
+    order_id = robot_requests_get_order_id(robot_dic)
+    if order_id is False or order_id is None:
+        return False
+
+    order_dic = api_order_get_dic(robot_name, token_base91, robot_url, order_id)
+    if order_dic is False:
+        print_err(f"order data is false {robot_name} {order_id}")
+        return False
+    elif order_dic is None:
+        print_err(f"{robot_name} last order not available")
+        return False
+
+    if not order_save_order_file(robot_dir, order_id, order_dic):
+        return False
+
+    return order_dic
+
+
 def robot_cancel_order(robot_dic):
-    robot_name = robot_dic["name"]
-    token_base91 = token_get_base91(robot_dic["token"])
-    robot_dir = robot_dic["dir"]
-    robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
+    robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     if robot_dic["state"] != "active":
         print_err("robot %s is not in the active directory" % robot_name)
@@ -201,32 +244,14 @@ def robot_cancel_order(robot_dic):
         with filelock.SoftFileLock(
             robot_get_lock_file(robot_name), timeout=roboauto_state["filelock_timeout"]
         ):
-            robot_response, robot_response_json = robot_requests_robot(
-                token_base91, robot_url, robot_dic
-            )
-            if robot_response is False:
-                return False
-
-            order_id_num = robot_response_json.get("active_order_id", False)
-            if order_id_num is False:
-                print_err(robot_response, error=False, date=False)
-                print_err("getting active order_id for " + robot_name)
-                return False
-
-            order_id = str(order_id_num)
-
-            order_dic = api_order_get_dic(robot_name, token_base91, robot_url, order_id)
+            order_dic = robot_requests_get_order_dic(robot_dic)
             if order_dic is False:
-                print_err("order data is false %s %s" % (robot_name, order_id))
-                return False
-            elif order_dic is None:
-                print_err("%s last order not available" % robot_name)
                 return False
 
-            if not order_save_order_file(robot_dir, order_id, order_dic):
-                return False
+            order_info = order_dic["order_info"]
 
-            status_id = order_dic["order_info"]["status"]
+            order_id = order_info["order_id"]
+            status_id = order_info["status"]
 
             if \
                 not order_is_public(status_id) and \
@@ -261,14 +286,62 @@ def robot_cancel_order(robot_dic):
     return True
 
 
+def subprocess_pay_invoice_and_check(
+    robot_dic, order_id, pay_command, is_paid_function,
+    string_checking, string_paid, string_not_paid,
+    maximum_retries=None
+):
+    robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+
+    retries = 0
+    with subprocess.Popen(pay_command, start_new_session=True) as pay_subprocess:
+        while True:
+            if maximum_retries is not None and retries > maximum_retries:
+                print_err("maximum retries occured for pay command")
+                return False
+
+            print_out(string_checking)
+
+            order_dic = api_order_get_dic_handle(
+                robot_name, token_base91, robot_url, order_id
+            )
+            if order_dic is False:
+                return False
+
+            if not order_save_order_file(robot_dir, order_id, order_dic):
+                return False
+
+            order_response_json = order_dic["order_response_json"]
+
+            order_status = order_response_json.get("status", False)
+            if order_status is False:
+                print_err(json_dumps(order_response_json), error=False, date=False)
+                print_err(f"getting order_status of {robot_name} {order_id}")
+                return False
+
+            if is_paid_function(order_status):
+                if not order_is_expired(order_status):
+                    print_out(robot_name + " " + string_paid)
+                    return_status = True
+                else:
+                    print_err(robot_name + " " + string_not_paid)
+                    return_status = False
+                try:
+                    os.killpg(os.getpgid(pay_subprocess.pid), signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+
+                return return_status
+
+            retries += 1
+            time.sleep(roboauto_options["pay_interval"])
+
+
 def bond_order(robot_dic, order_id):
     """bond an order, after checking the invoice with lightning-node check
     will run lightning-node check and lightning-node pay as subprocesses"""
 
-    robot_name = robot_dic["name"]
-    robot_dir = robot_dic["dir"]
-    token_base91 = token_get_base91(robot_dic["token"])
-    robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
+    robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     order_dic = api_order_get_dic_handle(robot_name, token_base91, robot_url, order_id)
     if order_dic is False:
@@ -294,67 +367,34 @@ def bond_order(robot_dic, order_id):
         ))
         return False
 
-    check_output = subprocess_run_command(
-        [roboauto_state["lightning_node_command"], "check",
-        order_info["invoice"], str(bond_satoshis)]
-    )
+    check_output = subprocess_run_command([
+        roboauto_state["lightning_node_command"], "check",
+        order_info["invoice"], str(bond_satoshis)
+    ])
     if check_output is False:
         print_err(
             "lightning-node check returned false, "
-            "invoce will not be paid and robot will be moved to inactive"
+            "invoice will not be paid and robot will be moved to inactive"
         )
         return False
     print_out(check_output.decode(), end="", date=False)
     print_out("invoice checked successfully")
 
-    pay_subprocess_command = [
+    pay_command = [
         roboauto_state["lightning_node_command"], "pay",
-        order_info["invoice"], robot_name, order_id,
-        order_user["type"], order_user["currency"],
+        order_info["invoice"],
+        "bond-" + robot_name + "-" + order_id + "-" +
+        order_user["type"] + "-" + order_user["currency"] + "-" +
         order_info["amount_string"]
     ]
-    try:
-        with subprocess.Popen(pay_subprocess_command, start_new_session=True) as pay_subprocess:
-            while True:
-                print_out("checking if order is bonded...")
-
-                order_dic = api_order_get_dic_handle(
-                    robot_name, token_base91, robot_url, order_id
-                )
-                if order_dic is False:
-                    return False
-
-                if not order_save_order_file(robot_dir, order_id, order_dic):
-                    return False
-
-                order_response_json = order_dic["order_response_json"]
-
-                order_status = order_response_json.get("status", False)
-                if order_status is False:
-                    print_err(json_dumps(order_response_json), error=False, date=False)
-                    print_err("getting order_status of " + robot_name + " " + order_id)
-                    return False
-
-                if not order_is_waiting_maker_bond(order_status):
-                    if not order_is_expired(order_status):
-                        print_out("bonded successfully, order is public for " + robot_name)
-                        return_status = True
-                    else:
-                        print_err("bond expired, will retry next loop for " + robot_name)
-                        return_status = False
-                    try:
-                        os.killpg(os.getpgid(pay_subprocess.pid), signal.SIGTERM)
-                    except ProcessLookupError:
-                        pass
-
-                    return return_status
-
-            time.sleep(roboauto_options["bond_interval"])
-    except FileNotFoundError:
-        print_err("command %s does not exists" % pay_subprocess_command[0])
-        return False
-
-    return False
+    return subprocess_pay_invoice_and_check(
+        robot_dic, order_id,
+        pay_command,
+        lambda order_status : not order_is_waiting_maker_bond(order_status),
+        "checking if order is bonded...",
+        "bonded successfully, order is public",
+        "bond expired, will retry next loop"
+    )
 
 
 def make_order(
@@ -560,3 +600,144 @@ def recreate_order(argv):
             return False
 
     return True
+
+
+def order_buyer_update_invoice(argv):
+    robot_dic, argv = robot_input_from_argv(argv)
+    if robot_dic is False:
+        return False
+
+    robot_name, _, robot_dir, token, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+
+    with filelock.SoftFileLock(
+        robot_get_lock_file(robot_name), timeout=roboauto_state["filelock_timeout"]
+    ):
+        order_dic = robot_requests_get_order_dic(robot_dic)
+        if order_dic is False:
+            return False
+
+        order_user = order_dic["order_user"]
+        order_info = order_dic["order_info"]
+        order_response_json = order_dic["order_response_json"]
+
+        order_id = order_info["order_id"]
+        status_id = order_info["status"]
+
+        is_buyer = order_response_json.get("is_buyer", False)
+        if is_buyer is False:
+            print_err(f"{robot_name} {order_id} is not buyer")
+            return False
+
+        if \
+            not order_is_waiting_seller_buyer(status_id) and \
+            not order_is_waiting_buyer(status_id):
+            print_err(f"{robot_name} {order_id} is not waiting for buyer")
+            return False
+
+        print_out(f"{robot_name} {order_id} + {order_info["order_description"]}")
+
+        invoice_amount = order_response_json.get("invoice_amount", False)
+        if invoice_amount is False:
+            print_err("invoice amount is not present")
+            return False
+        invoice_generate_output = subprocess_run_command([
+            roboauto_state["lightning_node_command"], "invoice",
+            invoice_amount,
+            robot_name + "-" + order_id + "-" +
+            order_user["type"] + "-" + order_user["currency"] + "-" +
+            order_info["amount_string"]
+        ])
+        if invoice_generate_output is False:
+            print_err("generating the invoice")
+            return False
+
+        invoice = invoice_generate_output.decode()
+
+        fingerprint = robot_get_current_fingerprint(robot_dir)
+        if fingerprint is False:
+            return False
+
+        signed_invoice = gpg_sign_message(invoice, fingerprint, passphrase=token)
+        if signed_invoice is False:
+            print_err("signing invoice")
+            return False
+
+        order_invoice_response_all = requests_api_order_invoice(
+            token_base91, order_id, robot_url, signed_invoice
+        )
+        if response_is_error(order_invoice_response_all):
+            return False
+        order_invoice_response = order_invoice_response_all.text
+        order_invoice_response_json = json_loads(order_invoice_response)
+        if order_invoice_response_json is False:
+            print_err(order_invoice_response, end="", error=False, date=False)
+            print_err(f"{robot_name} {order_id} sending invoice")
+            return False
+
+        bad_requets = order_invoice_response_json.get("bad_request", False)
+        if bad_requets is not False:
+            print_err(bad_requets, date=False, error=False)
+            return False
+
+        print_out("invoice sent successfully")
+
+    return True
+
+
+def order_seller_bond_escrow(argv):
+    robot_dic, argv = robot_input_from_argv(argv)
+    if robot_dic is False:
+        return False
+
+    robot_name = robot_dic["name"]
+
+    with filelock.SoftFileLock(
+        robot_get_lock_file(robot_name), timeout=roboauto_state["filelock_timeout"]
+    ):
+        order_dic = robot_requests_get_order_dic(robot_dic)
+        if order_dic is False:
+            return False
+
+        order_user = order_dic["order_user"]
+        order_info = order_dic["order_info"]
+        order_response_json = order_dic["order_response_json"]
+
+        order_id = order_info["order_id"]
+        status_id = order_info["status"]
+
+        is_seller = order_response_json.get("is_seller", False)
+        if is_seller is False:
+            print_err(f"{robot_name} {order_id} is not seller")
+            return False
+
+        if \
+            not order_is_waiting_seller_buyer(status_id) and \
+            not order_is_waiting_seller(status_id):
+            print_err(f"{robot_name} {order_id} is not waiting for seller")
+            return False
+
+        print_out(f"{robot_name} {order_id} + {order_info["order_description"]}")
+
+        escrow_invoice = order_response_json.get("escrow_invoice", False)
+        if escrow_invoice is False:
+            print_err("escrow invoice not present in order response")
+            return False
+
+        pay_command = [
+            roboauto_state["lightning_node_command"], "pay",
+            escrow_invoice,
+            robot_name + "-" + order_id + "-" +
+            order_user["type"] + "-" + order_user["currency"] + "-" +
+            order_info["amount_string"]
+        ]
+        return subprocess_pay_invoice_and_check(
+            robot_dic, order_id,
+            pay_command,
+            lambda order_status : \
+                not order_is_waiting_seller_buyer(order_status) and \
+                not order_is_waiting_seller(order_status),
+            "checking if escrow is paid...",
+            "escrow paid successfully",
+            "escrow not paid in time",
+            maximum_retries=100
+        )

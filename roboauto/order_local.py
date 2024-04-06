@@ -182,13 +182,6 @@ def order_is_waiting_maker_bond(data):
         return False
 
 
-def order_is_waiting_taker_bond(data):
-    if data == 3:
-        return True
-    else:
-        return False
-
-
 def order_is_public(data):
     if data == 1:
         return True
@@ -203,8 +196,43 @@ def order_is_paused(data):
         return False
 
 
+def order_is_waiting_taker_bond(data):
+    if data == 3:
+        return True
+    else:
+        return False
+
+
+def order_is_cancelled(data):
+    if data == 4:
+        return True
+    else:
+        return False
+
+
 def order_is_expired(data):
     if data == 5:
+        return True
+    else:
+        return False
+
+
+def order_is_waiting_seller_buyer(data):
+    if data == 6:
+        return True
+    else:
+        return False
+
+
+def order_is_waiting_seller(data):
+    if data == 7:
+        return True
+    else:
+        return False
+
+
+def order_is_waiting_buyer(data):
+    if data == 8:
         return True
     else:
         return False
@@ -551,9 +579,10 @@ def robot_handle_taken(robot_name, status_id, order_id, other):
         return False
 
     if file_is_executable(roboauto_state["message_notification_command"]):
-        message_output = subprocess_run_command(
-            [roboauto_state["message_notification_command"], robot_name, order_id, other]
-        )
+        message_output = subprocess_run_command([
+            roboauto_state["message_notification_command"],
+            robot_name + " " + order_id + " " + other
+        ])
         if message_output is False:
             print_err("sending message")
             return False

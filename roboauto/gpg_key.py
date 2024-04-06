@@ -86,7 +86,7 @@ def gpg_encrypt_sign_message(
 
     if encrypted_data.ok is not True:
         if error_print:
-            print_err("encrypting message")
+            print_err("encrypting and signing message")
         return False
 
     message_enc = str(encrypted_data)
@@ -101,9 +101,24 @@ def gpg_decrypt_check_message(message, passphrase=None, error_print=True):
 
     if decrypted_data.ok is not True:
         if error_print:
-            print_err("decrypting message")
+            print_err("decrypting and checking message")
         return False
 
     decrypted_message = str(decrypted_data)
 
     return decrypted_message
+
+
+def gpg_sign_message(message, fingerprint, passphrase=None, error_print=True):
+    gpg = gpg_get()
+
+    signed_data = gpg.sign(message, keyid=fingerprint, passphrase=passphrase)
+
+    if hasattr(signed_data, "status_detail") and signed_data.status_detail is not None:
+        if error_print:
+            print_err("signing message")
+        return False
+
+    signed_message = str(signed_data)
+
+    return signed_message

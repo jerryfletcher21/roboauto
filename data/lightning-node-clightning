@@ -27,7 +27,13 @@ lightning_check() {
     bond_amount="$2"
     shift 2
 
-    invoice_amount_msat="$(clightning decode "$invoice" | jq -r '.amount_msat')"
+    if ! invoice_amount_msat="$(
+        clightning decode "$invoice" |
+        jq -e -r '.amount_msat'
+    )"; then
+        echo "error: amount mast not present in invoice" >&2
+        return 1
+    fi
     if ! is_uint "$invoice_amount_msat"; then
         echo "error: getting invoice amount msat" >&2
         return 1
@@ -63,22 +69,78 @@ lightning_check() {
 
 # pay the invoice with clightning
 lightning_pay() {
-    if [ "$#" -lt 6 ]; then
+    if [ "$#" -lt 2 ]; then
         echo "error: there are not enough parameters" >&2
         return 1
     fi
     invoice="$1"
-    robot="$2"
-    order_id="$3"
-    type_string="$4"
-    currency="$5"
-    amount_string="$6"
-    shift 6
+    pay_label="$2"
+    shift 2
 
     clightning -k pay \
         bolt11="$invoice" \
-        label="bond-${robot}-${order_id}-${type_string}-${currency}-${amount_string}" \
+        label="$pay_label" \
         &
+}
+
+# generate an invoice with clightning
+lightning_invoice() {
+    if [ "$#" -lt 2 ]; then
+        echo "error: there are not enough parameters" >&2
+        return 1
+    fi
+    amount="$1"
+    invoice_label="$2"
+    shift 2
+
+    # delete old invoice is present
+    # used when after creating an invoice, the invoice is rejected by robosats
+    # for any reason, so a new one will have to be created using the same label
+    list_invoices="$(clightning -k listinvoices label="$invoice_label")"
+    if ! number_invoices="$(
+        printf "%s\n" "$list_invoices" |
+        jq -e -r '.invoices | length'
+    )"; then
+        echo "error: getting number of old invoices with the same label" >&2
+        return 1
+    fi
+    if [ "$number_invoices" -ge 1 ]; then
+        if ! invoice_status="$(
+            printf "%s\n" "$list_invoices" |
+            jq -e -r '.invoices[].status'
+        )"; then
+            echo "error: status of old invoice with the same label not present" >&2
+            return 1
+        fi
+        if [ "$invoice_status" != "unpaid" ]; then
+            echo "error: status of old invoice is $invoice_status instead of unpaid" >&2
+            return 1
+        fi
+        if ! clightning -k delinvoice label="$invoice_label" status=unpaid; then
+            echo "error: deleting old invoice" >&2
+            return 1
+        fi
+    fi
+
+    if ! invoice_output="$(
+        clightning -k invoice \
+            amount_msat="${amount}sat" \
+            label="$invoice_label" \
+            description= \
+            exposeprivatechannels=false
+    )"; then
+        echo "error: generating invoice $invoice_label" >&2
+        return 1
+    fi
+    if ! invoice="$(
+        printf "%s\n" "$invoice_output" |
+        jq -e -r '.bolt11'
+    )"; then
+        echo "error: invoice not present" >&2
+        return 1
+    fi
+
+    printf "%s\n" "$invoice"
 }
 
 if [ "$#" -lt 1 ]; then
@@ -94,6 +156,9 @@ case "$action" in
     ;;
     pay)
         lightning_pay "$@"
+    ;;
+    invoice)
+        lightning_invoice "$@"
     ;;
     *)
         echo "error: action $action not available" >&2
