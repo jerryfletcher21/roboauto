@@ -2,14 +2,14 @@
 
 a [robosats](https://github.com/RoboSats/robosats) command-line interface
 
-Main function is keep-online, after you have imported one or more robots from
-different coordinators, run roboauto keep-online to automatically recreate the
-orders when they expires, and get notified if the order is taken, running the
+main function is keep-online, after you have imported one or more robots from
+different coordinators, run `roboauto keep-online` to automatically recreate the
+orders when they expire, and get notified if the order is taken, running the
 message-notification script. An example for simplex is provided
 
 ## installation
 
-#### local
+#### local (preferred)
 ```
 $ python3 -m venv robo
 $ . robo/bin/activate
@@ -54,7 +54,7 @@ RobotName order-id sell eur 300-900 5.00 Instant SEPA Waiting for maker bond
 invoice checked successfully
 checking if order is bonded...
 checking if order is bonded...
-bonded successfully, order is public for RobotName
+RobotName bonded successfully, order is public
 RobotName order created successfully
 
 $ roboauto print-token RobotName
@@ -81,4 +81,4 @@ $ roboauto keep-online
 ## license
 
 roboauto is released under the terms of the ISC license.
-See [LICENSE](LICENSE) for more details.
+see [LICENSE](LICENSE) for more details.

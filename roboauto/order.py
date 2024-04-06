@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
 
-# pylint: disable=C0114 missing-module-docstring
+"""order.py"""
+
 # pylint: disable=C0116 missing-function-docstring
 # pylint: disable=C0209 consider-using-f-string
-# pylint: disable=R0911 too-many-return-statements
-# pylint: disable=R0912 too-many-branches
-# pylint: disable=R0913 too-many-arguments
-# pylint: disable=R0914 too-many-locals
-# pylint: disable=R0915 too-many-statements
-# pylint: disable=R1703 simplifiable-if-statement
 # pylint: disable=R1705 no-else-return
 
 import os
@@ -26,14 +21,18 @@ from roboauto.order_local import \
     order_is_public, order_is_paused, order_is_waiting_maker_bond, \
     order_is_expired, order_data_from_order_user, \
     get_order_data, order_get_order_dic, order_save_order_file, \
-    order_is_waiting_seller_buyer, order_is_waiting_buyer, order_is_waiting_seller
+    order_is_waiting_seller_buyer, order_is_waiting_buyer, \
+    order_is_waiting_seller, order_is_waiting_fiat_sent, \
+    order_is_fiat_sent
 from roboauto.robot import \
     robot_get_lock_file, robot_input_from_argv, \
     robot_requests_robot, robot_change_dir, robot_var_from_dic, \
     robot_get_current_fingerprint
 from roboauto.requests_api import \
-    requests_api_order, requests_api_cancel, \
-    requests_api_make, response_is_error, requests_api_order_invoice
+    requests_api_order, requests_api_order_cancel, \
+    requests_api_make, response_is_error, requests_api_order_invoice, \
+    requests_api_order_pause, requests_api_order_confirm, \
+    requests_api_order_undo_confirm, requests_api_order_dispute
 from roboauto.utils import \
     json_dumps, subprocess_run_command, \
     json_loads, input_ask, roboauto_get_coordinator_url, \
@@ -63,6 +62,8 @@ def order_user_get(with_default):
 
 
 def api_order_get_dic(robot_name, token_base91, robot_url, order_id):
+    # pylint: disable=R0914 too-many-locals
+
     """get the order_dic making a request to the coordinator
     the order_dic is composed by 4 dictionaries:
     order_data:  can be derived from order_user, and is the data
@@ -233,7 +234,12 @@ def robot_requests_get_order_dic(robot_dic):
     return order_dic
 
 
+# As a maker if you cancel an order after you have locked your maker bond,
+# you are returned your bond. This may change in the future to prevent
+# DDoSing the LN node and you won't be returned the maker bond.
 def robot_cancel_order(robot_dic):
+    # pylint: disable=R0911 too-many-return-statements
+
     robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     if robot_dic["state"] != "active":
@@ -262,23 +268,25 @@ def robot_cancel_order(robot_dic):
 
             print_out("robot %s cancel order %s" % (robot_name, order_id))
 
-            order_post_response_all = requests_api_cancel(token_base91, order_id, robot_url)
-            if response_is_error(order_post_response_all):
+            order_cancel_response_all = requests_api_order_cancel(
+                token_base91, order_id, robot_url
+            )
+            if response_is_error(order_cancel_response_all):
                 return False
-            order_post_response = order_post_response_all.text
-            order_post_response_json = json_loads(order_post_response)
-            if order_post_response_json is False:
-                print_err(order_post_response, end="", error=False, date=False)
+            order_cancel_response = order_cancel_response_all.text
+            order_cancel_response_json = json_loads(order_cancel_response)
+            if order_cancel_response_json is False:
+                print_err(order_cancel_response, end="", error=False, date=False)
                 print_err("cancelling order %s %s" % (robot_name, token_base91))
                 return False
 
-            bad_requets = order_post_response_json.get("bad_request", False)
-            if bad_requets is False:
-                print_err(order_post_response, end="", error=False, date=False)
+            bad_request = order_cancel_response_json.get("bad_request", False)
+            if bad_request is False:
+                print_err(order_cancel_response, end="", error=False, date=False)
                 print_err("getting cancel response %s %s" % (robot_name, order_id))
                 return False
 
-            print_out(bad_requets)
+            print_out(bad_request)
     except filelock.Timeout:
         print_err("filelock timeout %d" % roboauto_state["filelock_timeout"])
         return False
@@ -291,6 +299,9 @@ def subprocess_pay_invoice_and_check(
     string_checking, string_paid, string_not_paid,
     maximum_retries=None
 ):
+    # pylint: disable=R0913 too-many-arguments
+    # pylint: disable=R0914 too-many-locals
+
     robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     retries = 0
@@ -465,6 +476,8 @@ def order_user_from_argv(argv, with_default=False):
 
 
 def create_order(argv):
+    # pylint: disable=R0911 too-many-return-statements
+
     should_bond = True
     if len(argv) >= 1:
         if argv[0] == "--no-bond":
@@ -536,6 +549,9 @@ def cancel_order(argv):
 
 
 def recreate_order(argv):
+    # pylint: disable=R0911 too-many-return-statements
+    # pylint: disable=R0912 too-many-branches
+
     should_cancel = True
     should_bond = True
     if len(argv) >= 1:
@@ -602,144 +618,275 @@ def recreate_order(argv):
     return True
 
 
-def order_buyer_update_invoice(argv):
-    robot_dic, argv = robot_input_from_argv(argv)
-    if robot_dic is False:
+def order_buyer_update_invoice(robot_dic):
+    # pylint: disable=R0911 too-many-return-statements
+    # pylint: disable=R0914 too-many-locals
+
+    robot_name, robot_dir, token, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+
+    order_dic = robot_requests_get_order_dic(robot_dic)
+    if order_dic is False:
         return False
 
-    robot_name, _, robot_dir, token, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+    order_user = order_dic["order_user"]
+    order_info = order_dic["order_info"]
+    order_response_json = order_dic["order_response_json"]
 
-    with filelock.SoftFileLock(
-        robot_get_lock_file(robot_name), timeout=roboauto_state["filelock_timeout"]
-    ):
-        order_dic = robot_requests_get_order_dic(robot_dic)
-        if order_dic is False:
-            return False
+    order_id = order_info["order_id"]
+    status_id = order_info["status"]
 
-        order_user = order_dic["order_user"]
-        order_info = order_dic["order_info"]
-        order_response_json = order_dic["order_response_json"]
+    is_buyer = order_response_json.get("is_buyer", False)
+    if is_buyer is False:
+        print_err(f"{robot_name} {order_id} is not buyer")
+        return False
 
-        order_id = order_info["order_id"]
-        status_id = order_info["status"]
+    if \
+        not order_is_waiting_seller_buyer(status_id) and \
+        not order_is_waiting_buyer(status_id):
+        print_err(f"{robot_name} {order_id} is not waiting for buyer")
+        return False
 
-        is_buyer = order_response_json.get("is_buyer", False)
-        if is_buyer is False:
-            print_err(f"{robot_name} {order_id} is not buyer")
-            return False
+    order_description = order_info["order_description"]
+    print_out(f"{robot_name} {order_id} {order_description}")
 
-        if \
-            not order_is_waiting_seller_buyer(status_id) and \
-            not order_is_waiting_buyer(status_id):
-            print_err(f"{robot_name} {order_id} is not waiting for buyer")
-            return False
+    invoice_amount = order_response_json.get("invoice_amount", False)
+    if invoice_amount is False:
+        print_err("invoice amount is not present")
+        return False
+    invoice_generate_output = subprocess_run_command([
+        roboauto_state["lightning_node_command"], "invoice",
+        invoice_amount,
+        robot_name + "-" + order_id + "-" +
+        order_user["type"] + "-" + order_user["currency"] + "-" +
+        order_info["amount_string"]
+    ])
+    if invoice_generate_output is False:
+        print_err("generating the invoice")
+        return False
 
-        order_description = order_info["order_description"]
-        print_out(f"{robot_name} {order_id} + {order_description}")
+    invoice = invoice_generate_output.decode()
 
-        invoice_amount = order_response_json.get("invoice_amount", False)
-        if invoice_amount is False:
-            print_err("invoice amount is not present")
-            return False
-        invoice_generate_output = subprocess_run_command([
-            roboauto_state["lightning_node_command"], "invoice",
-            invoice_amount,
-            robot_name + "-" + order_id + "-" +
-            order_user["type"] + "-" + order_user["currency"] + "-" +
-            order_info["amount_string"]
-        ])
-        if invoice_generate_output is False:
-            print_err("generating the invoice")
-            return False
+    fingerprint = robot_get_current_fingerprint(robot_dir)
+    if fingerprint is False:
+        return False
 
-        invoice = invoice_generate_output.decode()
+    signed_invoice = gpg_sign_message(invoice, fingerprint, passphrase=token)
+    if signed_invoice is False:
+        print_err("signing invoice")
+        return False
 
-        fingerprint = robot_get_current_fingerprint(robot_dir)
-        if fingerprint is False:
-            return False
+    order_invoice_response_all = requests_api_order_invoice(
+        token_base91, order_id, robot_url, signed_invoice
+    )
+    if response_is_error(order_invoice_response_all):
+        return False
+    order_invoice_response = order_invoice_response_all.text
+    order_invoice_response_json = json_loads(order_invoice_response)
+    if order_invoice_response_json is False:
+        print_err(order_invoice_response, end="", error=False, date=False)
+        print_err(f"{robot_name} {order_id} sending invoice")
+        return False
 
-        signed_invoice = gpg_sign_message(invoice, fingerprint, passphrase=token)
-        if signed_invoice is False:
-            print_err("signing invoice")
-            return False
+    bad_request = order_invoice_response_json.get("bad_request", False)
+    if bad_request is not False:
+        print_err(bad_request, date=False, error=False)
+        return False
 
-        order_invoice_response_all = requests_api_order_invoice(
-            token_base91, order_id, robot_url, signed_invoice
-        )
-        if response_is_error(order_invoice_response_all):
-            return False
-        order_invoice_response = order_invoice_response_all.text
-        order_invoice_response_json = json_loads(order_invoice_response)
-        if order_invoice_response_json is False:
-            print_err(order_invoice_response, end="", error=False, date=False)
-            print_err(f"{robot_name} {order_id} sending invoice")
-            return False
-
-        bad_requets = order_invoice_response_json.get("bad_request", False)
-        if bad_requets is not False:
-            print_err(bad_requets, date=False, error=False)
-            return False
-
-        print_out("invoice sent successfully")
+    print_out("invoice sent successfully")
 
     return True
 
 
-def order_seller_bond_escrow(argv):
+def order_seller_bond_escrow(robot_dic):
+    robot_name = robot_dic["name"]
+
+    order_dic = robot_requests_get_order_dic(robot_dic)
+    if order_dic is False:
+        return False
+
+    order_user = order_dic["order_user"]
+    order_info = order_dic["order_info"]
+    order_response_json = order_dic["order_response_json"]
+
+    order_id = order_info["order_id"]
+    status_id = order_info["status"]
+
+    is_seller = order_response_json.get("is_seller", False)
+    if is_seller is False:
+        print_err(f"{robot_name} {order_id} is not seller")
+        return False
+
+    if \
+        not order_is_waiting_seller_buyer(status_id) and \
+        not order_is_waiting_seller(status_id):
+        print_err(f"{robot_name} {order_id} is not waiting for seller")
+        return False
+
+    order_description = order_info["order_description"]
+    print_out(f"{robot_name} {order_id} {order_description}")
+
+    escrow_invoice = order_response_json.get("escrow_invoice", False)
+    if escrow_invoice is False:
+        print_err("escrow invoice not present in order response")
+        return False
+
+    pay_command = [
+        roboauto_state["lightning_node_command"], "pay",
+        escrow_invoice,
+        robot_name + "-" + order_id + "-" +
+        order_user["type"] + "-" + order_user["currency"] + "-" +
+        order_info["amount_string"]
+    ]
+    return subprocess_pay_invoice_and_check(
+        robot_dic, order_id,
+        pay_command,
+        lambda order_status : \
+            not order_is_waiting_seller_buyer(order_status) and \
+            not order_is_waiting_seller(order_status),
+        "checking if escrow is paid...",
+        "escrow paid successfully",
+        "escrow not paid in time",
+        maximum_retries=100
+    )
+
+
+def order_post_action_simple(robot_dic, order_post_function, is_wrong_status, string_error):
+    # pylint: disable=R0914 too-many-locals
+
+    robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+
+    order_dic = robot_requests_get_order_dic(robot_dic)
+    if order_dic is False:
+        return False
+
+    order_info = order_dic["order_info"]
+
+    order_id = order_info["order_id"]
+    status_id = order_info["status"]
+
+    if is_wrong_status(status_id):
+        print_err(f"{robot_name} {order_id} " + string_error)
+        return False
+
+    order_description = order_info["order_description"]
+    print_out(f"{robot_name} {order_id} {order_description}")
+
+    order_post_response_all = order_post_function(
+        token_base91, order_id, robot_url
+    )
+    if response_is_error(order_post_response_all):
+        return False
+    order_post_response = order_post_response_all.text
+    order_post_response_json = json_loads(order_post_response)
+    if order_post_response_json is False:
+        print_err(order_post_response, end="", error=False, date=False)
+        print_err("cancelling order %s %s" % (robot_name, token_base91))
+        return False
+
+    bad_request = order_post_response_json.get("bad_request", False)
+    if bad_request is False:
+        print_err(order_post_response, end="", error=False, date=False)
+        print_err("getting cancel response %s %s" % (robot_name, order_id))
+        return False
+
+    print_out(bad_request)
+
+    return True
+
+
+def order_pause_toggle(robot_dic):
+    return order_post_action_simple(
+        robot_dic,
+        requests_api_order_pause,
+        lambda status_id : \
+            not order_is_public(status_id) and \
+            not order_is_paused(status_id),
+        "is not public or paused"
+    )
+
+
+def order_collaborative_cancel(robot_dic):
+    return order_post_action_simple(
+        robot_dic,
+        requests_api_order_cancel,
+        lambda status_id : \
+            not order_is_waiting_buyer(status_id) and \
+            not order_is_waiting_fiat_sent(status_id),
+        "can not send collaborative cancel"
+    )
+
+
+def order_send_confirm(robot_dic):
+    return order_post_action_simple(
+        robot_dic,
+        requests_api_order_confirm,
+        lambda status_id : \
+            not order_is_waiting_fiat_sent(status_id) and \
+            not order_is_fiat_sent(status_id),
+        "can not confirm payment"
+    )
+
+
+# should check that is buyer
+def order_undo_confirm(robot_dic):
+    return order_post_action_simple(
+        robot_dic,
+        requests_api_order_undo_confirm,
+        lambda status_id : \
+            not order_is_fiat_sent(status_id),
+        "can not undo confirm payment"
+    )
+
+
+def order_start_dispute(robot_dic):
+    return order_post_action_simple(
+        robot_dic,
+        requests_api_order_dispute,
+        lambda status_id : \
+            not order_is_waiting_fiat_sent(status_id) and \
+            not order_is_fiat_sent(status_id),
+        "can not start dispute"
+    )
+
+
+def robot_order_post_action_argv(argv, order_post_function):
     robot_dic, argv = robot_input_from_argv(argv)
     if robot_dic is False:
         return False
 
-    robot_name = robot_dic["name"]
+    try:
+        with filelock.SoftFileLock(
+            robot_get_lock_file(robot_dic["name"]), timeout=roboauto_state["filelock_timeout"]
+        ):
+            return order_post_function(robot_dic)
+    except filelock.Timeout:
+        print_err("filelock timeout %d" % roboauto_state["filelock_timeout"])
+        return False
 
-    with filelock.SoftFileLock(
-        robot_get_lock_file(robot_name), timeout=roboauto_state["filelock_timeout"]
-    ):
-        order_dic = robot_requests_get_order_dic(robot_dic)
-        if order_dic is False:
-            return False
 
-        order_user = order_dic["order_user"]
-        order_info = order_dic["order_info"]
-        order_response_json = order_dic["order_response_json"]
+def order_buyer_update_invoice_argv(argv):
+    return robot_order_post_action_argv(argv, order_buyer_update_invoice)
 
-        order_id = order_info["order_id"]
-        status_id = order_info["status"]
 
-        is_seller = order_response_json.get("is_seller", False)
-        if is_seller is False:
-            print_err(f"{robot_name} {order_id} is not seller")
-            return False
+def order_seller_bond_escrow_argv(argv):
+    return robot_order_post_action_argv(argv, order_seller_bond_escrow)
 
-        if \
-            not order_is_waiting_seller_buyer(status_id) and \
-            not order_is_waiting_seller(status_id):
-            print_err(f"{robot_name} {order_id} is not waiting for seller")
-            return False
 
-        order_description = order_info["order_description"]
-        print_out(f"{robot_name} {order_id} + {order_description}")
+def order_pause_toggle_argv(argv):
+    return robot_order_post_action_argv(argv, order_pause_toggle)
 
-        escrow_invoice = order_response_json.get("escrow_invoice", False)
-        if escrow_invoice is False:
-            print_err("escrow invoice not present in order response")
-            return False
 
-        pay_command = [
-            roboauto_state["lightning_node_command"], "pay",
-            escrow_invoice,
-            robot_name + "-" + order_id + "-" +
-            order_user["type"] + "-" + order_user["currency"] + "-" +
-            order_info["amount_string"]
-        ]
-        return subprocess_pay_invoice_and_check(
-            robot_dic, order_id,
-            pay_command,
-            lambda order_status : \
-                not order_is_waiting_seller_buyer(order_status) and \
-                not order_is_waiting_seller(order_status),
-            "checking if escrow is paid...",
-            "escrow paid successfully",
-            "escrow not paid in time",
-            maximum_retries=100
-        )
+def order_collaborative_cancel_argv(argv):
+    return robot_order_post_action_argv(argv, order_collaborative_cancel)
+
+
+def order_send_confirm_argv(argv):
+    return robot_order_post_action_argv(argv, order_send_confirm)
+
+
+def order_undo_confirm_argv(argv):
+    return robot_order_post_action_argv(argv, order_undo_confirm)
+
+
+def order_start_dispute_argv(argv):
+    return robot_order_post_action_argv(argv, order_start_dispute)

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-# pylint: disable=C0114 missing-module-docstring
-
+"""global_state.py"""
 
 # options that can be changed in config file
 roboauto_options = {

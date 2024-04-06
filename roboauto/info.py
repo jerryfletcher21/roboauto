@@ -1,41 +1,26 @@
 #!/usr/bin/env python3
 
-# pylint: disable=C0114 missing-module-docstring
+"""info.py"""
+
 # pylint: disable=C0116 missing-function-docstring
-# pylint: disable=C0116 missing-function-docstring
-# pylint: disable=C0209 consider-using-f-string
-# pylint: disable=R0911 too-many-return-statements
-# pylint: disable=R0912 too-many-branches
-# pylint: disable=R0914 too-many-locals
-# pylint: disable=R0915 too-many-statements
-# pylint: disable=W0611 unused-import
 
 import sys
 import os
 import re
 
 from roboauto.logger import print_out, print_err
-from roboauto.gpg_key import gpg_import_key, gpg_decrypt_check_message
 from roboauto.robot import \
-    robot_input_from_argv, robot_requests_robot, \
-    robot_save_peer_gpg_public_key
-from roboauto.order_local import get_order_string, order_save_order_file
+    robot_input_from_argv, robot_requests_robot
+from roboauto.order_local import order_save_order_file
 from roboauto.order import api_order_get_dic_handle
 from roboauto.chat import \
     robot_requests_chat, chat_print_encrypted_messages, chat_print_single_message
 from roboauto.requests_api import \
-    requests_api_limits, requests_api_info, \
-    requests_api_chat, response_is_error
+    requests_api_limits, requests_api_info, response_is_error
 from roboauto.utils import \
-    file_read, file_write, \
-    file_json_read, file_json_write, \
-    json_loads, json_dumps, \
-    password_ask_token, \
-    roboauto_get_coordinator_url, \
-    roboauto_get_coordinator_from_argv, \
-    dir_make_sure_exists, \
-    token_get_base91, token_get_double_sha256, \
-    string_from_multiline_format, date_to_format
+    file_json_read, json_loads, json_dumps, \
+    roboauto_get_coordinator_url, roboauto_get_coordinator_from_argv, \
+    token_get_base91
 
 
 def list_limits(argv):
@@ -79,6 +64,10 @@ def robosats_info(argv):
 
 
 def robot_info(argv):
+    # pylint: disable=R0911 too-many-return-statements
+    # pylint: disable=R0912 too-many-branches
+    # pylint: disable=R0915 too-many-statements
+
     """print info about a robot and his order --no-robot --no-order options"""
     robot_name = None
     robot_dic = None
@@ -161,6 +150,9 @@ def robot_info(argv):
 
 
 def robot_chat(argv):
+    # pylint: disable=R0911 too-many-return-statements
+    # pylint: disable=R0912 too-many-branches
+
     from_local = False
     if len(argv) > 0 and argv[0] == "--local":
         from_local = True

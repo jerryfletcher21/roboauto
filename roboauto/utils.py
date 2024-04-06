@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
-# pylint: disable=C0114 missing-module-docstring
+"""utils.py"""
+
 # pylint: disable=C0116 missing-function-docstring
 # pylint: disable=C0209 consider-using-f-string
-# pylint: disable=R0912 too-many-branches
-# pylint: disable=R1703 simplifiable-if-statement
 
 import os
 import re
@@ -30,7 +29,7 @@ def roboauto_first_coordinator():
 def roboauto_get_coordinator_url(coordinator):
     url = roboauto_options["federation"].get(coordinator, False)
     if url is False:
-        print_err("coordinator %s not valid" % coordinator)
+        print_err(f"coordinator {coordinator} not valid")
         return False
 
     return url
@@ -50,8 +49,8 @@ def get_coordinator_from_param(param):
     coordinator_option = param[2:]
     if len(coordinator_option) < 3:
         print_err(
-            "coordinator name should be at least 3 characters long: %s invalid" %
-            coordinator_option
+            "coordinator name should be at least 3 characters long: "
+            f"{coordinator_option} invalid"
         )
         return multi_false
     coordinator_found = False
@@ -61,7 +60,7 @@ def get_coordinator_from_param(param):
             coordinator_found = True
             break
     if coordinator_found is False:
-        print_err("coordinator %s not present" % coordinator_option)
+        print_err(f"coordinator {coordinator_option} not present")
         return multi_false
 
     return coordinator, roboauto_options["federation"][coordinator]
@@ -147,6 +146,8 @@ def update_single_option(name, new_option, print_info=False):
 
 
 def update_federation_option(name, new_option, print_info=False):
+    # pylint: disable=R0912 too-many-branches
+
     if len(name) < 3:
         print_err("coordinators name should be longer than 3 letters %s not valid" % name)
         return False
@@ -155,6 +156,7 @@ def update_federation_option(name, new_option, print_info=False):
             print_err("coordinator name %s not valid, similar to %s" % (name, key))
             return False
 
+    # pylint: disable=R1703 simplifiable-if-statement
     if new_option in ("false", "False", "FALSE", "none", "None", "NONE"):
         new_option_is_none = True
     else:

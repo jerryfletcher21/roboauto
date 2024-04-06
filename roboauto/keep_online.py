@@ -1,13 +1,8 @@
 #!/usr/bin/env python3
 
-# pylint: disable=C0114 missing-module-docstring
+"""keep_online.py"""
+
 # pylint: disable=C0116 missing-function-docstring
-# pylint: disable=C0209 consider-using-f-string
-# pylint: disable=R0911 too-many-return-statements
-# pylint: disable=R0912 too-many-branches
-# pylint: disable=R0914 too-many-locals
-# pylint: disable=R0915 too-many-statements
-# pylint: disable=R1703 simplifiable-if-statement
 # pylint: disable=R1705 no-else-return
 
 import time
@@ -37,6 +32,9 @@ from roboauto.utils import update_roboauto_options
 
 
 def robot_check_expired(robot_dic, robot_this_hour):
+    # pylint: disable=R0911 too-many-return-statements
+    # pylint: disable=R0912 too-many-branches
+
     """check what happened to a robot that is no longer active
     return 1 if the robot is back online, 0 if not, false if something wrong"""
 
@@ -107,6 +105,8 @@ def robot_check_expired(robot_dic, robot_this_hour):
 
 
 def order_is_this_hour(order, current_timestamp, coordinator=False):
+    # pylint: disable=R0911 too-many-return-statements
+
     order_info = order.get("order_info", False)
     if order_info is False:
         return False
@@ -158,6 +158,33 @@ def count_active_orders_this_hour(
     return robot_this_hour
 
 
+def robot_check_expired_handle(robot_dic, current_timestamp, robot_this_hour):
+    robot_name = robot_dic["name"]
+    robot_dir = roboauto_state["active_home"] + "/" + robot_name
+    order = order_get_order_dic(robot_dir, error_print=False)
+    if order is not False and order_is_this_hour(
+        order, current_timestamp,
+        coordinator=False
+    ):
+        robot_this_hour -= 1
+        if robot_this_hour < 0:
+            print_err("negative robot this hour")
+            robot_this_hour = 0
+    robot_online = robot_check_expired(
+        robot_dic, robot_this_hour
+    )
+    if robot_online is False or robot_online == 0:
+        return robot_this_hour
+    order = order_get_order_dic(robot_dir, error_print=False)
+    if order is not False and order_is_this_hour(
+        order, current_timestamp,
+        coordinator=False
+    ):
+        robot_this_hour += robot_online
+
+    return robot_this_hour
+
+
 def list_orders_single_book(
     coordinator, robot_list, nicks_waiting, robot_this_hour, current_timestamp
 ):
@@ -182,28 +209,11 @@ def list_orders_single_book(
                         robot_get_lock_file(robot_name),
                         timeout=roboauto_state["filelock_timeout"]
                     ):
-                        robot_dir = roboauto_state["active_home"] + "/" + robot_name
-                        order = order_get_order_dic(robot_dir, error_print=False)
-                        if order is not False and order_is_this_hour(
-                            order, current_timestamp,
-                            coordinator=False
-                        ):
-                            robot_this_hour -= 1
-                            if robot_this_hour < 0:
-                                print_err("negative robot this hour")
-                                robot_this_hour = 0
-                        robot_online = robot_check_expired(
-                            robot_dic, robot_this_hour
+                        robot_check_expired_handle(
+                            robot_dic, current_timestamp, robot_this_hour
                         )
-                        if robot_online is False or robot_online == 0:
-                            continue
-                        order = order_get_order_dic(robot_dir, error_print=False)
-                        if order is not False and order_is_this_hour(
-                            order, current_timestamp,
-                            coordinator=False
-                        ):
-                            robot_this_hour += robot_online
                 except filelock.Timeout:
+                    # pylint: disable=C0209 consider-using-f-string
                     print_err("filelock timeout %d" % roboauto_state["filelock_timeout"])
                     continue
         elif robot_name in nicks_waiting:
@@ -236,6 +246,8 @@ def should_remove_from_waiting_queue(
 
 
 def robot_handle_pending(robot_dic):
+    # pylint: disable=R0911 too-many-return-statements
+
     robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     old_order_dic = order_get_order_dic(robot_dir, error_print=False)
@@ -351,7 +363,16 @@ def robot_pending_dic_update(pending_dic):
     return True
 
 
+# active_set is the set of current active robots
+# pending_dic is the set of current pending robots
+# with an associated time % roboauto_options["pending_interval"]
+# this way pending robots are not checked all together,
+# but every one is checked at a different time
 def keep_online_no_lock():
+    # pylint: disable=R0912 too-many-branches
+    # pylint: disable=R0914 too-many-locals
+    # pylint: disable=R0915 too-many-statements
+
     roboauto_state["should_log"] = True
 
     active_list = robot_list_dir(roboauto_state["active_home"])

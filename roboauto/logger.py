@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-# pylint: disable=C0114 missing-module-docstring
+"""logger.py"""
+
 # pylint: disable=C0116 missing-function-docstring
 
 import sys

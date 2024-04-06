@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
-# pylint: disable=C0114 missing-module-docstring
+"""book.py"""
+
 # pylint: disable=C0116 missing-function-docstring
-# pylint: disable=C0209 consider-using-f-string
-# pylint: disable=R0911 too-many-return-statements
 
 import datetime
 
@@ -95,7 +94,7 @@ def get_offers_per_hour(relative):
         expires_at = order_dic["order_response_json"]["expires_at"]
         date_hour = get_hour_offer(expires_at, current_timestamp, relative)
         if date_hour is False:
-            print_err("robot %s getting expire hour" % robot_name)
+            print_err(f"robot {robot_name} getting expire hour")
             return False
 
         hours[date_hour].append(robot_name)
@@ -112,11 +111,14 @@ def list_offers_per_hour(relative):
         if i < 10:
             print_out("0", end="")
         if i < 24:
+            # pylint: disable=C0209 consider-using-f-string
             print_out("%d" % i, end="")
         else:
             print_out("WQ", end="")
+        # pylint: disable=C0209 consider-using-f-string
         print_out(" %2s" % len(hour), end="")
         for nick in hour:
+            # pylint: disable=C0209 consider-using-f-string
             print_out(" %s" % nick, end="")
         print_out("\n", end="")
 
@@ -133,6 +135,8 @@ def list_offers_per_hour_argv(argv):
 
 
 def get_book_response_json(coordinator, until_true=False):
+    # pylint: disable=R0911 too-many-return-statements
+
     """wrap around requests_api_book to check if the response
     is correct"""
     base_url = roboauto_get_coordinator_url(coordinator)
@@ -141,7 +145,7 @@ def get_book_response_json(coordinator, until_true=False):
 
     book_response_all = requests_api_book(base_url, until_true=until_true)
     if response_is_error(book_response_all):
-        print_err("connecting to coordinator %s" % coordinator)
+        print_err(f"connecting to coordinator {coordinator}")
         return False
     book_response = book_response_all.text
 
@@ -229,7 +233,7 @@ def get_multi_book_response_json(coordinators):
         book_response_json = get_book_response_json(coordinator, until_true=False)
 
         if book_response_json is False:
-            print_err("getting book coordinator %s" % coordinator)
+            print_err(f"getting book coordinator {coordinator}")
             continue
 
         multi_book_response_json.append({

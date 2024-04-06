@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
 
-# pylint: disable=C0114 missing-module-docstring
+"""order_local.py"""
+
 # pylint: disable=C0116 missing-function-docstring
 # pylint: disable=C0209 consider-using-f-string
-# pylint: disable=R0911 too-many-return-statements
-# pylint: disable=R0912 too-many-branches
-# pylint: disable=R0913 too-many-arguments
-# pylint: disable=R0914 too-many-locals
-# pylint: disable=R0915 too-many-statements
-# pylint: disable=R1702 too-many-nested-blocks
 # pylint: disable=R1703 simplifiable-if-statement
 # pylint: disable=R1705 no-else-return
 
@@ -238,6 +233,20 @@ def order_is_waiting_buyer(data):
         return False
 
 
+def order_is_waiting_fiat_sent(data):
+    if data == 9:
+        return True
+    else:
+        return False
+
+
+def order_is_fiat_sent(data):
+    if data == 10:
+        return True
+    else:
+        return False
+
+
 def order_is_in_dispute(data):
     if data in (11, 16):
         return True
@@ -260,6 +269,8 @@ def order_is_finished(data):
 
 
 def get_offer_dic(offer, coordinator):
+    # pylint: disable=R0914 too-many-locals
+
     offer_id = offer.get("id", "")
     expires_at = offer.get("expires_at", "")
     order_type_bool = offer.get("type", "")
@@ -382,6 +393,8 @@ def robot_no_order_response_print(robot_name, coordinator):
 
 
 def order_dic_print(order_dic, robot_name, coordinator, one_line, full_mode):
+    # pylint: disable=R1702 too-many-nested-blocks
+
     if not one_line:
         if full_mode:
             print_out(json_dumps(order_dic))
@@ -466,6 +479,9 @@ def order_info_local_print_ordered_list(robot_list, full_mode):
 
 
 def order_info_local(argv):
+    # pylint: disable=R0911 too-many-return-statements
+    # pylint: disable=R0912 too-many-branches
+
     full_mode = False
     if len(argv) > 0:
         if argv[0] == "--full":
@@ -599,6 +615,8 @@ def get_order_data(
     payment_method, premium,
     public_duration, escrow_duration, bond_size
 ):
+    # pylint: disable=R0913 too-many-arguments
+
     return {
         "type":                 type_id,
         "currency":             currency_id,
@@ -615,6 +633,11 @@ def get_order_data(
 
 
 def order_data_from_order_user(order_user):
+    # pylint: disable=R0911 too-many-return-statements
+    # pylint: disable=R0912 too-many-branches
+    # pylint: disable=R0914 too-many-locals
+    # pylint: disable=R0915 too-many-statements
+
     type_string = order_user.get("type", False)
     if not type_string:
         print_err("type not present")

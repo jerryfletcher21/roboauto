@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# pylint: disable=C0209 consider-using-f-string
-# pylint: disable=C0114 missing-module-docstring
+"""roboauto"""
+
 # pylint: disable=C0103 invalid-name
 
 import sys
@@ -18,7 +18,9 @@ from roboauto.robot import \
 from roboauto.order_local import order_info_local
 from roboauto.order import \
     create_order, cancel_order, recreate_order, \
-    order_buyer_update_invoice, order_seller_bond_escrow
+    order_buyer_update_invoice_argv, order_seller_bond_escrow_argv, \
+    order_pause_toggle_argv, order_collaborative_cancel_argv, \
+    order_send_confirm_argv, order_undo_confirm_argv, order_start_dispute_argv
 from roboauto.chat import robot_send_chat_message_argv
 from roboauto.info import robosats_info, robot_info, list_limits, robot_chat
 from roboauto.book import \
@@ -54,8 +56,13 @@ list-offers-all|list-offers-buy|list-offers-sell --{coordinators}/--all [currenc
 create-order [--no-bond] [robot-name] [key=value]
 cancel-order [robot-name]
 recreate-order [--no-cancel, --no-bond] robot-name key=value
+pause-toggle [robot-name]
 escrow-pay [robot-name]
 invoice-send [robot-name]
+collaborative-cancel [robot-name]
+confirm-send [robot-name]
+confirm-undo [robot-name]
+dispute-start [robot-name]
 keep-online
 """
 
@@ -156,11 +163,30 @@ recreate-order [--no-cancel, --no-bond] robot-name key=value
     provide a list of key=value of parameters to change in the
     new order
 
+pause-toggle [robot-name]
+    toggle pause order in robosats
+
 escrow-pay [robot-name]
     pay the escrow of a sell order
 
 invoice-send [robot-name]
     generate and send invoice of a buy order
+
+collaborative-cancel [robot-name]
+    ask for a collaborative cancel or if the peer already asked for
+    it accept a collaborative cancel
+    can only be sent when waiting only for buyer invoice or
+    sending fiat in the chat
+
+confirm-send [robot-name]
+    send confirmation of payment send if buyer or
+    confirm payment arrived if seller
+
+confirm-undo [robot-name]
+    undo confirmation of payment sent if buyer
+
+dispute-start [robot-name]
+    start a dispute
 
 keep-online
     keep the offers of the robots in the active directory online
@@ -261,10 +287,20 @@ try:
         return_status = cancel_order(argv)
     elif action == "recreate-order":
         return_status = recreate_order(argv)
+    elif action == "pause-toggle":
+        return_status = order_pause_toggle_argv(argv)
     elif action == "escrow-pay":
-        return_status = order_seller_bond_escrow(argv)
+        return_status = order_seller_bond_escrow_argv(argv)
     elif action == "invoice-send":
-        return_status = order_buyer_update_invoice(argv)
+        return_status = order_buyer_update_invoice_argv(argv)
+    elif action == "collaborative-cancel":
+        return_status = order_collaborative_cancel_argv(argv)
+    elif action == "confirm-send":
+        return_status = order_send_confirm_argv(argv)
+    elif action == "confirm-undo":
+        return_status = order_undo_confirm_argv(argv)
+    elif action == "dispute-start":
+        return_status = order_start_dispute_argv(argv)
     elif action == "keep-online":
         return_status = keep_online()
     else:

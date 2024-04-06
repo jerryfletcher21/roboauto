@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# check python scripts
+pylint -s n roboauto/* bin/roboauto setup.py
+
+# check sh scripts
+shellcheck completions/roboauto.bash-completion

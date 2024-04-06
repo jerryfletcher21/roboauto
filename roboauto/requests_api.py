@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-# pylint: disable=C0114 missing-module-docstring
+"""requests_api.py"""
+
 # pylint: disable=C0116 missing-function-docstring
-# pylint: disable=R0913 too-many-arguments
 # pylint: disable=R1705 no-else-return
 
 import time
@@ -25,6 +25,8 @@ def response_is_error(response):
 
 
 def requests_tor_response(url, proxies, timeout, headers, data, error_print=True):
+    # pylint: disable=R0913 too-many-arguments
+
     try:
         if data == "":
             return requests.get(
@@ -126,6 +128,8 @@ def requests_api_limits(base_url, until_true=True, error_print=True):
 def requests_api_robot_generate(
     token_base91, public_key, private_key, base_url, until_true=True, error_print=True
 ):
+    # pylint: disable=R0913 too-many-arguments
+
     headers = {
         "User-Agent": roboauto_options["user_agent"],
         "Accept": "*/*",
@@ -151,6 +155,8 @@ def requests_api_robot_generate(
 def requests_api_token(
     token_base91, base_url, referer_path, url_path, until_true=True, error_print=True
 ):
+    # pylint: disable=R0913 too-many-arguments
+
     headers = {
         "User-Agent": roboauto_options["user_agent"],
         "Accept": "*/*",
@@ -191,6 +197,8 @@ def requests_api_order(token_base91, order_id, base_url, until_true=True, error_
 def requests_api_chat(
     token_base91, order_id, base_url, offset=0, until_true=True, error_print=True
 ):
+    # pylint: disable=R0913 too-many-arguments
+
     return requests_api_token(
         token_base91, base_url,
         "/order/" + order_id,
@@ -202,6 +210,8 @@ def requests_api_chat(
 def requests_api_post(
     token_base91, base_url, referer_path, url_path, data, until_true=True, error_print=True
 ):
+    # pylint: disable=R0913 too-many-arguments
+
     headers = {
         "User-Agent": roboauto_options["user_agent"],
         "Accept": "*/*",
@@ -222,44 +232,11 @@ def requests_api_post(
     )
 
 
-def requests_api_order_post(
-    token_base91, order_id, base_url, order_action, until_true=True, error_print=True
-):
-    return requests_api_post(
-        token_base91, base_url,
-        "/order/" + order_id,
-        "/api/order/?order_id=" + order_id,
-        order_action,
-        until_true=until_true, error_print=error_print
-)
-
-
-def requests_api_cancel(token_base91, order_id, base_url, until_true=True, error_print=True):
-    return requests_api_order_post(
-        token_base91, order_id, base_url,
-        json_dumps({
-            "action": "cancel"
-        }),
-        until_true=until_true, error_print=error_print
-    )
-
-
-def requests_api_order_invoice(
-    token_base91, order_id, base_url, signed_invoice, until_true=True, error_print=True
-):
-    return requests_api_order_post(
-        token_base91, order_id, base_url,
-        json_dumps({
-            "action": "update_invoice",
-            "invoice": signed_invoice
-        }),
-        until_true=until_true, error_print=error_print
-    )
-
-
 def requests_api_make(
     token_base91, order_id, base_url, make_data, until_true=True, error_print=True
 ):
+    # pylint: disable=R0913 too-many-arguments
+
     if order_id:
         referer_path = "/order/" + order_id
     else:
@@ -274,7 +251,10 @@ def requests_api_make(
 
 
 def requests_api_chat_post(
-    token_base91, order_id, base_url, message, until_true=True, error_print=True):
+    token_base91, order_id, base_url, message, until_true=True, error_print=True
+):
+    # pylint: disable=R0913 too-many-arguments
+
     return requests_api_post(
         token_base91, base_url,
         "/order/" + order_id,
@@ -282,6 +262,95 @@ def requests_api_chat_post(
         json_dumps({
             "PGP_message": message,
             "order_id": order_id
+        }),
+        until_true=until_true, error_print=error_print
+    )
+
+
+def requests_api_order_post(
+    token_base91, order_id, base_url, order_action, until_true=True, error_print=True
+):
+    # pylint: disable=R0913 too-many-arguments
+
+    return requests_api_post(
+        token_base91, base_url,
+        "/order/" + order_id,
+        "/api/order/?order_id=" + order_id,
+        order_action,
+        until_true=until_true, error_print=error_print
+)
+
+
+def requests_api_order_invoice(
+    token_base91, order_id, base_url, signed_invoice, until_true=True, error_print=True
+):
+    # pylint: disable=R0913 too-many-arguments
+
+    return requests_api_order_post(
+        token_base91, order_id, base_url,
+        json_dumps({
+            "action": "update_invoice",
+            "invoice": signed_invoice
+        }),
+        until_true=until_true, error_print=error_print
+    )
+
+
+def requests_api_order_pause(
+    token_base91, order_id, base_url, until_true=True, error_print=True
+):
+    return requests_api_order_post(
+        token_base91, order_id, base_url,
+        json_dumps({
+            "action": "pause"
+        }),
+        until_true=until_true, error_print=error_print
+    )
+
+
+def requests_api_order_cancel(
+    token_base91, order_id, base_url, until_true=True, error_print=True
+):
+    return requests_api_order_post(
+        token_base91, order_id, base_url,
+        json_dumps({
+            "action": "cancel"
+        }),
+        until_true=until_true, error_print=error_print
+    )
+
+
+def requests_api_order_confirm(
+    token_base91, order_id, base_url, until_true=True, error_print=True
+):
+    return requests_api_order_post(
+        token_base91, order_id, base_url,
+        json_dumps({
+            "action": "confirm"
+        }),
+        until_true=until_true, error_print=error_print
+    )
+
+
+def requests_api_order_undo_confirm(
+    token_base91, order_id, base_url, until_true=True, error_print=True
+):
+    return requests_api_order_post(
+        token_base91, order_id, base_url,
+        json_dumps({
+            "action": "undo_confirm"
+        }),
+        until_true=until_true, error_print=error_print
+    )
+
+
+def requests_api_order_dispute(
+    token_base91, order_id, base_url, until_true=True, error_print=True
+):
+    return requests_api_order_post(
+        token_base91, order_id, base_url,
+        json_dumps({
+            "action": "dispute"
         }),
         until_true=until_true, error_print=error_print
     )

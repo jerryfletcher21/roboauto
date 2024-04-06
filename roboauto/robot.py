@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
-# pylint: disable=C0114 missing-module-docstring
+"""robot.py"""
+
 # pylint: disable=C0116 missing-function-docstring
-# pylint: disable=R0911 too-many-return-statements
-# pylint: disable=R0912 too-many-branches
-# pylint: disable=R0914 too-many-locals
 
 import os
 import re
@@ -71,6 +69,8 @@ def robot_var_from_dic(robot_dic):
 
 
 def robot_load_from_name(robot_name, error_print=True):
+    # pylint: disable=R0912 too-many-branches
+
     possible_state_base_dir = robot_get_dir_dic()
     found = False
     for possible_state, possible_base_dir in possible_state_base_dir.items():
@@ -133,6 +133,8 @@ def robot_save_to_disk_and_get_dic(robot_name, robot_state, robot_dir, token, co
 
 
 def robot_input_from_argv(argv, just_name=False, error_print=True):
+    # pylint: disable=R0911 too-many-return-statements
+
     multi_false = False, False
     if len(argv) >= 1:
         robot_name = argv[0]
@@ -177,6 +179,8 @@ def robot_get_lock_file(robot_name):
 
 
 def robot_import(argv):
+    # pylint: disable=R0911 too-many-return-statements
+
     coordinator, _, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator is False:
         return False
@@ -287,6 +291,8 @@ def robot_print_dir_argv(robot_state, argv):
 
 
 def robot_change_dir(robot_name, destination_state):
+    # pylint: disable=R0911 too-many-return-statements
+
     if destination_state not in robot_get_dir_dic():
         print_err(f"{destination_state} is not an available destination directory")
         return False
@@ -449,6 +455,8 @@ def robot_save_gpg_public_private(robot_dic, robot_response_json):
 
 
 def robot_generate(argv):
+    # pylint: disable=R0911 too-many-return-statements
+
     coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator_url is False:
         return False
