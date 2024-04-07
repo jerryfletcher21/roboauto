@@ -1,9 +1,114 @@
 #!/usr/bin/env bash
 
+# source this file in ~/.bashrc
+# if the bash completion package is installed there are better
+# completions in roboauto create-order and recreate-order
+
 __roboauto_completion() {
+    local ifs_original="$IFS"
+    local ifs_newline='
+'
+
+    ___list_non_already_set_array() {
+        local list_full="$1"
+        local item_current="$2"
+        shift 2
+        local array_compare=("$@")
+
+        local item_full item_compare should_add
+
+        IFS="$ifs_newline"
+        for item_full in $list_full; do
+            IFS="$ifs_original"
+
+            should_add=true
+
+            for item_compare in "${array_compare[@]}"; do
+                case "$item_compare" in
+                    "$item_current") ;;
+                    *=*)
+                        if [ "${item_compare%%=*}" = "$item_full" ]; then
+                            should_add=false
+                            break
+                        fi
+                    ;;
+                esac
+            done
+
+            if [ "$should_add" = true ]; then
+                printf "%s\n" "$item_full"
+            fi
+
+            IFS="$ifs_newline"
+        done
+        IFS="$ifs_original"
+    }
+
+    ___roboauto_complete_order_fields() {
+        case "$cur" in
+        *=*)
+            case "$cur" in
+            type=*)
+                cur="${cur#*=}"
+                OPTS="
+buy
+sell"
+            ;;
+            currency=*)
+                cur="${cur#*=}"
+                OPTS="$(roboauto list-currencies)"
+            ;;
+            payment_method=*)
+                cur="${cur#*=}"
+                methods="all"
+                for word in "${words[@]}"; do
+                    case "$word" in
+                    currency=*)
+                        currency="${word#*=}"
+                        if [ "$currency" = "btc" ]; then
+                            methods="swap"
+                        else
+                            methods="fiat"
+                        fi
+                        break
+                    ;;
+                    esac
+                done
+                if [ "$methods" = "all" ]; then
+                    payment_methods="$(roboauto list-payment-methods)"
+                else
+                    payment_methods="$(roboauto list-payment-methods --"${methods}")"
+                fi
+                OPTS="$(
+                    printf "%s\n" "$payment_methods" |
+                    awk 'NF { print "\""$0"\"" }'
+                )"
+            ;;
+            esac
+        ;;
+        *)
+            local order_keys order_keys_correct
+
+            order_keys="$(roboauto list-order-fields)"
+            order_keys_correct="payment_method
+$(
+    ___list_non_already_set_array \
+        "$order_keys" "$cur" "${words[@]}"
+)"
+
+            OPTS="$(
+                printf "%s\n" "$order_keys_correct" |
+                uniq |
+                sed 's/$/=/'
+            )"
+        ;;
+        esac
+    }
+
     ___roboauto_get_coordinators() {
         roboauto list-configs | jq -r '.federation | keys[] as $k | "--\($k)"'
     }
+
     ___roboauto_get_robots() {
         find "$@" -mindepth 1 -maxdepth 1 -type d |
         rev |
@@ -14,7 +119,19 @@ __roboauto_completion() {
     # shellcheck disable=SC2034
     local cur prev words=() cword
 
-    _get_comp_words_by_ref -n = cur prev words cword
+    # if bash completion is sourced
+    if [ "$(type -t _get_comp_words_by_ref 2>/dev/null)" = "function" ]; then
+        _get_comp_words_by_ref -n = cur prev words cword
+
+        advanced_completion=true
+    else
+        cur="$2"
+        prev="$3"
+        words=("${COMP_WORDS[@]}")
+        cword="$COMP_CWORD"
+
+        advanced_completion=false
+    fi
 
     OPTS=""
 
@@ -54,6 +171,14 @@ $(
         set -- "$active_home" "$pending_home" "$inactive_home" "$paused_home"
 
         case "$action" in
+        list-payment-methods)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="
+--fiat
+--swap
+"
+            fi
+        ;;
         import-robot)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$(___roboauto_get_coordinators)"
@@ -94,7 +219,11 @@ $(___roboauto_get_robots "$active_home")"
                 OPTS="
 --full"
             fi
-            if [ "${cword}" -eq 2 ] || { [ "${cword}" -eq 3 ] && [ "$prev" = "--full" ]; }; then
+            if \
+                [ "${cword}" -eq 2 ] || {
+                    [ "${cword}" -eq 3 ] && [ "$prev" = "--full" ]
+                }
+            then
                 OPTS="$OPTS
 --active
 --inactive
@@ -125,7 +254,7 @@ $(___roboauto_get_robots "$active_home" "$pending_home")"
                 fi
             fi
         ;;
-        robot-chat)
+        chat-print)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="--local"
             fi
@@ -148,29 +277,38 @@ $(___roboauto_get_robots "$pending_home")"
             possible_coordinatos="
 --all
 $(___roboauto_get_coordinators)"
-            possible_currencies="
+            all_currencies="
 all
-eur
-usd
-btc"
+$(roboauto list-currencies)
+"
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$possible_coordinatos"
             elif [ "${cword}" -eq 3 ]; then
                 OPTS="
 --buy
 --sell
-$possible_currencies"
-            elif [ "${cword}" -eq 4 ] && { [ "$prev" = "--sell" ] || [ "$prev" = "--buy" ]; }; then
-                OPTS="$possible_currencies"
+$all_currencies"
+            elif \
+                [ "${cword}" -eq 4 ] && {
+                    [ "$prev" = "--sell" ] || [ "$prev" = "--buy" ]
+                }
+            then
+                OPTS="$all_currencies"
             fi
         ;;
         create-order)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="--no-bond"
             fi
-            if [ "${cword}" -eq 2 ] || { [ "${cword}" -eq 3 ] && [ "$prev" = "--no-bond" ]; }; then
+            if \
+                [ "${cword}" -eq 2 ] || {
+                    [ "${cword}" -eq 3 ] && [ "$prev" = "--no-bond" ]
+                }
+            then
                 OPTS="$OPTS
 $(___roboauto_get_robots "$paused_home")"
+            elif [ "$advanced_completion" = true ]; then
+                ___roboauto_complete_order_fields
             fi
         ;;
         cancel-order)
@@ -184,8 +322,11 @@ $(___roboauto_get_robots "$paused_home")"
 --no-cancel
 --no-bond
 $(___roboauto_get_robots "$active_home")"
-            fi
-            if [ "${cword}" -eq 3 ]; then
+            elif \
+                [ "${cword}" -eq 3 ] && {
+                    [ "$prev" = "--no-cancel" ] || [ "$prev" = "--no-bond" ]
+                }
+            then
                 case "$prev" in
                 --no-cancel)
                     OPTS="$(___roboauto_get_robots "$paused_home" "$inactive_home")"
@@ -194,6 +335,8 @@ $(___roboauto_get_robots "$active_home")"
                     OPTS="$(___roboauto_get_robots "$active_home")"
                 ;;
                 esac
+            elif [ "$advanced_completion" = true ]; then
+                ___roboauto_complete_order_fields
             fi
         ;;
         pause-toggle)
@@ -210,11 +353,23 @@ $(___roboauto_get_robots "$active_home")"
     fi
 
     if [ -n "$OPTS" ]; then
+        # complete with ignorecase and multi words
+        IFS="$ifs_newline"
         # shellcheck disable=SC2207
         COMPREPLY=($(
             printf "%s\n" "$OPTS" |
             awk -v IGNORECASE=1 -v p="$cur" 'p==substr($0,0,length(p))'
         ))
+        IFS="$ifs_original"
+
+        # do not put a space when the completion ends with an equal
+        for reply in "${COMPREPLY[@]}"; do
+            case "$reply" in
+            *=)
+                compopt -o nospace
+            ;;
+            esac
+        done
     fi
 } &&
 complete -F __roboauto_completion roboauto

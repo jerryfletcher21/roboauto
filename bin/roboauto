@@ -17,10 +17,11 @@ from roboauto.robot import \
     robot_print_dir_argv, waiting_queue_print, robot_change_dir_from_argv, robot_generate
 from roboauto.order_local import order_info_local
 from roboauto.order import \
-    create_order, cancel_order, recreate_order, \
+    create_order, cancel_order, recreate_order, list_order_fields, \
     order_buyer_update_invoice_argv, order_seller_bond_escrow_argv, \
     order_pause_toggle_argv, order_collaborative_cancel_argv, \
-    order_send_confirm_argv, order_undo_confirm_argv, order_start_dispute_argv
+    order_send_confirm_argv, order_undo_confirm_argv, order_start_dispute_argv, \
+    list_currencies, list_payment_methods
 from roboauto.chat import robot_send_chat_message_argv
 from roboauto.info import robosats_info, robot_info, list_limits, robot_chat
 from roboauto.book import \
@@ -34,6 +35,9 @@ info = """\
 roboauto action [options]
 
 list-configs
+list-currencies
+list-payment-methods [--fiat, --swap]
+list-order-fields
 import-robot --{coordinator-name} [--pending, --inactive, --paused] [robot-name] [token]
 print-token [robot-name]
 print-coordinator [robot-name]
@@ -78,6 +82,15 @@ roboauto action [options]
 
 list-configs
     list configs
+
+list-currencies
+    list all currencies
+
+list-payment-methods [--fiat, --swap]
+    list all payment methods
+
+list-order-fields
+    list order fields for create-order and recreate-order
 
 import-robot --{coordinator-name} [--pending, --inactive, --paused] [robot-name] [token]
     import a robot, robot-name and token are required
@@ -152,6 +165,8 @@ create-order [--no-bond] [robot-name] [key=value]
     create a new order
     if --no-bond create order but do not bond
     if key=value are not provided they will be asked
+    list of keys can be get with roboauto list-order-fields
+    payment_method can be provided multiple times
 
 cancel-order [robot-name]
     cancel robot order just if order is public or paused
@@ -161,8 +176,9 @@ recreate-order [--no-cancel, --no-bond] robot-name key=value
     if --no-cancel do not cancel the order, recreate is from
     last saved order
     if --no-bond create order but do not bond
-    provide a list of key=value of parameters to change in the
-    new order
+    the list of key=value is the same as for create-order
+    and will overwrite the old order
+    payment_method can be provided multiple times
 
 pause-toggle [robot-name]
     toggle pause order in robosats
@@ -236,6 +252,12 @@ try:
 
     if action == "list-configs":
         return_status = list_configs()
+    elif action == "list-currencies":
+        return_status = list_currencies()
+    elif action == "list-payment-methods":
+        return_status = list_payment_methods(argv)
+    elif action == "list-order-fields":
+        return_status = list_order_fields()
     elif action == "import-robot":
         return_status = robot_import(argv)
     elif action == "print-token":

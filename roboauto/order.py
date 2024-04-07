@@ -23,7 +23,8 @@ from roboauto.order_local import \
     get_order_data, order_get_order_dic, order_save_order_file, \
     order_is_waiting_seller_buyer, order_is_waiting_buyer, \
     order_is_waiting_seller, order_is_waiting_fiat_sent, \
-    order_is_fiat_sent
+    order_is_fiat_sent, get_order_user, get_all_currencies, \
+    get_fiat_payment_methods, get_swap_payment_methods
 from roboauto.robot import \
     robot_get_lock_file, robot_input_from_argv, \
     robot_requests_robot, robot_change_dir, robot_var_from_dic, \
@@ -40,18 +41,44 @@ from roboauto.utils import \
 from roboauto.gpg_key import gpg_sign_message
 
 
-def order_user_get(with_default):
-    empty_order = {
-        "type":                 False,
-        "currency":             False,
-        "min_amount":           False,
-        "max_amount":           False,
-        "payment_method":       False,
-        "premium":              False,
-        "public_duration":      False,
-        "escrow_duration":      False,
-        "bond_size":            False
-    }
+def list_currencies():
+    currencies = get_all_currencies()
+    for _, currency in currencies.items():
+        print_out(currency.lower())
+
+    return True
+
+
+def list_payment_methods(argv):
+    fiat_present = True
+    swap_present = True
+    if len(argv) > 0:
+        if argv[0] == "--fiat":
+            swap_present = False
+            argv = argv[1:]
+        elif argv[0] == "--swap":
+            fiat_present = False
+            argv = argv[1:]
+
+    payment_methods = []
+
+    if fiat_present:
+        payment_methods += get_fiat_payment_methods()
+
+    if swap_present:
+        payment_methods += get_swap_payment_methods()
+
+    for method in payment_methods:
+        print_out(method)
+
+    return True
+
+
+def order_user_empty_get(with_default):
+    empty_order = get_order_user(
+        False, False, False, False, False,
+        False, False, False, False
+    )
 
     if with_default:
         empty_order["public_duration"] = roboauto_options["default_duration"]
@@ -59,6 +86,14 @@ def order_user_get(with_default):
         empty_order["bond_size"] = roboauto_options["default_bond_size"]
 
     return empty_order
+
+
+def list_order_fields():
+    empty_order_user = order_user_empty_get(False)
+    for item in empty_order_user:
+        print_out(item)
+
+    return True
 
 
 def api_order_get_dic(robot_name, token_base91, robot_url, order_id):
@@ -153,17 +188,11 @@ def api_order_get_dic(robot_name, token_base91, robot_url, order_id):
             payment_method, premium,
             public_duration, escrow_duration, bond_size
         ),
-        "order_user": {
-            "type":                 type_string,
-            "currency":             currency_string,
-            "min_amount":           min_amount_user,
-            "max_amount":           max_amount_user,
-            "payment_method":       payment_method,
-            "premium":              premium,
-            "public_duration":      str(public_duration),
-            "escrow_duration":      str(escrow_duration),
-            "bond_size":            bond_size
-        },
+        "order_user": get_order_user(
+            type_string, currency_string, min_amount_user, max_amount_user,
+            payment_method, premium, str(public_duration), str(escrow_duration),
+            bond_size
+        ),
         "order_info": {
             "coordinator":          coordinator,
             "order_id":             order_id,
@@ -456,7 +485,7 @@ def make_order(
 
 def order_user_from_argv(argv, with_default=False):
     """get order_user's fields from argv"""
-    order_user = order_user_get(with_default)
+    order_user = order_user_empty_get(with_default)
 
     while len(argv) > 0:
         param = argv[0]
@@ -467,7 +496,14 @@ def order_user_from_argv(argv, with_default=False):
             return False
         key, value = key_value
         if key in order_user:
-            order_user[key] = value
+            if order_user[key] is False:
+                order_user[key] = value
+            else:
+                if key != "payment_method":
+                    print_err(f"{key} can not be set multiple times")
+                    return False
+                else:
+                    order_user[key] += " " + value
         else:
             print_err("%s is not a valid key" % key)
             return False
@@ -750,7 +786,10 @@ def order_seller_bond_escrow(robot_dic):
     )
 
 
-def order_post_action_simple(robot_dic, order_post_function, is_wrong_status, string_error):
+def order_post_action_simple(
+    robot_dic, order_post_function, is_wrong_status, string_error, string_or_bad_request
+):
+    # pylint: disable=R0911 too-many-return-statements
     # pylint: disable=R0914 too-many-locals
 
     robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
@@ -779,17 +818,25 @@ def order_post_action_simple(robot_dic, order_post_function, is_wrong_status, st
     order_post_response = order_post_response_all.text
     order_post_response_json = json_loads(order_post_response)
     if order_post_response_json is False:
-        print_err(order_post_response, end="", error=False, date=False)
-        print_err("cancelling order %s %s" % (robot_name, token_base91))
+        print_err(order_post_response, error=False, date=False)
+        print_err(f"{robot_name} {order_id} response is not json")
         return False
 
     bad_request = order_post_response_json.get("bad_request", False)
-    if bad_request is False:
-        print_err(order_post_response, end="", error=False, date=False)
-        print_err("getting cancel response %s %s" % (robot_name, order_id))
-        return False
+    if string_or_bad_request is False:
+        if bad_request is False:
+            print_err(order_post_response, error=False, date=False)
+            print_err(f"{robot_name} {order_id} problems in the response")
+            return False
 
-    print_out(bad_request)
+        print_out(bad_request)
+    else:
+        if bad_request is not False:
+            print_err(bad_request)
+            print_err(f"{robot_name} {order_id} problems in the response")
+            return False
+
+        print_out(f"{robot_name} {order_id} " + string_or_bad_request)
 
     return True
 
@@ -801,7 +848,8 @@ def order_pause_toggle(robot_dic):
         lambda status_id : \
             not order_is_public(status_id) and \
             not order_is_paused(status_id),
-        "is not public or paused"
+        "is not public or paused",
+        "toggled pause"
     )
 
 
@@ -812,7 +860,8 @@ def order_collaborative_cancel(robot_dic):
         lambda status_id : \
             not order_is_waiting_buyer(status_id) and \
             not order_is_waiting_fiat_sent(status_id),
-        "can not send collaborative cancel"
+        "can not send collaborative cancel",
+        False
     )
 
 
@@ -823,7 +872,8 @@ def order_send_confirm(robot_dic):
         lambda status_id : \
             not order_is_waiting_fiat_sent(status_id) and \
             not order_is_fiat_sent(status_id),
-        "can not confirm payment"
+        "can not confirm payment",
+        "confirmation sent"
     )
 
 
@@ -834,7 +884,8 @@ def order_undo_confirm(robot_dic):
         requests_api_order_undo_confirm,
         lambda status_id : \
             not order_is_fiat_sent(status_id),
-        "can not undo confirm payment"
+        "can not undo confirm payment",
+        "confirmation undone"
     )
 
 
@@ -845,7 +896,8 @@ def order_start_dispute(robot_dic):
         lambda status_id : \
             not order_is_waiting_fiat_sent(status_id) and \
             not order_is_fiat_sent(status_id),
-        "can not start dispute"
+        "can not start dispute",
+        "dispute started"
     )
 
 

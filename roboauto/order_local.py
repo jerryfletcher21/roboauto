@@ -42,8 +42,8 @@ def get_type_string(target, reverse=False):
         return -1
 
 
-def get_currency_string(target, reverse=False):
-    currencies = {
+def get_all_currencies():
+    return {
            1: "USD",
            2: "EUR",
            3: "JPY",
@@ -119,10 +119,14 @@ def get_currency_string(target, reverse=False):
           73: "RSD",
           74: "IRT",
           75: "BDT",
+          76: "ALL",
          300: "XAU",
         1000: "BTC"
     }
 
+
+def get_currency_string(target, reverse=False):
+    currencies = get_all_currencies()
     if not reverse:
         if target in currencies:
             return currencies[target]
@@ -133,6 +137,105 @@ def get_currency_string(target, reverse=False):
             if target.upper() == currency_string:
                 return currency_id
         return -1
+
+
+def get_fiat_payment_methods():
+    return [
+        "Revolut",
+        "CashApp",
+        "Zelle",
+        "Strike",
+        "WeChat Pay",
+        "Instant SEPA",
+        "Interac e-Transfer",
+        "Wise",
+        "Venmo",
+        "Faster Payments",
+        "Paypal Friends & Family",
+        "LINE Pay",
+        "Rakuten Pay",
+        "PromptPay",
+        "Bizum",
+        "N26",
+        "Tinkoff Bank",
+        "TWINT",
+        "Advcash",
+        "BLIK",
+        "MBWay",
+        "W1TTY",
+        "Verse",
+        "Paysera",
+        "Amazon GiftCard",
+        "Ozon GiftCard",
+        "AliPay",
+        "GPay",
+        "Bancolombia",
+        "Pago Movil BDV",
+        "SPEI",
+        "PIX",
+        "Pouch.ph",
+        "PayID",
+        "Paysafe",
+        "Sber Bank",
+        "PhonePe",
+        "OVO",
+        "HalCash",
+        "Vivid",
+        "Google Play Gift Code",
+        "Apple Pay",
+        "Steam",
+        "Nequi",
+        "ShakePay",
+        "Sinpe",
+        "DaviPlata",
+        "CoDi",
+        "TaiwanPay",
+        "MaiCoin",
+        "GoPay",
+        "MercadoPago",
+        "Monero",
+        "USDT",
+        "L-USDt",
+        "Airtel Money",
+        "MTN Money",
+        "M-Pesa",
+        "UPI",
+        "MoMo",
+        "Tigo Pesa",
+        "Cash F2F",
+        "Amazon USA GiftCard",
+        "Amazon DE GiftCard",
+        "Amazon AU GiftCard",
+        "Amazon SA GiftCard",
+        "Amazon ES GiftCard",
+        "Amazon CA GiftCard",
+        "Amazon CN GiftCard",
+        "Amazon AE GiftCard",
+        "Amazon FR GiftCard",
+        "Amazon NL GiftCard",
+        "Amazon IN GiftCard",
+        "Amazon IT GiftCard",
+        "Amazon JP GiftCard",
+        "Amazon MX GiftCard",
+        "Amazon PL GiftCard",
+        "Amazon UK GiftCard",
+        "Amazon SE GiftCard",
+        "Amazon SG GiftCard",
+        "Amazon TR GiftCard",
+        "Tinkoff QR",
+        "SBP",
+        "Qiwi"
+    ]
+
+
+def get_swap_payment_methods():
+    return [
+        "On-Chain BTC",
+        "On-Chain w/ Stowaway",
+        "RBTC",
+        "LBTC",
+        "WBTC"
+    ]
 
 
 def get_order_string(target, reverse=False):
@@ -266,6 +369,48 @@ def order_is_finished(data):
         return True
     else:
         return False
+
+
+def get_order_data(
+    type_id, currency_id,
+    amount, has_range, min_amount, max_amount,
+    payment_method, premium,
+    public_duration, escrow_duration, bond_size
+):
+    # pylint: disable=R0913 too-many-arguments
+
+    return {
+        "type":                 type_id,
+        "currency":             currency_id,
+        "amount":               amount,
+        "has_range":            has_range,
+        "min_amount":           min_amount,
+        "max_amount":           max_amount,
+        "payment_method":       payment_method,
+        "premium":              premium,
+        "public_duration":      public_duration,
+        "escrow_duration":      escrow_duration,
+        "bond_size":            bond_size
+    }
+
+
+def get_order_user(
+    type_string, currency_string, min_amount_user, max_amount_user,
+    payment_method, premium, public_duration, escrow_duration, bond_size
+):
+    # pylint: disable=R0913 too-many-arguments
+
+    return {
+        "type":                 type_string,
+        "currency":             currency_string,
+        "min_amount":           min_amount_user,
+        "max_amount":           max_amount_user,
+        "payment_method":       payment_method,
+        "premium":              premium,
+        "public_duration":      public_duration,
+        "escrow_duration":      escrow_duration,
+        "bond_size":            bond_size
+    }
 
 
 def get_offer_dic(offer, coordinator):
@@ -607,29 +752,6 @@ def robot_handle_taken(robot_name, status_id, order_id, other):
         print_err("message notification command not found, no messages will be sent")
 
     return True
-
-
-def get_order_data(
-    type_id, currency_id,
-    amount, has_range, min_amount, max_amount,
-    payment_method, premium,
-    public_duration, escrow_duration, bond_size
-):
-    # pylint: disable=R0913 too-many-arguments
-
-    return {
-        "type":                 type_id,
-        "currency":             currency_id,
-        "amount":               amount,
-        "has_range":            has_range,
-        "min_amount":           min_amount,
-        "max_amount":           max_amount,
-        "payment_method":       payment_method,
-        "premium":              premium,
-        "public_duration":      public_duration,
-        "escrow_duration":      escrow_duration,
-        "bond_size":            bond_size
-    }
 
 
 def order_data_from_order_user(order_user):
