@@ -21,7 +21,7 @@ from roboauto.order import \
     list_currencies, list_payment_methods
 from roboauto.order_action import \
     order_buyer_update_invoice_argv, order_seller_bond_escrow_argv, \
-    order_pause_toggle_argv, order_collaborative_cancel_argv, \
+    order_pause_toggle_argv, order_collaborative_cancel_argv, order_take_argv, \
     order_send_confirm_argv, order_undo_confirm_argv, order_start_dispute_argv
 from roboauto.chat import robot_send_chat_message_argv
 from roboauto.info import robosats_info, robot_info, list_limits, robot_chat
@@ -57,9 +57,10 @@ message-send [robot-name]
 list-limits --{coordinator-name}
 list-hours [--relative]
 list-offers --{coordinators}/--all [--sell|--buy] [currency] [search]
-create-order [--no-bond] [robot-name] [key=value]
+create-order [--no-bond, --no-active] [robot-name] [key=value]
 cancel-order [robot-name]
 recreate-order [--no-cancel, --no-bond] robot-name key=value
+take-order [robot-name] [order-id]
 pause-toggle [robot-name]
 escrow-pay [robot-name]
 invoice-send [robot-name] [budget-ppm]
@@ -161,9 +162,10 @@ list-offers --{coordinators}/--all [--sell|--buy] [currency] [search]
     multiple coordinators can be specified or --all
     search is the string to be searched in the payment method
 
-create-order [--no-bond] [robot-name] [key=value]
+create-order [--no-bond, --no-active] [robot-name] [key=value]
     create a new order
     if --no-bond create order but do not bond
+    if --no-active do not set the robot to the active directory
     if key=value are not provided they will be asked
     list of keys can be get with roboauto list-order-fields
     payment_method can be provided multiple times
@@ -179,6 +181,9 @@ recreate-order [--no-cancel, --no-bond] robot-name key=value
     the list of key=value is the same as for create-order
     and will overwrite the old order
     payment_method can be provided multiple times
+
+take-order [robot-name] [order-id]
+    take an order
 
 pause-toggle [robot-name]
     toggle pause order in robosats
@@ -307,6 +312,8 @@ try:
         return_status = cancel_order(argv)
     elif action == "recreate-order":
         return_status = recreate_order(argv)
+    elif action == "take-order":
+        return_status = order_take_argv(argv)
     elif action == "pause-toggle":
         return_status = order_pause_toggle_argv(argv)
     elif action == "escrow-pay":

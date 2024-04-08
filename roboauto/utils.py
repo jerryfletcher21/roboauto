@@ -545,7 +545,13 @@ def string_to_multiline_format(string):
     return string.replace("\n", "\\")
 
 
-def date_to_format(date_string):
+def date_to_format_and_time_zone(date_string):
     return datetime.datetime.strptime(
         date_string, roboauto_state["robot_date_format"]
+    ).replace(
+        tzinfo=datetime.timezone(
+            datetime.timedelta(hours=roboauto_options["time_zone"])
+        )
+    ).astimezone(
+        datetime.timezone.utc
     ).strftime(roboauto_options["date_format"])

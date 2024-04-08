@@ -10,7 +10,7 @@ from roboauto.logger import print_out, print_err
 from roboauto.utils import \
     json_loads, string_from_multiline_format, token_get_base91, \
     roboauto_get_coordinator_url, string_to_multiline_format, \
-    input_ask, file_json_write, date_to_format
+    input_ask, file_json_write, date_to_format_and_time_zone
 from roboauto.order_local import order_get_order_dic
 from roboauto.requests_api import \
     response_is_error, requests_api_chat_post, requests_api_chat
@@ -131,7 +131,7 @@ def chat_print_encrypted_messages(chat_response_json, robot_dir, token):
             print_err("getting message nick")
             return False
 
-        message_date = date_to_format(message_time)
+        message_date = date_to_format_and_time_zone(message_time)
 
         if re.match('^#', message_enc) is not None:
             status_char = "N"
@@ -196,15 +196,25 @@ def robot_send_chat_message(robot_dic, message):
         return False
 
     if re.match('^#', message) is not None:
+        status_char = "N"
         message_send = message
     else:
+        status_char = "E"
         current_fingerprint = robot_get_current_fingerprint(robot_dir)
         if current_fingerprint is False:
             return False
 
-        peer_fingerprint = robot_get_peer_fingerprint(robot_dir)
+        peer_fingerprint = robot_get_peer_fingerprint(robot_dir, error_print=False)
         if peer_fingerprint is False:
-            return False
+            print_out("peer gpg key not yet present, searching it")
+            chat_response, _ = robot_requests_chat(
+                robot_dir, token_base91, robot_url
+            )
+            if chat_response is False:
+                return False
+            peer_fingerprint = robot_get_peer_fingerprint(robot_dir)
+            if peer_fingerprint is False:
+                return False
 
         message_send = string_to_multiline_format(gpg_encrypt_sign_message(
             message,
@@ -228,7 +238,10 @@ def robot_send_chat_message(robot_dic, message):
         print_err("chat response is not json")
         return False
 
-    print_out(f"message {message} sent correctly")
+    print_out("message sent correctly")
+    chat_print_single_message(message_get(
+        "now", robot_name, message, status_char
+    ))
 
     return True
 

@@ -251,18 +251,24 @@ def requests_api_make(
 
 
 def requests_api_chat_post(
-    token_base91, order_id, base_url, message, until_true=True, error_print=True
+    token_base91, order_id, base_url, message, offset=None, until_true=True, error_print=True
 ):
     # pylint: disable=R0913 too-many-arguments
+
+    data_json = {
+        "PGP_message": message,
+        "order_id": order_id
+    }
+    if offset is not None and offset is not False:
+        data_json.update({
+            "offset": offset
+        })
 
     return requests_api_post(
         token_base91, base_url,
         "/order/" + order_id,
         "/api/chat/",
-        json_dumps({
-            "PGP_message": message,
-            "order_id": order_id
-        }),
+        json_dumps(data_json),
         until_true=until_true, error_print=error_print
     )
 
@@ -293,6 +299,18 @@ def requests_api_order_invoice(
             "action": "update_invoice",
             "invoice": signed_invoice,
             "routing_budget_ppm": budget_ppm
+        }),
+        until_true=until_true, error_print=error_print
+    )
+
+
+def requests_api_order_take(
+    token_base91, order_id, base_url, until_true=True, error_print=True
+):
+    return requests_api_order_post(
+        token_base91, order_id, base_url,
+        json_dumps({
+            "action": "take"
         }),
         until_true=until_true, error_print=error_print
     )

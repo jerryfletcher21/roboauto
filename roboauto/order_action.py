@@ -10,22 +10,51 @@ import filelock
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.utils import \
     print_out, print_err, get_uint, subprocess_run_command, \
-    json_loads
+    json_loads, input_ask
 from roboauto.robot import \
     robot_get_current_fingerprint, robot_var_from_dic, \
-    robot_input_from_argv, robot_get_lock_file
+    robot_input_from_argv, robot_get_lock_file, robot_change_dir
 from roboauto.order_data import \
     order_is_waiting_seller_buyer, order_is_waiting_buyer, \
     order_is_waiting_seller, order_is_waiting_fiat_sent, \
     order_is_fiat_sent, order_is_public, order_is_paused
 from roboauto.order import \
-    robot_requests_get_order_dic, peer_nick_from_response, \
+    robot_requests_get_order_dic, peer_nick_from_response, bond_order, \
     amount_correct_from_response, subprocess_pay_invoice_and_check
 from roboauto.requests_api import \
     requests_api_order_invoice, requests_api_order_pause, \
     requests_api_order_confirm, requests_api_order_undo_confirm, \
     requests_api_order_dispute, response_is_error, requests_api_order_cancel
 from roboauto.gpg_key import gpg_sign_message
+
+
+def order_take_argv(argv):
+    robot_dic, argv = robot_input_from_argv(argv)
+    if robot_dic is False:
+        return False
+
+    robot_name = robot_dic["name"]
+
+    if len(argv) >= 1:
+        order_id = argv[0]
+        argv = argv[1:]
+    else:
+        order_id = input_ask("insert order id: ")
+        if order_id is False:
+            return False
+
+    if get_uint(order_id) is False:
+        return False
+
+    if bond_order(robot_dic, order_id, taker=True) is False:
+        return False
+
+    print_out(f"{robot_name} {order_id} taken successfully")
+
+    if not robot_change_dir(robot_name, "pending"):
+        return False
+
+    return True
 
 
 def order_buyer_update_invoice(robot_dic, budget_ppm=None):

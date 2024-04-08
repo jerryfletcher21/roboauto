@@ -19,7 +19,8 @@ from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.order_data import \
     get_order_string, get_type_string, get_currency_string, order_is_expired, \
     order_is_public, order_is_paused, order_is_waiting_maker_bond, \
-    get_all_currencies, get_fiat_payment_methods, get_swap_payment_methods
+    get_all_currencies, get_fiat_payment_methods, get_swap_payment_methods, \
+    order_is_waiting_taker_bond
 from roboauto.order_local import \
     order_data_from_order_user, get_order_data, order_get_order_dic, \
     order_save_order_file, get_order_user
@@ -28,7 +29,7 @@ from roboauto.robot import \
     robot_change_dir, robot_var_from_dic, robot_requests_get_order_id
 from roboauto.requests_api import \
     requests_api_order, requests_api_order_cancel, \
-    requests_api_make, response_is_error
+    requests_api_make, response_is_error, requests_api_order_take
 from roboauto.utils import \
     json_dumps, subprocess_run_command, \
     json_loads, input_ask, roboauto_get_coordinator_url, \
@@ -99,10 +100,15 @@ def amount_correct_format(amount, is_fiat):
     return amount_format % float(amount)
 
 
-def api_order_get_dic(robot_name, token_base91, robot_url, order_id):
+def api_order_get_dic(
+    robot_name, token_base91, robot_url, order_id, order_function=None
+):
     # pylint: disable=R0914 too-many-locals
 
     """get the order_dic making a request to the coordinator
+    order_function can be set to requests_api_order_take
+    when taking an order
+
     the order_dic is composed by 4 dictionaries:
     order_data:  can be derived from order_user, and is the data
                  used when creating orders
@@ -111,7 +117,10 @@ def api_order_get_dic(robot_name, token_base91, robot_url, order_id):
     order_info:  everything not in order_data and order_user
     order_response_json: the json response from the coordinator"""
 
-    order_response_all = requests_api_order(token_base91, order_id, robot_url)
+    if order_function is None:
+        order_function = requests_api_order
+
+    order_response_all = order_function(token_base91, order_id, robot_url)
     # error 500 when the old order is purged from the server
     # maybe create last order from local if available
     if \
@@ -140,7 +149,6 @@ def api_order_get_dic(robot_name, token_base91, robot_url, order_id):
     payment_method = order_response_json.get("payment_method", False)
     premium = order_response_json.get("premium", False)
     invoice = order_response_json.get("bond_invoice", False)
-    satoshis_now = order_response_json.get("satoshis_now", False)
     public_duration = order_response_json.get(
         "public_duration", roboauto_options["default_duration"]
     )
@@ -200,17 +208,20 @@ def api_order_get_dic(robot_name, token_base91, robot_url, order_id):
             "status_string":        status_string,
             "amount_string":        amount_string,
             "order_description":    order_description,
-            "invoice":              invoice,
-            "satoshis_now":         satoshis_now
+            "invoice":              invoice
         },
         "order_response_json":      order_response_json
     }
 
 
-def api_order_get_dic_handle(robot_name, token_base91, robot_url, order_id):
+def api_order_get_dic_handle(
+    robot_name, token_base91, robot_url, order_id, order_function=None
+):
     """api_order_get_dic can return None or False, this function is
     used when it does not matter whether None or False is returned"""
-    order_dic = api_order_get_dic(robot_name, token_base91, robot_url, order_id)
+    order_dic = api_order_get_dic(
+        robot_name, token_base91, robot_url, order_id, order_function=order_function
+    )
     if order_dic is False:
         return False
     if order_dic is None:
@@ -304,12 +315,15 @@ def robot_cancel_order(robot_dic):
 def subprocess_pay_invoice_and_check(
     robot_dic, order_id, pay_command, is_paid_function,
     string_checking, string_paid, string_not_paid,
-    maximum_retries=None
+    maximum_retries=None, failure_function=None
 ):
     # pylint: disable=R0913 too-many-arguments
     # pylint: disable=R0914 too-many-locals
 
     robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+
+    if failure_function is None:
+        failure_function = order_is_expired
 
     retries = 0
     with subprocess.Popen(pay_command, start_new_session=True) as pay_subprocess:
@@ -338,7 +352,7 @@ def subprocess_pay_invoice_and_check(
                 return False
 
             if is_paid_function(order_status):
-                if not order_is_expired(order_status):
+                if not failure_function(order_status):
                     print_out(robot_name + " " + string_paid)
                     return_status = True
                 else:
@@ -377,13 +391,23 @@ def amount_correct_from_response(order_response_json):
     return amount_correct_format(amount_correct, is_fiat)
 
 
-def bond_order(robot_dic, order_id):
+def bond_order(robot_dic, order_id, taker=False):
+    # pylint: disable=R0911 too-many-return-statements
+    # pylint: disable=R0914 too-many-locals
+
     """bond an order, after checking the invoice with lightning-node check
     will run lightning-node check and lightning-node pay as subprocesses"""
 
     robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
-    order_dic = api_order_get_dic_handle(robot_name, token_base91, robot_url, order_id)
+    if taker is False:
+        order_function = None
+    else:
+        order_function = requests_api_order_take
+
+    order_dic = api_order_get_dic_handle(
+        robot_name, token_base91, robot_url, order_id, order_function=order_function
+    )
     if order_dic is False:
         return False
 
@@ -394,15 +418,42 @@ def bond_order(robot_dic, order_id):
     order_info = order_dic["order_info"]
     order_response_json = order_dic["order_response_json"]
 
-    if not order_is_waiting_maker_bond(order_info["status"]):
-        print_err(robot_name + " " + order_id + " is not expired")
-        return False
+    order_description = order_info["order_description"]
+    if taker is False:
+        checking_function = order_is_waiting_maker_bond
+        failure_function = None
+        if not checking_function(order_info["status"]):
+            print_err(f"{robot_name} {order_id} is not waiting maker bond")
+            return False
+        string_paid = "bonded successfully, order is public"
+        string_not_paid = "bond expired, order is not public"
 
-    print_out(robot_name + " " + order_id + " " + order_info["order_description"])
+        print_out(f"{robot_name} {order_id} {order_description}")
+
+        pay_label = \
+            "bond-" + robot_name + "-" + order_id + "-" + \
+            order_user["type"] + "-" + order_user["currency"] + "-" + \
+            order_info["amount_string"]
+    else:
+        checking_function = order_is_waiting_taker_bond
+        failure_function = order_is_public
+        if not checking_function(order_info["status"]):
+            print_err(f"order {order_id} is not waiting taker bond")
+            return False
+        string_paid = "bonded successfully, order is taken"
+        string_not_paid = "bond expired, order is not taken"
+
+        peer_nick = peer_nick_from_response(order_response_json)
+        print_out(f"{robot_name} {peer_nick} {order_id} {order_description}")
+
+        pay_label = \
+            "bond-" + robot_name + "-" + peer_nick + "-" + order_id + "-" + \
+            order_user["type"] + "-" + order_user["currency"] + "-" + \
+            order_info["amount_string"]
 
     bond_satoshis = order_response_json.get("bond_satoshis", False)
     if bond_satoshis is False:
-        print_err("%s %s bond_satoshis not present, invoice will not be checked" % (
+        print_err("%s %s bond_satoshis not present, invoice can not be checked" % (
             robot_name, order_id
         ))
         return False
@@ -420,22 +471,18 @@ def bond_order(robot_dic, order_id):
     print_out(check_output.decode(), end="", date=False)
     print_out("invoice checked successfully")
 
-    peer_nick = peer_nick_from_response(order_response_json)
-
     pay_command = [
         roboauto_state["lightning_node_command"], "pay",
         order_info["invoice"],
-        "bond-" + robot_name + "-" + peer_nick + "-" + order_id + "-" +
-        order_user["type"] + "-" + order_user["currency"] + "-" +
-        order_info["amount_string"]
+        pay_label
     ]
     return subprocess_pay_invoice_and_check(
         robot_dic, order_id,
         pay_command,
-        lambda order_status : not order_is_waiting_maker_bond(order_status),
+        lambda order_status : not checking_function(order_status),
         "checking if order is bonded...",
-        "bonded successfully, order is public",
-        "bond expired, will retry next loop"
+        string_paid, string_not_paid,
+        failure_function=failure_function
     )
 
 
@@ -515,15 +562,22 @@ def order_user_from_argv(argv, with_default=False):
 
 def create_order(argv):
     # pylint: disable=R0911 too-many-return-statements
+    # pylint: disable=R0912 too-many-branches
 
     should_bond = True
-    if len(argv) >= 1:
+    should_set_active = True
+    while len(argv) >= 1:
         if argv[0] == "--no-bond":
             should_bond = False
+            argv = argv[1:]
+        elif argv[0] == "--no-active":
+            should_set_active = False
             argv = argv[1:]
         elif re.match('^-', argv[0]) is not None:
             print_err("option %s not recognized" % argv[0])
             return False
+        else:
+            break
     robot_dic, argv = robot_input_from_argv(argv)
     if robot_dic is False:
         return False
@@ -558,8 +612,9 @@ def create_order(argv):
 
     print_out(f"{robot_name} order created successfully")
 
-    if not robot_change_dir(robot_name, "active"):
-        return False
+    if should_set_active is True:
+        if not robot_change_dir(robot_name, "active"):
+            return False
 
     return True
 

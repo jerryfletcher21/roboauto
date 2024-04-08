@@ -413,10 +413,11 @@ def robot_save_gpg_keys(robot_dir, public_key, private_key, fingerprint, set_def
     return True
 
 
-def robot_get_current_fingerprint(robot_dir):
+def robot_get_current_fingerprint(robot_dir, error_print=True):
     fingerprint_dir = robot_dir + "/current-fingerprint"
     if not os.path.isfile(fingerprint_dir):
-        print_err("robot does not have a current fingerprint")
+        if error_print:
+            print_err("robot does not have a current fingerprint")
         return False
 
     return file_read(fingerprint_dir)
@@ -441,10 +442,11 @@ def robot_save_peer_gpg_public_key(robot_dir, peer_key, fingerprint, set_default
     return True
 
 
-def robot_get_peer_fingerprint(robot_dir):
+def robot_get_peer_fingerprint(robot_dir, error_print=True):
     fingerprint_dir = robot_dir + "/peer-fingerprint"
     if not os.path.isfile(fingerprint_dir):
-        print_err("robot does not have a peer fingerprint")
+        if error_print:
+            print_err("robot does not have a peer fingerprint")
         return False
 
     return file_read(fingerprint_dir)
