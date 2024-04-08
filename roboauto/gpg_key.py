@@ -113,7 +113,10 @@ def gpg_decrypt_check_message(message, passphrase=None, error_print=True):
 def gpg_sign_message(message, fingerprint, passphrase=None, error_print=True):
     gpg = gpg_get()
 
-    signed_data = gpg.sign(message, keyid=fingerprint, passphrase=passphrase)
+    signed_data = gpg.sign(
+        message, keyid=fingerprint, passphrase=passphrase,
+        extra_args=["--digest-algo", "SHA512"]
+    )
 
     if hasattr(signed_data, "status_detail") and signed_data.status_detail is not None:
         if error_print:

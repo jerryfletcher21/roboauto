@@ -206,7 +206,7 @@ def update_roboauto_options(print_info=False):
 
             for option in (
                 "book_interval", "pending_interval", "pay_interval", "error_interval",
-                "time_zone", "tab_size", "order_maximum"
+                "time_zone", "tab_size", "order_maximum", "routing_budget_ppm"
             ):
                 if parser.has_option(general_section, option):
                     try:

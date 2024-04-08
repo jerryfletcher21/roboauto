@@ -12,6 +12,7 @@ roboauto_options = {
     "time_zone": 0,
     "tab_size": 4,
     "order_maximum": 2,
+    "routing_budget_ppm": 1000,
     "default_duration": "86400",
     "default_escrow": "28800",
     "default_bond_size": "3.00",

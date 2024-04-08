@@ -4,4 +4,4 @@
 pylint -s n roboauto/* bin/roboauto setup.py
 
 # check sh scripts
-shellcheck completions/roboauto.bash-completion
+shellcheck data/* completions/roboauto.bash-completion

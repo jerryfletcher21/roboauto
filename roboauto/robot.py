@@ -353,6 +353,11 @@ def robot_requests_robot(token_base91, robot_url, robot_dic):
         print_err("getting robot response")
         return multi_false
 
+    nickname = robot_response_json.get("nickname", "robot")
+    earned_rewards = robot_response_json.get("earned_rewards", 0)
+    if earned_rewards is not False and earned_rewards is not None and earned_rewards > 0:
+        print_out(f"{nickname} have {earned_rewards} earned rewards")
+
     if robot_dic is not None:
         robot_dir = robot_dic["dir"]
         robot_response_file = robot_dir + "/robot-response"
@@ -363,6 +368,28 @@ def robot_requests_robot(token_base91, robot_url, robot_dic):
             return multi_false
 
     return robot_response, robot_response_json
+
+
+def robot_requests_get_order_id(robot_dic):
+    robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+
+    robot_response, robot_response_json = robot_requests_robot(
+        token_base91, robot_url, robot_dic
+    )
+    if robot_response is False:
+        return False
+
+    order_id_number = robot_response_json.get("active_order_id", False)
+    if order_id_number is False:
+        order_id_number = robot_response_json.get("last_order_id", False)
+        if order_id_number is False:
+            print_err(robot_response, error=False, date=False)
+            print_err("getting order_id for " + robot_name)
+            return False
+
+    order_id = str(order_id_number)
+
+    return order_id
 
 
 def robot_save_gpg_keys(robot_dir, public_key, private_key, fingerprint, set_default=False):

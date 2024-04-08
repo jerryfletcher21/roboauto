@@ -28,9 +28,9 @@ copy config/config.ini in ~/.config/roboauto/ and edit it
 create scripts lightning-node and message-notification in ~/.config/roboauto/,
 some examples are in data/
 
-if you use clightning and simplex for notifications:
+if you use core lightning and simplex for notifications:
 ```
-cp data/lightning-node-clightning ~/.config/roboauto/lightning-node
+cp data/lightning-node-core-lightning ~/.config/roboauto/lightning-node
 cp data/message-notification-simplex ~/.config/roboauto/message-notification
 ```
 

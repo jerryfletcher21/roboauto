@@ -9,8 +9,9 @@ import datetime
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import robot_list_dir, waiting_queue_get
+from roboauto.order_data import get_currency_string
 from roboauto.order_local import \
-    get_offer_dic, offer_dic_print, order_get_order_dic, get_currency_string
+    get_offer_dic, offer_dic_print, order_get_order_dic
 from roboauto.requests_api import response_is_error, requests_api_book
 from roboauto.utils import \
     json_loads, roboauto_get_multi_coordinators_from_argv, roboauto_get_coordinator_url

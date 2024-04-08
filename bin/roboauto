@@ -13,19 +13,19 @@ from roboauto.utils import \
     global_setup, global_shutdown, \
     list_configs, update_roboauto_options
 from roboauto.robot import \
-    robot_import, robot_print_token, robot_print_coordinator, \
-    robot_print_dir_argv, waiting_queue_print, robot_change_dir_from_argv, robot_generate
+    robot_import, robot_print_token, robot_print_coordinator, robot_print_dir_argv, \
+    waiting_queue_print, robot_change_dir_from_argv, robot_generate
 from roboauto.order_local import order_info_local
 from roboauto.order import \
     create_order, cancel_order, recreate_order, list_order_fields, \
+    list_currencies, list_payment_methods
+from roboauto.order_action import \
     order_buyer_update_invoice_argv, order_seller_bond_escrow_argv, \
     order_pause_toggle_argv, order_collaborative_cancel_argv, \
-    order_send_confirm_argv, order_undo_confirm_argv, order_start_dispute_argv, \
-    list_currencies, list_payment_methods
+    order_send_confirm_argv, order_undo_confirm_argv, order_start_dispute_argv
 from roboauto.chat import robot_send_chat_message_argv
 from roboauto.info import robosats_info, robot_info, list_limits, robot_chat
-from roboauto.book import \
-    list_offers_per_hour_argv, list_offers_argv
+from roboauto.book import list_offers_per_hour_argv, list_offers_argv
 from roboauto.keep_online import keep_online
 
 
@@ -62,7 +62,7 @@ cancel-order [robot-name]
 recreate-order [--no-cancel, --no-bond] robot-name key=value
 pause-toggle [robot-name]
 escrow-pay [robot-name]
-invoice-send [robot-name]
+invoice-send [robot-name] [budget-ppm]
 collaborative-cancel [robot-name]
 confirm-send [robot-name]
 confirm-undo [robot-name]
@@ -186,8 +186,9 @@ pause-toggle [robot-name]
 escrow-pay [robot-name]
     pay the escrow of a sell order
 
-invoice-send [robot-name]
+invoice-send [robot-name] [budget-ppm]
     generate and send invoice of a buy order
+    budget-ppm can be specified otherwise default is used
 
 collaborative-cancel [robot-name]
     ask for a collaborative cancel or if the peer already asked for

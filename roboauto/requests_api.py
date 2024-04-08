@@ -282,7 +282,8 @@ def requests_api_order_post(
 
 
 def requests_api_order_invoice(
-    token_base91, order_id, base_url, signed_invoice, until_true=True, error_print=True
+    token_base91, order_id, base_url, signed_invoice, budget_ppm,
+    until_true=True, error_print=True
 ):
     # pylint: disable=R0913 too-many-arguments
 
@@ -290,7 +291,8 @@ def requests_api_order_invoice(
         token_base91, order_id, base_url,
         json_dumps({
             "action": "update_invoice",
-            "invoice": signed_invoice
+            "invoice": signed_invoice,
+            "routing_budget_ppm": budget_ppm
         }),
         until_true=until_true, error_print=error_print
     )
