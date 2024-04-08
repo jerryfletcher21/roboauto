@@ -39,8 +39,9 @@ def requests_tor_response(url, proxies, timeout, headers, data, error_print=True
                 headers=headers, data=data
             )
     except requests.exceptions.RequestException as e:
-        if error_print:
-            print_err(e, date=False, error=False)
+        if error_print is not False and error_print is not None:
+            terminal = error_print != "file"
+            print_err(e, date=False, error=False, terminal=terminal)
         return False
 
 
@@ -53,38 +54,47 @@ def requests_tor(url, headers, data="", until_true=True, error_print=True):
     timeout = 120
     max_retries = 8
 
+    if error_print is not False and error_print is not None:
+        terminal = error_print != "file"
+
     if until_true:
         error_happened = False
-        response = requests_tor_response(url, proxies, timeout, headers, data)
+        response = requests_tor_response(
+            url, proxies, timeout, headers, data, error_print=error_print
+        )
         request_failed = 0
         while response_is_error(response):
             error_happened = True
-            if error_print:
+            if error_print is not False and error_print is not None:
                 if hasattr(response, "text"):
-                    print_err(response.text, date=False, error=False)
+                    print_err(response.text, date=False, error=False, terminal=terminal)
                 if hasattr(response, "status_code"):
                     status_code = str(response.status_code)
                 else:
                     status_code = "error"
                 print_err(
                     "requests retrying " + url + " status code " + status_code,
-                    error=False
+                    error=False, terminal=terminal
                 )
 
             request_failed += 1
             if request_failed >= max_retries:
-                if error_print:
-                    print_err("maximum retries reached")
+                if error_print is not False and error_print is not None:
+                    print_err("maximum retries reached", terminal=terminal)
                 return False
 
             time.sleep(roboauto_options["error_interval"])
-            response = requests_tor_response(url, proxies, timeout, headers, data)
+            response = requests_tor_response(
+                url, proxies, timeout, headers, data, error_print=error_print
+            )
         if error_happened:
-            if error_print:
-                print_err("requests success " + url, error=False)
+            if error_print is not False and error_print is not None:
+                print_err("requests success " + url, error=False, terminal=terminal)
         return response
     else:
-        return requests_tor_response(url, proxies, timeout, headers, data)
+        return requests_tor_response(
+            url, proxies, timeout, headers, data, error_print=error_print
+        )
 
 
 def requests_api_base(base_url, url_path, until_true=True, error_print=True):

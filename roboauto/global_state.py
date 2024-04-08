@@ -30,6 +30,7 @@ roboauto_options = {
 roboauto_state = {
     "should_log": False,
     "keep_online_hour_relative": False,
+    "quiet": False,
     "gpg": None,
     "logger": None,
     "filelock_timeout": 120,

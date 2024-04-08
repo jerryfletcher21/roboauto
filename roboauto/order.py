@@ -430,10 +430,7 @@ def bond_order(robot_dic, order_id, taker=False):
 
         print_out(f"{robot_name} {order_id} {order_description}")
 
-        pay_label = \
-            "bond-" + robot_name + "-" + order_id + "-" + \
-            order_user["type"] + "-" + order_user["currency"] + "-" + \
-            order_info["amount_string"]
+        name_pay_label = robot_name
     else:
         checking_function = order_is_waiting_taker_bond
         failure_function = order_is_public
@@ -446,10 +443,7 @@ def bond_order(robot_dic, order_id, taker=False):
         peer_nick = peer_nick_from_response(order_response_json)
         print_out(f"{robot_name} {peer_nick} {order_id} {order_description}")
 
-        pay_label = \
-            "bond-" + robot_name + "-" + peer_nick + "-" + order_id + "-" + \
-            order_user["type"] + "-" + order_user["currency"] + "-" + \
-            order_info["amount_string"]
+        name_pay_label = robot_name + "-" + peer_nick
 
     bond_satoshis = order_response_json.get("bond_satoshis", False)
     if bond_satoshis is False:
@@ -471,6 +465,10 @@ def bond_order(robot_dic, order_id, taker=False):
     print_out(check_output.decode(), end="", date=False)
     print_out("invoice checked successfully")
 
+    pay_label = \
+        "bond-" + name_pay_label + "-" + order_id + "-" + \
+        order_user["type"] + "-" + order_user["currency"] + "-" + \
+        order_info["amount_string"]
     pay_command = [
         roboauto_state["lightning_node_command"], "pay",
         order_info["invoice"],

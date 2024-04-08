@@ -144,9 +144,19 @@ def get_book_response_json(coordinator, until_true=False):
     if base_url is False:
         return False
 
-    book_response_all = requests_api_book(base_url, until_true=until_true)
+    # if quiet do not print to the terminal when there are errors
+    # making the book requests, but still print in the logs
+    if roboauto_state["quiet"] is True:
+        error_print_book = "file"
+        terminal = False
+    else:
+        error_print_book = True
+        terminal = True
+    book_response_all = requests_api_book(
+        base_url, until_true=until_true, error_print=error_print_book
+    )
     if response_is_error(book_response_all):
-        print_err(f"connecting to coordinator {coordinator}")
+        print_err(f"connecting to coordinator {coordinator}", terminal=terminal)
         return False
     book_response = book_response_all.text
 

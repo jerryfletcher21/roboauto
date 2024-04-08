@@ -492,7 +492,11 @@ def keep_online_no_lock():
     return True
 
 
-def keep_online():
+def keep_online(argv):
+    if len(argv) >= 1 and argv[0] == "--quiet":
+        roboauto_state["quiet"] = True
+        argv = argv[1:]
+
     try:
         with filelock.SoftFileLock(
             robot_get_lock_file(roboauto_state["lock_home"] + "/" + "keep-online"),

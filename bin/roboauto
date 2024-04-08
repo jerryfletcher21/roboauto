@@ -68,7 +68,7 @@ collaborative-cancel [robot-name]
 confirm-send [robot-name]
 confirm-undo [robot-name]
 dispute-start [robot-name]
-keep-online
+keep-online [--quiet]
 """
 
 info_verbose = """\
@@ -211,10 +211,13 @@ confirm-undo [robot-name]
 dispute-start [robot-name]
     start a dispute
 
-keep-online
+keep-online [--quiet]
     keep the offers of the robots in the active directory online
     if message-notification program is present, send a message when
     something other than expirations happens to an offer
+    pending robots are moved to the pending directory
+    when the order is complete it is moved to the inactive directory
+    if --quiet print less non important errors
 """
 
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -329,7 +332,7 @@ try:
     elif action == "dispute-start":
         return_status = order_start_dispute_argv(argv)
     elif action == "keep-online":
-        return_status = keep_online()
+        return_status = keep_online(argv)
     else:
         print_err("action " + action + " not recognized")
         sys.exit(1)
