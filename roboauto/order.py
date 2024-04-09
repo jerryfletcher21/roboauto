@@ -104,6 +104,7 @@ def order_requests_order_dic(
     robot_dic, order_id, order_function=None
 ):
     # pylint: disable=R0911 too-many-return-statements
+    # pylint: disable=R0912 too-many-branches
     # pylint: disable=R0914 too-many-locals
     # pylint: disable=R0915 too-many-statements
 
@@ -169,6 +170,7 @@ def order_requests_order_dic(
     bond_size = order_response_json.get(
         "bond_size", roboauto_options["default_bond_size"]
     )
+    is_taken = order_response_json.get("taker_locked", False)
 
     status_string = get_order_string(status_id)
 
@@ -177,14 +179,16 @@ def order_requests_order_dic(
     currency_string = get_currency_string(currency_id).lower()
     is_fiat = currency_string != "btc"
 
-    if not has_range:
-        min_amount_user = amount
-        max_amount_user = amount
-        amount_string = amount_correct_format(amount, is_fiat)
-        if not amount_string:
+    if is_taken or not has_range:
+        amount_single = amount_correct_format(amount, is_fiat)
+        if not amount_single:
             print_err(order_response, end="", error=False, date=False)
             print_err("format amount: " + amount)
             return False
+    if not has_range:
+        min_amount_user = amount
+        max_amount_user = amount
+        amount_string = amount_single
     else:
         min_amount_user = min_amount
         max_amount_user = max_amount
@@ -194,7 +198,10 @@ def order_requests_order_dic(
             print_err(order_response, end="", error=False, date=False)
             print_err("format amount: " + min_amount + " " + max_amount)
             return False
-        amount_string = min_amount_string + "-" + max_amount_string
+        if is_taken:
+            amount_string = amount_single
+        else:
+            amount_string = min_amount_string + "-" + max_amount_string
 
     order_description = \
         type_string + " " + currency_string + " " + amount_string + " " + \
@@ -219,7 +226,8 @@ def order_requests_order_dic(
             "status_string":        status_string,
             "amount_string":        amount_string,
             "order_description":    order_description,
-            "invoice":              invoice
+            "invoice":              invoice,
+            "is_taken":             is_taken
         },
         "order_response_json":      order_response_json
     }
@@ -364,6 +372,13 @@ def amount_correct_from_response(order_response_json):
     return amount_correct_format(amount_correct, is_fiat)
 
 
+def premium_string_get(premium):
+    if premium[0] == "-":
+        return "below-" + premium[1:]
+    else:
+        return "above-" + premium
+
+
 def bond_order(robot_dic, order_id, taker=False):
     # pylint: disable=R0911 too-many-return-statements
     # pylint: disable=R0914 too-many-locals
@@ -384,6 +399,7 @@ def bond_order(robot_dic, order_id, taker=False):
     if order_dic is False or order_dic is None:
         return False
 
+    # pylint: disable=R0801 duplicate-code
     order_user = order_dic["order_user"]
     order_info = order_dic["order_info"]
     order_response_json = order_dic["order_response_json"]
@@ -438,7 +454,7 @@ def bond_order(robot_dic, order_id, taker=False):
     pay_label = \
         "bond-" + name_pay_label + "-" + order_id + "-" + \
         order_user["type"] + "-" + order_user["currency"] + "-" + \
-        order_info["amount_string"]
+        order_info["amount_string"] + "-" + premium_string_get(order_user["premium"])
     pay_command = [
         roboauto_state["lightning_node_command"], "pay",
         order_info["invoice"],
@@ -534,7 +550,7 @@ def create_order(argv):
 
     should_bond = True
     should_set_active = True
-    while len(argv) >= 1:
+    while len(argv) > 0:
         if argv[0] == "--no-bond":
             should_bond = False
             argv = argv[1:]
@@ -546,6 +562,8 @@ def create_order(argv):
             return False
         else:
             break
+
+    # pylint: disable=R0801 duplicate-code
     robot_dic, argv = robot_input_from_argv(argv)
     if robot_dic is False:
         return False

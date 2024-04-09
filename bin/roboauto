@@ -15,7 +15,7 @@ from roboauto.utils import \
 from roboauto.robot import \
     robot_import, robot_print_token, robot_print_coordinator, robot_print_dir_argv, \
     waiting_queue_print, robot_change_dir_from_argv, robot_generate
-from roboauto.order_local import order_info_local
+from roboauto.order_local import order_info_dir
 from roboauto.order import \
     create_order, cancel_order, recreate_order, list_order_fields, \
     list_currencies, list_payment_methods
@@ -47,14 +47,13 @@ list-active|list-pending|list-inactive|list-paused [--coordinator]
 list-waiting-queue
 set-active [robot-name]
 set-pending|set-inactive|set-paused [robot-name/--all]
-order-info-local [--full] robot-name [order-id]
-order-info-local [--full] --active/--pending/--paused/--inactive
-order-info-local [--full] --dir directory
+order-info-dir --active/--pending/--paused/--inactive
+order-info-dir --dir directory
 robosats-info --{coordinator-name}
 generate-robot --{coordinator-name} [--active, --pending, --inactive]
 robot-info [robot-name]
 robot-info --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
-order-info [robot-name]
+order-info [--local] [--simple] [robot-name] [order-id]
 chat-print [--local] [robot-name]
 message-send [robot-name]
 list-limits --{coordinator-name}
@@ -124,13 +123,9 @@ set-pending|set-inactive|set-paused [robot-name/--all]
     set an active robot active|pending|inactive|paused
     if --all, set all robot
 
-order-info-local [--full] robot-name [order-id]
-order-info-local [--full] --active/--pending/--paused/--inactive
-order-info-local [--full] --dir directory
-    print info about an order from disk
-    if --full is provided print all data about the order
-    if --active, --pending, --paused, --inactive or a directory is passed print
-    local order info about all robots in the directory
+order-info-dir --active/--pending/--paused/--inactive
+order-info-dir --dir directory
+    print local info about all orders of a robot directory
 
 robosats-info --{coordinator-name}
     get info about robosats
@@ -144,8 +139,11 @@ robot-info --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
     if instead of robot-name --stdin or --stdin-base91 is passed
     token is taken from stdin and coordinator is also required
 
-order-info [robot-name]
+order-info [--local] [--simple] [robot-name] [order-id]
     get info about the order of a robot
+    if --simple only print important data
+    if --local print the order saved on disk, order-id can be
+    specified for old orders
 
 chat-print [--local] [robot-name]
     print messages of robot-name
@@ -296,8 +294,8 @@ try:
         return_status = robot_change_dir_from_argv("inactive", argv)
     elif action == "set-paused":
         return_status = robot_change_dir_from_argv("paused", argv)
-    elif action == "order-info-local":
-        return_status = order_info_local(argv)
+    elif action == "order-info-dir":
+        return_status = order_info_dir(argv)
     elif action == "robosats-info":
         return_status = robosats_info(argv)
     elif action == "generate-robot":

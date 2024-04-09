@@ -60,6 +60,7 @@ sell"
             ;;
             payment_method=*)
                 cur="${cur#*=}"
+                local word methods payment_methods
                 methods="all"
                 for word in "${words[@]}"; do
                     case "$word" in
@@ -118,6 +119,7 @@ $(
 
     # shellcheck disable=SC2034
     local cur prev words=() cword
+    local word advanced_completion minimal_completion
 
     # if bash completion is sourced
     if [ "$(type -t _get_comp_words_by_ref 2>/dev/null)" = "function" ]; then
@@ -132,6 +134,8 @@ $(
 
         advanced_completion=false
     fi
+
+    minimal_completion=false
 
     OPTS=""
 
@@ -215,24 +219,17 @@ $(
 $(___roboauto_get_robots "$active_home")"
             fi
         ;;
-        order-info-local)
+        order-info-dir)
             if [ "${cword}" -eq 2 ]; then
-                OPTS="
---full"
-            fi
-            if \
-                [ "${cword}" -eq 2 ] || {
-                    [ "${cword}" -eq 3 ] && [ "$prev" = "--full" ]
-                }
-            then
                 OPTS="$OPTS
 --active
 --inactive
 --paused
---dir
-$(___roboauto_get_robots "$active_home" "$pending_home" "$inactive_home" "$paused_home")"
+--dir"
             fi
-
+            if [ "${cword}" -eq 3 ] && [ "$prev" == "--dir" ]; then
+                minimal_completion=true
+            fi
         ;;
         robosats-info|list-limits)
             if [ "${cword}" -eq 2 ]; then
@@ -254,10 +251,62 @@ $(___roboauto_get_robots "$active_home" "$pending_home")"
         ;;
         order-info)
             if [ "${cword}" -eq 2 ]; then
-                OPTS="$(
-                    ___roboauto_get_robots \
-                        "$active_home" "$paused_home" "$pending_home"
+                OPTS="
+--local
+--simple"
+            fi
+            if [ "${cword}" -eq 3 ]; then
+                if [ "$prev" == "--local" ]; then
+                    OPTS="--simple"
+                elif [ "$prev" == "--simple" ]; then
+                    OPTS="--local"
+                fi
+            fi
+            local is_local=false
+            for word in "${words[@]}"; do
+                case "$word" in
+                --local)
+                    is_local=true
+                    break
+                ;;
+                esac
+            done
+            if \
+                [ "${cword}" -eq 2 ] || {
+                    { [ "${cword}" -eq 3 ] || [ "${cword}" -eq 4 ]; } && \
+                    { [ "$prev" = "--local" ] || [ "$prev" = "--simple" ]; }
+                }
+            then
+                local robots
+                if [ "$is_local" = false ]; then
+                    robots="$(
+                        ___roboauto_get_robots \
+                            "$active_home" "$paused_home" "$pending_home"
+                    )"
+                else
+                    robots="$(
+                        ___roboauto_get_robots \
+                            "$active_home" "$paused_home" "$pending_home" "$inactive_home"
+                    )"
+                fi
+                OPTS="$OPTS
+$robots"
+            elif [ "$is_local" = true ]; then
+                local robot_dir orders
+                robot_dir="$(
+                    find "$roboauto_home" -type d -name "$prev" 2>/dev/null
                 )"
+                if [ -d "$robot_dir" ]; then
+                    orders="$(
+                        find "${robot_dir}/orders" -mindepth 1 -maxdepth 1 2>/dev/null |
+                        rev |
+                        cut -d "/" -f 1 |
+                        rev
+                    )"
+                    if [ -n "$orders" ]; then
+                        OPTS="$orders"
+                    fi
+                fi
             fi
         ;;
         chat-print)
@@ -280,6 +329,7 @@ $(___roboauto_get_robots "$pending_home")"
             fi
         ;;
         list-offers)
+            local possible_coordinatos all_currencies
             possible_coordinatos="
 --all
 $(___roboauto_get_coordinators)"
@@ -389,13 +439,17 @@ $(___roboauto_get_robots "$active_home")"
         IFS="$ifs_original"
 
         # do not put a space when the completion ends with an equal
-        for reply in "${COMPREPLY[@]}"; do
-            case "$reply" in
+        for word in "${COMPREPLY[@]}"; do
+            case "$word" in
             *=)
                 compopt -o nospace
             ;;
             esac
         done
+    elif [ "$minimal_completion" = true ]; then
+        if [ "$(type -t _minimal 2>/dev/null)" = "function" ]; then
+            _minimal
+        fi
     fi
 } &&
 complete -F __roboauto_completion roboauto

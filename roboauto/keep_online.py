@@ -408,6 +408,7 @@ def keep_online_no_lock():
 
         current_timestamp = get_current_timestamp()
 
+        # should also check individual robots to keep them online
         if \
             len(active_set) >= 1 and \
             should_check_book(current_time, book_last_checked):

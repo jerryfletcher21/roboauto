@@ -20,8 +20,7 @@ from roboauto.utils import \
 from roboauto.order_data import \
     get_currency_string, order_is_pending, get_type_string
 from roboauto.robot import \
-    robot_list_dir, robot_input_from_argv, \
-    robot_get_dir_dic, robot_load_from_name
+    robot_list_dir, robot_get_dir_dic, robot_load_from_name
 
 
 def get_order_data(
@@ -154,7 +153,7 @@ def order_dic_from_robot_dic(robot_dic, order_id):
     if not os.path.isdir(orders_dir):
         return None
 
-    if order_id is False:
+    if order_id is False or order_id is None:
         order_file = directory_get_last_number_file(orders_dir)
         if order_file is False:
             return False
@@ -217,26 +216,7 @@ def order_dic_print(order_dic, robot_name, coordinator, one_line, full_mode):
             robot_no_order_response_print(robot_name, coordinator)
 
 
-def robot_order_print(robot_dic, order_id, one_line, full_mode):
-    robot_name = robot_dic["name"]
-    coordinator = robot_dic["coordinator"]
-
-    order_dic = order_dic_from_robot_dic(robot_dic, order_id)
-    if order_dic is None:
-        if not one_line:
-            print_out(json_dumps({"error": "no order dir"}))
-        else:
-            robot_no_order_dir_print(robot_name, coordinator)
-        return True
-    elif order_dic is False:
-        return False
-
-    order_dic_print(order_dic, robot_name, coordinator, one_line, full_mode)
-
-    return True
-
-
-def order_info_local_print_ordered_list(robot_list, full_mode):
+def order_info_local_print_ordered_list(robot_list):
     order_list_unsorted = []
     robot_list_no_response = []
     robot_list_no_dir = []
@@ -270,33 +250,30 @@ def order_info_local_print_ordered_list(robot_list, full_mode):
     for order_data in order_list_sorted:
         order_dic_print(
             order_data["order_dic"], order_data["robot_name"], order_data["coordinator"],
-            one_line=True, full_mode=full_mode
+            one_line=True, full_mode=False
         )
 
     return True
 
 
-def order_info_local(argv):
+def order_info_dir(argv):
     # pylint: disable=R0911 too-many-return-statements
     # pylint: disable=R0912 too-many-branches
 
-    full_mode = False
-    if len(argv) > 0:
-        if argv[0] == "--full":
-            full_mode = True
-            argv = argv[1:]
+    if len(argv) < 1:
+        print_err("insert arguments")
+        return False
 
     first_arg = argv[0]
+    argv = argv[1:]
     if first_arg in ("--active", "--pending", "--paused", "--inactive"):
-        argv = argv[1:]
         destination_dir = robot_get_dir_dic()[first_arg[2:]]
 
         if order_info_local_print_ordered_list(
-            os.listdir(destination_dir), full_mode
+            os.listdir(destination_dir)
         ) is False:
             return False
     elif first_arg == "--dir":
-        argv = argv[1:]
         if len(argv) < 1:
             print_err("insert directory")
             return False
@@ -307,28 +284,15 @@ def order_info_local(argv):
             print_err(f"{robot_dir} is not a directory")
             return False
         if order_info_local_print_ordered_list(
-            os.listdir(robot_dir), full_mode
+            os.listdir(robot_dir)
         ) is False:
             return False
     elif re.match('^-', first_arg) is not None:
-        argv = argv[1:]
-        print_err("option %s not recognized" % first_arg)
+        print_err(f"option {first_arg} not recognized")
         return False
     else:
-        robot_dic, argv = robot_input_from_argv(argv)
-        if robot_dic is False:
-            return False
-
-        if len(argv) >= 1:
-            order_id = argv[0]
-            argv = argv[1:]
-        else:
-            order_id = False
-
-        if not robot_order_print(
-            robot_dic, order_id, one_line=False, full_mode=full_mode
-        ):
-            return False
+        print_err(f"argument {first_arg} not recognized")
+        return False
 
     return True
 

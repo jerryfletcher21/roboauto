@@ -20,7 +20,8 @@ from roboauto.order_data import \
     order_is_fiat_sent, order_is_public, order_is_paused
 from roboauto.order import \
     order_requests_order_dic, peer_nick_from_response, bond_order, \
-    amount_correct_from_response, subprocess_pay_invoice_and_check
+    amount_correct_from_response, subprocess_pay_invoice_and_check, \
+    premium_string_get
 from roboauto.requests_api import \
     requests_api_order_invoice, requests_api_order_pause, \
     requests_api_order_confirm, requests_api_order_undo_confirm, \
@@ -67,8 +68,9 @@ def order_buyer_update_invoice(robot_dic, budget_ppm=None):
     if order_dic is False or order_dic is None:
         return False
 
-    order_info = order_dic["order_info"]
+    # pylint: disable=R0801 duplicate-code
     order_user = order_dic["order_user"]
+    order_info = order_dic["order_info"]
     order_response_json = order_dic["order_response_json"]
 
     order_id = order_info["order_id"]
@@ -110,7 +112,7 @@ def order_buyer_update_invoice(robot_dic, budget_ppm=None):
         str(correct_invoice_amount),
         robot_name + "-" + peer_nick + "-" + order_id + "-" +
         order_user["type"] + "-" + order_user["currency"] + "-" +
-        amount_correct
+        amount_correct + "-" + premium_string_get(order_user["premium"])
     ])
     if invoice_generate_output is False:
         print_err("generating the invoice")
@@ -156,9 +158,10 @@ def order_seller_bond_escrow(robot_dic):
     if order_dic is False or order_dic is None:
         return False
 
-    order_response_json = order_dic["order_response_json"]
+    # pylint: disable=R0801 duplicate-code
     order_user = order_dic["order_user"]
     order_info = order_dic["order_info"]
+    order_response_json = order_dic["order_response_json"]
 
     order_id = order_info["order_id"]
     status_id = order_info["status"]
@@ -193,7 +196,7 @@ def order_seller_bond_escrow(robot_dic):
         escrow_invoice,
         robot_name + "-" + peer_nick + "-" + order_id + "-" +
         order_user["type"] + "-" + order_user["currency"] + "-" +
-        amount_correct
+        amount_correct + "-" + premium_string_get(order_user["premium"])
     ]
     return subprocess_pay_invoice_and_check(
         robot_dic, order_id,

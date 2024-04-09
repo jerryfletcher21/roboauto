@@ -12,7 +12,9 @@ from roboauto.logger import print_out, print_err
 from roboauto.robot import \
     robot_input_from_argv, robot_requests_robot, \
     robot_var_from_dic, robot_requests_get_order_id
-from roboauto.order_local import order_get_order_dic
+from roboauto.order_local import \
+    order_get_order_dic, order_dic_from_robot_dic, \
+    order_dic_print
 from roboauto.order import order_requests_order_dic
 from roboauto.chat import \
     robot_requests_chat, chat_print_encrypted_messages, chat_print_single_message
@@ -117,35 +119,69 @@ def robot_info_argv(argv):
 
 def order_info_argv(argv):
     # pylint: disable=R0911 too-many-return-statements
+    # pylint: disable=R0912 too-many-branches
 
+    full_mode = True
+    local_mode = False
+    while len(argv) > 0:
+        first_argv = argv[0]
+        if first_argv == "--local":
+            local_mode = True
+            argv = argv[1:]
+        elif first_argv == "--simple":
+            full_mode = False
+            argv = argv[1:]
+        elif re.match('^-', first_argv) is not None:
+            print_err(f"{first_argv} not recognied")
+            return False
+        else:
+            break
+
+    # pylint: disable=R0801 duplicate-code
     robot_dic, argv = robot_input_from_argv(argv)
     if robot_dic is False:
         return False
 
-    robot_name, _, robot_dir, _, _, _, _ = robot_var_from_dic(robot_dic)
+    robot_name, _, robot_dir, _, coordinator, _, _ = robot_var_from_dic(robot_dic)
 
-    order_dic = order_get_order_dic(robot_dir, error_print=False)
-    if order_dic is not False:
-        order_info = order_dic.get("order_info", False)
-        if order_info is False:
-            return False
+    if local_mode is False:
+        order_dic = order_get_order_dic(robot_dir, error_print=False)
+        if order_dic is not False:
+            order_info = order_dic.get("order_info", False)
+            if order_info is False:
+                return False
 
-        order_id = order_info.get("order_id", False)
-        if order_id is False:
+            order_id = order_info.get("order_id", False)
+            if order_id is False:
+                return False
+        else:
+            print_out("robot does not have orders saved, searching it")
+
+            order_id = robot_requests_get_order_id(robot_dic, error_print=False)
+            if order_id is False:
+                print_err(f"{robot_name} does not have active or last orders")
+                return False
+
+        order_dic = order_requests_order_dic(robot_dic, order_id)
+        if order_dic is False or order_dic is None:
             return False
     else:
-        print_out("robot does not have orders saved, searching it")
+        if len(argv) >= 1:
+            order_id = argv[0]
+            argv = argv[1:]
+        else:
+            order_id = False
 
-        order_id = robot_requests_get_order_id(robot_dic, error_print=False)
-        if order_id is False:
-            print_err(f"{robot_name} does not have active or last orders")
+        order_dic = order_dic_from_robot_dic(robot_dic, order_id)
+        if order_dic is None:
+            print_err(json_dumps({"error": "no order dir"}))
+            return False
+        if order_dic is False:
             return False
 
-    order_dic = order_requests_order_dic(robot_dic, order_id)
-    if order_dic is False or order_dic is None:
-        return False
-
-    print_out(json_dumps(order_dic))
+    order_dic_print(
+        order_dic, robot_name, coordinator, one_line=False, full_mode=full_mode
+    )
 
     return True
 
