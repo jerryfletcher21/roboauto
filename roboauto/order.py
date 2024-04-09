@@ -100,10 +100,12 @@ def amount_correct_format(amount, is_fiat):
     return amount_format % float(amount)
 
 
-def api_order_get_dic(
-    robot_name, token_base91, robot_url, order_id, order_function=None
+def order_requests_order_dic(
+    robot_dic, order_id, order_function=None
 ):
+    # pylint: disable=R0911 too-many-return-statements
     # pylint: disable=R0914 too-many-locals
+    # pylint: disable=R0915 too-many-statements
 
     """get the order_dic making a request to the coordinator
     order_function can be set to requests_api_order_take
@@ -117,8 +119,15 @@ def api_order_get_dic(
     order_info:  everything not in order_data and order_user
     order_response_json: the json response from the coordinator"""
 
+    robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+
     if order_function is None:
         order_function = requests_api_order
+
+    if order_id is False or order_id is None:
+        order_id = robot_requests_get_order_id(robot_dic)
+        if order_id is False or order_id is None:
+            return False
 
     order_response_all = order_function(token_base91, order_id, robot_url)
     # error 500 when the old order is purged from the server
@@ -127,8 +136,10 @@ def api_order_get_dic(
         order_response_all is False or \
         (hasattr(order_response_all, "status_code") and \
         order_response_all.status_code in (400, 500)):
+        print_err(f"{robot_name} {order_id} not available")
         return None
     if response_is_error(order_response_all):
+        print_err(f"{robot_name} {order_id} not found")
         return False
     order_response = order_response_all.text
     order_response_json = json_loads(order_response)
@@ -189,7 +200,7 @@ def api_order_get_dic(
         type_string + " " + currency_string + " " + amount_string + " " + \
         premium + " " + payment_method + " " + status_string
 
-    return {
+    order_dic = {
         "order_data": get_order_data(
             type_id, currency_id,
             amount, has_range, min_amount, max_amount,
@@ -213,39 +224,6 @@ def api_order_get_dic(
         "order_response_json":      order_response_json
     }
 
-
-def api_order_get_dic_handle(
-    robot_name, token_base91, robot_url, order_id, order_function=None
-):
-    """api_order_get_dic can return None or False, this function is
-    used when it does not matter whether None or False is returned"""
-    order_dic = api_order_get_dic(
-        robot_name, token_base91, robot_url, order_id, order_function=order_function
-    )
-    if order_dic is False:
-        return False
-    if order_dic is None:
-        print_err("%s order %s not available" % (robot_name, str(order_id)))
-        return False
-
-    return order_dic
-
-
-def robot_requests_get_order_dic(robot_dic):
-    robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
-
-    order_id = robot_requests_get_order_id(robot_dic)
-    if order_id is False or order_id is None:
-        return False
-
-    order_dic = api_order_get_dic(robot_name, token_base91, robot_url, order_id)
-    if order_dic is False:
-        print_err(f"order data is false {robot_name} {order_id}")
-        return False
-    elif order_dic is None:
-        print_err(f"{robot_name} last order not available")
-        return False
-
     if not order_save_order_file(robot_dir, order_id, order_dic):
         return False
 
@@ -268,8 +246,8 @@ def robot_cancel_order(robot_dic):
         with filelock.SoftFileLock(
             robot_get_lock_file(robot_name), timeout=roboauto_state["filelock_timeout"]
         ):
-            order_dic = robot_requests_get_order_dic(robot_dic)
-            if order_dic is False:
+            order_dic = order_requests_order_dic(robot_dic, order_id=False)
+            if order_dic is False or order_dic is None:
                 return False
 
             order_info = order_dic["order_info"]
@@ -320,7 +298,7 @@ def subprocess_pay_invoice_and_check(
     # pylint: disable=R0913 too-many-arguments
     # pylint: disable=R0914 too-many-locals
 
-    robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+    robot_name = robot_dic["name"]
 
     if failure_function is None:
         failure_function = order_is_expired
@@ -334,13 +312,8 @@ def subprocess_pay_invoice_and_check(
 
             print_out(string_checking)
 
-            order_dic = api_order_get_dic_handle(
-                robot_name, token_base91, robot_url, order_id
-            )
-            if order_dic is False:
-                return False
-
-            if not order_save_order_file(robot_dir, order_id, order_dic):
+            order_dic = order_requests_order_dic(robot_dic, order_id)
+            if order_dic is False or order_dic is None:
                 return False
 
             order_response_json = order_dic["order_response_json"]
@@ -398,20 +371,17 @@ def bond_order(robot_dic, order_id, taker=False):
     """bond an order, after checking the invoice with lightning-node check
     will run lightning-node check and lightning-node pay as subprocesses"""
 
-    robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+    robot_name = robot_dic["name"]
 
     if taker is False:
         order_function = None
     else:
         order_function = requests_api_order_take
 
-    order_dic = api_order_get_dic_handle(
-        robot_name, token_base91, robot_url, order_id, order_function=order_function
+    order_dic = order_requests_order_dic(
+        robot_dic, order_id, order_function=order_function
     )
-    if order_dic is False:
-        return False
-
-    if not order_save_order_file(robot_dir, order_id, order_dic):
+    if order_dic is False or order_dic is None:
         return False
 
     order_user = order_dic["order_user"]

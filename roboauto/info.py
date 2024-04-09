@@ -10,9 +10,10 @@ import re
 
 from roboauto.logger import print_out, print_err
 from roboauto.robot import \
-    robot_input_from_argv, robot_requests_robot
-from roboauto.order_local import order_save_order_file
-from roboauto.order import api_order_get_dic_handle
+    robot_input_from_argv, robot_requests_robot, \
+    robot_var_from_dic, robot_requests_get_order_id
+from roboauto.order_local import order_get_order_dic
+from roboauto.order import order_requests_order_dic
 from roboauto.chat import \
     robot_requests_chat, chat_print_encrypted_messages, chat_print_single_message
 from roboauto.requests_api import \
@@ -63,26 +64,19 @@ def robosats_info(argv):
     return True
 
 
-def robot_info(argv):
+def robot_info_argv(argv):
     # pylint: disable=R0911 too-many-return-statements
     # pylint: disable=R0912 too-many-branches
     # pylint: disable=R0915 too-many-statements
 
-    """print info about a robot and his order --no-robot --no-order options"""
-    robot_name = None
-    robot_dic = None
+    """print info about a robot"""
 
-    robot_print = True
-    order_print = True
+    robot_dic = None
 
     token_base91 = False
 
     while len(argv) > 0:
-        if argv[0] == "--no-robot":
-            robot_print = False
-        elif argv[0] == "--no-order":
-            order_print = False
-        elif argv[0] == "--stdin":
+        if argv[0] == "--stdin":
             token_base91 = token_get_base91(sys.stdin.readline().rstrip())
         elif argv[0] == "--stdin-base91":
             token_base91 = sys.stdin.readline().rstrip()
@@ -95,9 +89,7 @@ def robot_info(argv):
         if robot_dic is False:
             return False
 
-        robot_name = robot_dic["name"]
         token_base91 = token_get_base91(robot_dic["token"])
-        robot_dir = robot_dic["dir"]
         robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
     else:
         if len(argv) < 1:
@@ -118,33 +110,42 @@ def robot_info(argv):
     if robot_response is False:
         return False
 
-    if robot_print:
-        print_out(json_dumps(robot_response_json))
+    print_out(json_dumps(robot_response_json))
 
-    if order_print:
-        if robot_name is None:
-            robot_name = robot_response_json.get("nickname", "unknown")
+    return True
 
-        order_id_number = robot_response_json.get("active_order_id", False)
-        if order_id_number is False:
-            order_id_number = robot_response_json.get("last_order_id", False)
-            if order_id_number is False:
-                print_err(robot_name + " does not have active orders")
-                return True
 
-        order_id = str(order_id_number)
+def order_info_argv(argv):
+    # pylint: disable=R0911 too-many-return-statements
 
-        order_dic = api_order_get_dic_handle(robot_name, token_base91, robot_url, order_id)
-        if order_dic is False:
+    robot_dic, argv = robot_input_from_argv(argv)
+    if robot_dic is False:
+        return False
+
+    robot_name, _, robot_dir, _, _, _, _ = robot_var_from_dic(robot_dic)
+
+    order_dic = order_get_order_dic(robot_dir, error_print=False)
+    if order_dic is not False:
+        order_info = order_dic.get("order_info", False)
+        if order_info is False:
             return False
 
-        if robot_dic is not None:
-            if not order_save_order_file(robot_dir, order_id, order_dic):
-                return False
+        order_id = order_info.get("order_id", False)
+        if order_id is False:
+            return False
+    else:
+        print_out("robot does not have orders saved, searching it")
 
-        order_response_json = order_dic["order_response_json"]
+        order_id = robot_requests_get_order_id(robot_dic, error_print=False)
+        if order_id is False:
+            print_err(f"{robot_name} does not have active or last orders")
+            return False
 
-        print_out(json_dumps(order_response_json))
+    order_dic = order_requests_order_dic(robot_dic, order_id)
+    if order_dic is False or order_dic is None:
+        return False
+
+    print_out(json_dumps(order_dic))
 
     return True
 

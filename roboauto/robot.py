@@ -341,6 +341,8 @@ def robot_change_dir_from_argv(destination_dir, argv):
 
 
 def robot_requests_robot(token_base91, robot_url, robot_dic):
+    """run requests_api_robot, robot_dic can also be None"""
+
     multi_false = False, False
 
     robot_response_all = requests_api_robot(token_base91, robot_url)
@@ -359,7 +361,13 @@ def robot_requests_robot(token_base91, robot_url, robot_dic):
         print_out(f"{nickname} have {earned_rewards} earned rewards")
 
     if robot_dic is not None:
+        robot_name = robot_dic["name"]
         robot_dir = robot_dic["dir"]
+
+        if robot_name != nickname:
+            print_err(f"{nickname} is not the same as {robot_name}")
+            return multi_false
+
         robot_response_file = robot_dir + "/robot-response"
         if not file_json_write(robot_response_file, robot_response_json):
             return multi_false
@@ -370,7 +378,7 @@ def robot_requests_robot(token_base91, robot_url, robot_dic):
     return robot_response, robot_response_json
 
 
-def robot_requests_get_order_id(robot_dic):
+def robot_requests_get_order_id(robot_dic, error_print=True):
     robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     robot_response, robot_response_json = robot_requests_robot(
@@ -383,8 +391,9 @@ def robot_requests_get_order_id(robot_dic):
     if order_id_number is False:
         order_id_number = robot_response_json.get("last_order_id", False)
         if order_id_number is False:
-            print_err(robot_response, error=False, date=False)
-            print_err("getting order_id for " + robot_name)
+            if error_print:
+                print_err(robot_response, error=False, date=False)
+                print_err("getting order_id for " + robot_name)
             return False
 
     order_id = str(order_id_number)

@@ -20,9 +20,9 @@ from roboauto.order_data import  \
     order_is_public, order_is_paused, order_is_finished, order_is_pending, \
     order_is_waiting_maker_bond, order_is_waiting_taker_bond, order_is_expired
 from roboauto.order_local import \
-    robot_handle_taken, order_get_order_dic, order_save_order_file
+    robot_handle_taken, order_get_order_dic
 from roboauto.order import \
-    api_order_get_dic, bond_order, make_order
+    order_requests_order_dic, bond_order, make_order
 from roboauto.book import \
     get_book_response_json, get_hour_offer, \
     get_current_timestamp, \
@@ -37,24 +37,20 @@ def robot_check_expired(robot_dic, robot_this_hour):
     """check what happened to a robot that is no longer active
     return 1 if the robot is back online, 0 if not, false if something wrong"""
 
-    robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+    robot_name = robot_dic["name"]
 
     order_id = robot_requests_get_order_id(robot_dic)
     if order_id is False:
         return False
 
-    order_dic = api_order_get_dic(robot_name, token_base91, robot_url, order_id)
+    order_dic = order_requests_order_dic(robot_dic, order_id)
     if order_dic is None:
-        print_out(robot_name + " last order not available")
         print_out(robot_name + " moving to paused")
         if not robot_change_dir(robot_name, "paused"):
             print_err("moving " + robot_name + " to paused")
             return False
         return 0
     elif order_dic is False:
-        return False
-
-    if not order_save_order_file(robot_dir, order_id, order_dic):
         return False
 
     order_info = order_dic["order_info"]
@@ -247,7 +243,7 @@ def should_remove_from_waiting_queue(
 def robot_handle_pending(robot_dic):
     # pylint: disable=R0911 too-many-return-statements
 
-    robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+    robot_name, _, robot_dir, _, _, _, _ = robot_var_from_dic(robot_dic)
 
     old_order_dic = order_get_order_dic(robot_dir, error_print=False)
     if old_order_dic is not False:
@@ -258,14 +254,11 @@ def robot_handle_pending(robot_dic):
         if order_id is False:
             return False
 
-    order_dic = api_order_get_dic(robot_name, token_base91, robot_url, order_id)
+    order_dic = order_requests_order_dic(robot_dic, order_id)
     if order_dic is None:
-        print_out(robot_name + " last order not available, moving to inactive")
+        print_out(robot_name + " moving to inactive")
         return robot_change_dir(robot_name, "inactive")
     elif order_dic is False:
-        return False
-
-    if not order_save_order_file(robot_dir, order_id, order_dic):
         return False
 
     order_info = order_dic["order_info"]

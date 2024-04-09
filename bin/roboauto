@@ -24,7 +24,9 @@ from roboauto.order_action import \
     order_pause_toggle_argv, order_collaborative_cancel_argv, order_take_argv, \
     order_send_confirm_argv, order_undo_confirm_argv, order_start_dispute_argv
 from roboauto.chat import robot_send_chat_message_argv
-from roboauto.info import robosats_info, robot_info, list_limits, robot_chat
+from roboauto.info import \
+    robosats_info, robot_info_argv, order_info_argv, \
+    list_limits, robot_chat
 from roboauto.book import list_offers_per_hour_argv, list_offers_argv
 from roboauto.keep_online import keep_online
 
@@ -50,8 +52,9 @@ order-info-local [--full] --active/--pending/--paused/--inactive
 order-info-local [--full] --dir directory
 robosats-info --{coordinator-name}
 generate-robot --{coordinator-name} [--active, --pending, --inactive]
-robot-info [--no-order] [robot-name]
-robot-info [--no-order] --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
+robot-info [robot-name]
+robot-info --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
+order-info [robot-name]
 chat-print [--local] [robot-name]
 message-send [robot-name]
 list-limits --{coordinator-name}
@@ -135,12 +138,14 @@ robosats-info --{coordinator-name}
 generate-robot --{coordinator-name} [--active, --pending, --inactive]
     generate a robot on coordinator by default in paused dir
 
-robot-info [--no-order] [robot-name]
-robot-info [--no-order] --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
+robot-info [robot-name]
+robot-info --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
     get info about a robot
-    and if --no-order is present its order if present
     if instead of robot-name --stdin or --stdin-base91 is passed
     token is taken from stdin and coordinator is also required
+
+order-info [robot-name]
+    get info about the order of a robot
 
 chat-print [--local] [robot-name]
     print messages of robot-name
@@ -298,7 +303,9 @@ try:
     elif action == "generate-robot":
         return_status = robot_generate(argv)
     elif action == "robot-info":
-        return_status = robot_info(argv)
+        return_status = robot_info_argv(argv)
+    elif action == "order-info":
+        return_status = order_info_argv(argv)
     elif action == "chat-print":
         return_status = robot_chat(argv)
     elif action == "message-send":

@@ -19,7 +19,7 @@ from roboauto.order_data import \
     order_is_waiting_seller, order_is_waiting_fiat_sent, \
     order_is_fiat_sent, order_is_public, order_is_paused
 from roboauto.order import \
-    robot_requests_get_order_dic, peer_nick_from_response, bond_order, \
+    order_requests_order_dic, peer_nick_from_response, bond_order, \
     amount_correct_from_response, subprocess_pay_invoice_and_check
 from roboauto.requests_api import \
     requests_api_order_invoice, requests_api_order_pause, \
@@ -63,12 +63,12 @@ def order_buyer_update_invoice(robot_dic, budget_ppm=None):
 
     robot_name, _, robot_dir, token, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
-    order_dic = robot_requests_get_order_dic(robot_dic)
-    if order_dic is False:
+    order_dic = order_requests_order_dic(robot_dic, order_id=False)
+    if order_dic is False or order_dic is None:
         return False
 
-    order_user = order_dic["order_user"]
     order_info = order_dic["order_info"]
+    order_user = order_dic["order_user"]
     order_response_json = order_dic["order_response_json"]
 
     order_id = order_info["order_id"]
@@ -152,13 +152,13 @@ def order_buyer_update_invoice(robot_dic, budget_ppm=None):
 def order_seller_bond_escrow(robot_dic):
     robot_name = robot_dic["name"]
 
-    order_dic = robot_requests_get_order_dic(robot_dic)
-    if order_dic is False:
+    order_dic = order_requests_order_dic(robot_dic, order_id=False)
+    if order_dic is False or order_dic is None:
         return False
 
+    order_response_json = order_dic["order_response_json"]
     order_user = order_dic["order_user"]
     order_info = order_dic["order_info"]
-    order_response_json = order_dic["order_response_json"]
 
     order_id = order_info["order_id"]
     status_id = order_info["status"]
@@ -216,8 +216,8 @@ def order_post_action_simple(
 
     robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
-    order_dic = robot_requests_get_order_dic(robot_dic)
-    if order_dic is False:
+    order_dic = order_requests_order_dic(robot_dic, order_id=False)
+    if order_dic is False or order_dic is None:
         return False
 
     order_info = order_dic["order_info"]
