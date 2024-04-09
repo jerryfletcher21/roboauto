@@ -314,6 +314,21 @@ def requests_api_order_invoice(
     )
 
 
+def requests_api_order_rate(
+    token_base91, order_id, base_url, rating, until_true=True, error_print=True
+):
+    # pylint: disable=R0913 too-many-arguments
+
+    return requests_api_order_post(
+        token_base91, order_id, base_url,
+        json_dumps({
+            "action": "rate_platform",
+            "rating": rating
+        }),
+        until_true=until_true, error_print=error_print
+    )
+
+
 def requests_api_order_take(
     token_base91, order_id, base_url, until_true=True, error_print=True
 ):

@@ -5,19 +5,22 @@
 # pylint: disable=C0116 missing-function-docstring
 # pylint: disable=R1705 no-else-return
 
+import os
+
 import filelock
 
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.utils import \
     print_out, print_err, get_uint, subprocess_run_command, \
-    json_loads, input_ask
+    json_loads, input_ask, file_write, file_read
 from roboauto.robot import \
     robot_get_current_fingerprint, robot_var_from_dic, \
     robot_input_from_argv, robot_get_lock_file, robot_change_dir
 from roboauto.order_data import \
     order_is_waiting_seller_buyer, order_is_waiting_buyer, \
     order_is_waiting_seller, order_is_waiting_fiat_sent, \
-    order_is_fiat_sent, order_is_public, order_is_paused
+    order_is_fiat_sent, order_is_public, order_is_paused, \
+    order_is_sucessful
 from roboauto.order import \
     order_requests_order_dic, peer_nick_from_response, bond_order, \
     amount_correct_from_response, subprocess_pay_invoice_and_check, \
@@ -25,7 +28,8 @@ from roboauto.order import \
 from roboauto.requests_api import \
     requests_api_order_invoice, requests_api_order_pause, \
     requests_api_order_confirm, requests_api_order_undo_confirm, \
-    requests_api_order_dispute, response_is_error, requests_api_order_cancel
+    requests_api_order_dispute, response_is_error, \
+    requests_api_order_cancel, requests_api_order_rate
 from roboauto.gpg_key import gpg_sign_message
 
 
@@ -212,9 +216,12 @@ def order_seller_bond_escrow(robot_dic):
 
 
 def order_post_action_simple(
-    robot_dic, order_post_function, is_wrong_status, string_error, string_or_bad_request
+    robot_dic, order_post_function, is_wrong_status,
+    string_error, string_or_bad_request,
+    extra_arg=None
 ):
     # pylint: disable=R0911 too-many-return-statements
+    # pylint: disable=R0913 too-many-arguments
     # pylint: disable=R0914 too-many-locals
 
     robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
@@ -235,9 +242,14 @@ def order_post_action_simple(
     order_description = order_info["order_description"]
     print_out(f"{robot_name} {order_id} {order_description}")
 
-    order_post_response_all = order_post_function(
-        token_base91, order_id, robot_url
-    )
+    if extra_arg is False or extra_arg is None:
+        order_post_response_all = order_post_function(
+            token_base91, order_id, robot_url
+        )
+    else:
+        order_post_response_all = order_post_function(
+            token_base91, order_id, robot_url, extra_arg
+        )
     if response_is_error(order_post_response_all):
         return False
     order_post_response = order_post_response_all.text
@@ -328,12 +340,33 @@ def order_start_dispute(robot_dic):
     )
 
 
-def robot_order_post_action_argv(argv, order_post_function, extra_args=None):
+def order_rate_coordinator(robot_dic, rating):
+    if order_post_action_simple(
+        robot_dic,
+        requests_api_order_rate,
+        lambda status_id : \
+            not order_is_sucessful(status_id),
+        "is not sucessful",
+        f"robosats rated {rating} stars",
+        extra_arg=rating
+    ) is False:
+        return False
+
+    if not file_write(robot_dic["dir"] + "/rating-coordinator", rating):
+        return False
+
+    return True
+
+
+def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
+    # pylint: disable=R0911 too-many-return-statements
+    # pylint: disable=R0912 too-many-branches
+
     robot_dic, argv = robot_input_from_argv(argv)
     if robot_dic is False:
         return False
 
-    if extra_args == "budget_ppm":
+    if extra_type == "budget_ppm":
         budget_ppm = None
         if len(argv) >= 1:
             budget_ppm = get_uint(argv[0])
@@ -341,16 +374,40 @@ def robot_order_post_action_argv(argv, order_post_function, extra_args=None):
                 return False
             argv = argv[1:]
 
+        extra_arg = budget_ppm
+    elif extra_type == "rating":
+        robot_name = robot_dic["name"]
+        rating_coordinator_file = robot_dic["dir"] + "/rating-coordinator"
+        if os.path.isfile(rating_coordinator_file):
+            rating = file_read(rating_coordinator_file)
+            if rating is False:
+                return False
+            print_err(f"{robot_name} already rated {rating}")
+            return False
+
+        if len(argv) < 1:
+            print_err("insert rating")
+            return False
+        rating = argv[0]
+        argv = argv[1:]
+
+        rating_uint = get_uint(rating)
+        if rating_uint is False:
+            return False
+        if rating_uint < 1 or rating_uint > 5:
+            print_err("rating should be between 1 and 5")
+            return False
+
+        extra_arg = rating
+
     try:
         with filelock.SoftFileLock(
             robot_get_lock_file(robot_dic["name"]), timeout=roboauto_state["filelock_timeout"]
         ):
-            if extra_args is None:
+            if extra_type is None or extra_type is None:
                 return order_post_function(robot_dic)
-            elif extra_args == "budget_ppm":
-                return order_post_function(robot_dic, budget_ppm=budget_ppm)
             else:
-                return False
+                return order_post_function(robot_dic, extra_arg)
     except filelock.Timeout:
         # pylint: disable=C0209 consider-using-f-string
         print_err("filelock timeout %d" % roboauto_state["filelock_timeout"])
@@ -359,7 +416,13 @@ def robot_order_post_action_argv(argv, order_post_function, extra_args=None):
 
 def order_buyer_update_invoice_argv(argv):
     return robot_order_post_action_argv(
-        argv, order_buyer_update_invoice, extra_args="budget_ppm"
+        argv, order_buyer_update_invoice, extra_type="budget_ppm"
+    )
+
+
+def order_rate_coordinator_argv(argv):
+    return robot_order_post_action_argv(
+        argv, order_rate_coordinator, extra_type="rating"
     )
 
 

@@ -341,6 +341,13 @@ def order_is_in_dispute(data):
         return False
 
 
+def order_is_sucessful(data):
+    if data == 14:
+        return True
+    else:
+        return False
+
+
 def order_is_pending(data):
     if data in (6, 7, 8, 9, 10, 11, 13, 15, 16):
         return True
