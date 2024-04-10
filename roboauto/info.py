@@ -19,11 +19,43 @@ from roboauto.order import order_requests_order_dic
 from roboauto.chat import \
     robot_requests_chat, chat_print_encrypted_messages, chat_print_single_message
 from roboauto.requests_api import \
-    requests_api_limits, requests_api_info, response_is_error
+    response_is_error, requests_api_info, \
+    requests_api_historical, requests_api_limits, \
+    requests_api_price, requests_api_ticks
 from roboauto.utils import \
     file_json_read, json_loads, json_dumps, \
     roboauto_get_coordinator_url, roboauto_get_coordinator_from_argv, \
     token_get_base91
+
+
+def requests_simple_handle(requests_function, coordinator_url, description_string):
+    response_all = requests_function(coordinator_url)
+    if response_is_error(response_all):
+        return False
+    response = response_all.text
+    response_json = json_loads(response)
+    if response_json is False:
+        print_err(response, end="", error=False, date=False)
+        print_err(f"{description_string} response is not json")
+        return False
+
+    return response_json
+
+
+def list_historical(argv):
+    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    if coordinator_url is False:
+        return False
+
+    historical_response_json = requests_simple_handle(
+        requests_api_historical, coordinator_url, "historical"
+    )
+    if historical_response_json is False:
+        return False
+
+    print_out(json_dumps(historical_response_json))
+
+    return True
 
 
 def list_limits(argv):
@@ -31,17 +63,61 @@ def list_limits(argv):
     if coordinator_url is False:
         return False
 
-    limits_response_all = requests_api_limits(coordinator_url)
-    if response_is_error(limits_response_all):
-        return False
-    limits_response = limits_response_all.text
-    limits_response_json = json_loads(limits_response)
+    limits_response_json = requests_simple_handle(
+        requests_api_limits, coordinator_url, "limits"
+    )
     if limits_response_json is False:
-        print_err(limits_response, end="", error=False, date=False)
-        print_err("limits response is not json")
         return False
 
     print_out(json_dumps(limits_response_json))
+
+    return True
+
+
+def list_price(argv):
+    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    if coordinator_url is False:
+        return False
+
+    price_response_json = requests_simple_handle(
+        requests_api_price, coordinator_url, "price"
+    )
+    if price_response_json is False:
+        return False
+
+    print_out(json_dumps(price_response_json))
+
+    return True
+
+
+def list_ticks(argv):
+    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    if coordinator_url is False:
+        return False
+
+    if len(argv) < 1:
+        print_err("insert start date")
+        return False
+    start_date = argv[0]
+    argv = argv[1:]
+
+    if len(argv) < 1:
+        print_err("insert end date")
+        return False
+    end_date = argv[0]
+    argv = argv[1:]
+
+    ticks_response_all = requests_api_ticks(coordinator_url, start_date, end_date)
+    if response_is_error(ticks_response_all):
+        return False
+    ticks_response = ticks_response_all.text
+    ticks_response_json = json_loads(ticks_response)
+    if ticks_response_json is False:
+        print_err(ticks_response, end="", error=False, date=False)
+        print_err("ticks response is not json")
+        return False
+
+    print_out(json_dumps(ticks_response_json))
 
     return True
 

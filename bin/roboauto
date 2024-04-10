@@ -26,8 +26,8 @@ from roboauto.order_action import \
     order_rate_coordinator_argv
 from roboauto.chat import robot_send_chat_message_argv
 from roboauto.info import \
-    robosats_info, robot_info_argv, order_info_argv, \
-    list_limits, robot_chat
+    robosats_info, robot_info_argv, order_info_argv, robot_chat, \
+    list_historical, list_limits, list_price, list_ticks
 from roboauto.book import list_offers_per_hour_argv, list_offers_argv
 from roboauto.keep_online import keep_online
 
@@ -41,7 +41,7 @@ list-configs
 list-currencies
 list-payment-methods [--fiat, --swap]
 list-order-fields
-import-robot --{coordinator-name} [--pending, --inactive, --paused] [robot-name] [token]
+import-robot --{coordinator-name} [--pending, --paused, --inactive] [robot-name] [token]
 print-token [robot-name]
 print-coordinator [robot-name]
 list-active|list-pending|list-inactive|list-paused [--coordinator]
@@ -57,13 +57,16 @@ robot-info --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
 order-info [--local] [--simple] [robot-name] [order-id]
 chat-print [--local] [robot-name]
 message-send [robot-name]
+list-historical --{coordinator-name}
 list-limits --{coordinator-name}
+list-price --{coordinator-name}
+list-ticks --{coordinator-name} [start-date] [end-date]
 list-hours [--relative]
 list-offers --{coordinators}/--all [--sell|--buy] [currency] [search]
 create-order [--no-bond, --no-active] [robot-name] [key=value]
 cancel-order [robot-name]
 recreate-order [--no-cancel, --no-bond] robot-name key=value
-take-order [robot-name] [order-id]
+take-order [robot-name] [order-id] [take-amount]
 pause-toggle [robot-name]
 escrow-pay [robot-name]
 invoice-send [robot-name] [budget-ppm]
@@ -97,7 +100,7 @@ list-payment-methods [--fiat, --swap]
 list-order-fields
     list order fields for create-order and recreate-order
 
-import-robot --{coordinator-name} [--pending, --inactive, --paused] [robot-name] [token]
+import-robot --{coordinator-name} [--pending, --paused, --inactive] [robot-name] [token]
     import a robot, robot-name and token are required
     if not passed as arguments roboauto will ask for them
     by default the new robot is put in the active folder
@@ -155,8 +158,21 @@ message-send [robot-name] [message]
     send message from robot-name
     if message starts with # do not encrypt it
 
+list-historical --{coordinator-name}
+    get historical exchange activity
+    lists each day's total contracts and
+    their volume in btc since inception
+
 list-limits --{coordinator-name}
-    list currency limits
+    get a list of order limits for every currency pair available
+
+list-price --{coordinator-name}
+    get the last market price for each currency
+
+list-ticks --{coordinator-name} [start-date] [end-date]
+    get all market ticks
+    returns a list of all the market ticks since inception
+    date formatted as DD-MM-YYYY
 
 list-hours [--relative]
     list orders per hours of the day
@@ -187,8 +203,10 @@ recreate-order [--no-cancel, --no-bond] robot-name key=value
     and will overwrite the old order
     payment_method can be provided multiple times
 
-take-order [robot-name] [order-id]
-    take an order
+take-order [robot-name] [order-id] [take-amount]
+    take the order-id order with
+    make sure the order-id is of the same coordinator as your robot
+    if the order has a range specify take-amount
 
 pause-toggle [robot-name]
     toggle pause order in robosats
@@ -313,8 +331,14 @@ try:
         return_status = robot_chat(argv)
     elif action == "message-send":
         return_status = robot_send_chat_message_argv(argv)
+    elif action == "list-historical":
+        return_status = list_historical(argv)
     elif action == "list-limits":
         return_status = list_limits(argv)
+    elif action == "list-price":
+        return_status = list_price(argv)
+    elif action == "list-ticks":
+        return_status = list_ticks(argv)
     elif action == "list-hours":
         return_status = list_offers_per_hour_argv(argv)
     elif action == "list-offers":

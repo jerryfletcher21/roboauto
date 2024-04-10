@@ -129,9 +129,28 @@ def requests_api_book(base_url, until_true=True, error_print=True):
     )
 
 
+def requests_api_historical(base_url, until_true=True, error_print=True):
+    return requests_api_base(
+        base_url, "/api/historical/", until_true=until_true, error_print=error_print
+    )
+
+
 def requests_api_limits(base_url, until_true=True, error_print=True):
     return requests_api_base(
         base_url, "/api/limits/", until_true=until_true, error_print=error_print
+    )
+
+
+def requests_api_price(base_url, until_true=True, error_print=True):
+    return requests_api_base(
+        base_url, "/api/price/", until_true=until_true, error_print=error_print
+    )
+
+
+def requests_api_ticks(base_url, start_date, end_date, until_true=True, error_print=True):
+    return requests_api_base(
+        base_url, f"/api/ticks/?end={end_date}&start={start_date}",
+        until_true=until_true, error_print=error_print
     )
 
 
@@ -330,13 +349,21 @@ def requests_api_order_rate(
 
 
 def requests_api_order_take(
-    token_base91, order_id, base_url, until_true=True, error_print=True
+    token_base91, order_id, base_url, take_amount=None, until_true=True, error_print=True
 ):
+    # pylint: disable=R0913 too-many-arguments
+
+    data_json = {
+        "action": "take"
+    }
+    if take_amount is not None and take_amount is not False:
+        data_json.update({
+            "amount": take_amount
+        })
+
     return requests_api_order_post(
         token_base91, order_id, base_url,
-        json_dumps({
-            "action": "take"
-        }),
+        json_dumps(data_json),
         until_true=until_true, error_print=error_print
     )
 

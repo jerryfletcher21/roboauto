@@ -101,7 +101,7 @@ def amount_correct_format(amount, is_fiat):
 
 
 def order_requests_order_dic(
-    robot_dic, order_id, order_function=None
+    robot_dic, order_id, order_function=None, take_amount=None
 ):
     # pylint: disable=R0911 too-many-return-statements
     # pylint: disable=R0912 too-many-branches
@@ -122,15 +122,18 @@ def order_requests_order_dic(
 
     robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
-    if order_function is None:
-        order_function = requests_api_order
-
     if order_id is False or order_id is None:
         order_id = robot_requests_get_order_id(robot_dic)
         if order_id is False or order_id is None:
             return False
 
-    order_response_all = order_function(token_base91, order_id, robot_url)
+    if order_function is None:
+        order_response_all = requests_api_order(token_base91, order_id, robot_url)
+    else:
+        order_response_all = order_function(
+            token_base91, order_id, robot_url, take_amount=take_amount
+        )
+
     # error 500 when the old order is purged from the server
     # maybe create last order from local if available
     if \
@@ -349,6 +352,8 @@ def subprocess_pay_invoice_and_check(
             retries += 1
             time.sleep(roboauto_options["pay_interval"])
 
+    return False
+
 
 def peer_nick_from_response(order_response_json):
     null_nick = "null"
@@ -379,7 +384,7 @@ def premium_string_get(premium):
         return "above-" + premium
 
 
-def bond_order(robot_dic, order_id, taker=False):
+def bond_order(robot_dic, order_id, taker=False, take_amount=None):
     # pylint: disable=R0911 too-many-return-statements
     # pylint: disable=R0914 too-many-locals
 
@@ -394,7 +399,7 @@ def bond_order(robot_dic, order_id, taker=False):
         order_function = requests_api_order_take
 
     order_dic = order_requests_order_dic(
-        robot_dic, order_id, order_function=order_function
+        robot_dic, order_id, order_function=order_function, take_amount=take_amount
     )
     if order_dic is False or order_dic is None:
         return False

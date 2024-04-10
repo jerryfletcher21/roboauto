@@ -34,6 +34,8 @@ from roboauto.gpg_key import gpg_sign_message
 
 
 def order_take_argv(argv):
+    # pylint: disable=R0911 too-many-return-statements
+
     robot_dic, argv = robot_input_from_argv(argv)
     if robot_dic is False:
         return False
@@ -47,11 +49,18 @@ def order_take_argv(argv):
         order_id = input_ask("insert order id: ")
         if order_id is False:
             return False
-
     if get_uint(order_id) is False:
         return False
 
-    if bond_order(robot_dic, order_id, taker=True) is False:
+    if len(argv) >= 1:
+        take_amount = argv[0]
+        argv = argv[1:]
+        if get_uint(take_amount) is False:
+            return False
+    else:
+        take_amount = None
+
+    if bond_order(robot_dic, order_id, taker=True, take_amount=take_amount) is False:
         return False
 
     print_out(f"{robot_name} {order_id} taken successfully")
