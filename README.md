@@ -1,15 +1,15 @@
-# roboauto
+# Roboauto
 
-a [robosats](https://github.com/RoboSats/robosats) command-line interface
+A [robosats](https://github.com/RoboSats/robosats) command-line interface
 
-main function is keep-online, after you have imported one or more robots from
+Main function is keep-online, after you have imported one or more robots from
 different coordinators, run `roboauto keep-online` to automatically recreate the
 orders when they expire, and get notified if the order is taken, running the
-message-notification script. an example for simplex is provided
+message-notification script. An example for simplex is provided
 
-## installation
+## Installation
 
-#### local (preferred)
+#### Local (suggested)
 ```
 $ python3 -m venv robo
 $ . robo/bin/activate
@@ -17,26 +17,28 @@ $ pip install -r requirements.txt
 $ pip install .
 ```
 
-#### global
+#### Global
 ```
 $ pip install --break-system-packages -r requirements.txt
 $ pip install --break-system-packages .
 ```
 
-copy config/config.ini in ~/.config/roboauto/ and edit it
+Copy config/config.ini in ~/.config/roboauto/ and edit it
 
-create scripts lightning-node and message-notification in ~/.config/roboauto/,
+Create scripts lightning-node and message-notification in ~/.config/roboauto/,
 some examples are in data/
 
-if you use core lightning and simplex for notifications:
+If you use core lightning and simplex for notifications:
 ```
 cp data/lightning-node-core-lightning ~/.config/roboauto/lightning-node
 cp data/message-notification-simplex ~/.config/roboauto/message-notification
 ```
 
-source completions/roboauto.bash-completion in ~/.bashrc
+Source completions/roboauto.bash-completion in ~/.bashrc
 
-## usage
+## Configuration
+
+## Usage
 
 #### documentation
 ```
@@ -79,7 +81,7 @@ $ roboauto keep-online
 
 #### take an offer
 ```
-# take a look at the book of all the coordinators
+# take a look at the books of all the coordinators
 $ roboauto list-offers --all usd "strike"
 exp ord-id PeerRobotName            sell usd   8h  3.00   4.00%  -      150     300 00:00:00 Strike
 ...
@@ -106,10 +108,10 @@ $ roboauto chat-print YourRobotName
 Hello robot!
 
 # chat with your peer
-$ roboauto message-send YourRobotName 'how can I pay you?'
+$ roboauto message-send YourRobotName 'Hello! How can I pay you?'
 message sent correctly
 now E YourRobotName
-how can I pay you?
+Hello! How can I pay you?
 
 ...
 
@@ -125,12 +127,33 @@ YourRobotName order-id sell usd 200 4.00 Strike Sucessful trade
 YourRobotName order-id robosats rated 5 stars
 ```
 
-## roadmap
+## Features
 
-* handle rewards
-* fast chat with websocket
+- [X] simple api: info historical limits price ticks
+- [X] import robot
+- [X] generate robot
+- [X] list the books of the coordinators
+- [X] robot info
+- [X] order info
+- [X] create/recreate order
+- [X] cancel order
+- [X] take order
+- [X] toggle pause for order
+- [X] pay escrow, send invoice for order
+- [X] print chat and send messages
+- [X] second/undo confirmations of payments
+- [X] start dispute
+- [X] rate coordinator
+- [X] keep online orders, recreate them when they expire
+- [X] send message notification when an order is taken
+- [X] set a maximum of offer per hour
+- [X] core lightning
+- [ ] lnd, eclair, ldk, other nodes or wallets with apis
+- [ ] send dispute statement
+- [ ] handle rewards
+- [ ] fast chat with websocket
 
-## license
+## License
 
-roboauto is released under the terms of the ISC license.
-see [LICENSE](LICENSE) for more details.
+Roboauto is released under the terms of the ISC license.
+See [LICENSE](LICENSE) for more details.

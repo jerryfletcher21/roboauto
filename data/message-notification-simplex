@@ -2,14 +2,16 @@
 
 # send a notification message with simplex using tor
 
-if [ "$#" -lt 1 ]; then
+if [ "$#" -lt 2 ]; then
     echo "error: there are not enough parameters" >&2
     exit 1
 fi
-message="$1"
-shift 1
+# event not used
+# event="$1"
+message="$2"
+shift 2
 
-contact="satoshi-nakamoto"
+contact="hal-finney"
 timeout="32"
 
 simplex-chat -x \

@@ -37,21 +37,26 @@ def print_and_log(arg, end="\n", file=None, terminal=True):
 
 
 def print_out(arg, end="\n", date=True, terminal=True):
+    string_print = arg
+
     if roboauto_state["should_log"] and date:
         date_current = get_date()
-        print_and_log("[" + date_current + "] ", end="", terminal=terminal)
-    print_and_log(arg, end=end, terminal=terminal)
+        string_print = "[" + date_current + "] " + string_print
+
+    print_and_log(string_print, end=end, terminal=terminal)
 
 
 def print_stderr(error_string, arg, end="\n", date=True, error=True, terminal=True):
-    # pylint: disable=R0913 too-many-arguments
+    string_print = arg
+
+    if error:
+        string_print = error_string + string_print
 
     if roboauto_state["should_log"] and date:
         date_current = get_date()
-        print_and_log("[" + date_current + "] ", end="", file=sys.stderr, terminal=terminal)
-    if error:
-        print_and_log(error_string, end="", file=sys.stderr, terminal=terminal)
-    print_and_log(arg, end=end, file=sys.stderr, terminal=terminal)
+        string_print = "[" + date_current + "] " + string_print
+
+    print_and_log(string_print, end=end, file=sys.stderr, terminal=terminal)
 
 
 def print_war(arg, end="\n", date=True, error=True, terminal=True):

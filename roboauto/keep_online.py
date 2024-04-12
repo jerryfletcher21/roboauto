@@ -3,7 +3,6 @@
 """keep_online.py"""
 
 # pylint: disable=C0116 missing-function-docstring
-# pylint: disable=R1705 no-else-return
 
 import time
 import random
@@ -31,9 +30,6 @@ from roboauto.utils import update_roboauto_options
 
 
 def robot_check_expired(robot_dic, robot_this_hour):
-    # pylint: disable=R0911 too-many-return-statements
-    # pylint: disable=R0912 too-many-branches
-
     """check what happened to a robot that is no longer active
     return 1 if the robot is back online, 0 if not, false if something wrong"""
 
@@ -100,8 +96,6 @@ def robot_check_expired(robot_dic, robot_this_hour):
 
 
 def order_is_this_hour(order, current_timestamp, coordinator=False):
-    # pylint: disable=R0911 too-many-return-statements
-
     order_info = order.get("order_info", False)
     if order_info is False:
         return False
@@ -241,8 +235,6 @@ def should_remove_from_waiting_queue(
 
 
 def robot_handle_pending(robot_dic):
-    # pylint: disable=R0911 too-many-return-statements
-
     robot_name, _, robot_dir, _, _, _, _ = robot_var_from_dic(robot_dic)
 
     old_order_dic = order_get_order_dic(robot_dir, error_print=False)
@@ -361,10 +353,6 @@ def robot_pending_dic_update(pending_dic):
 # this way pending robots are not checked all together,
 # but every one is checked at a different time
 def keep_online_no_lock():
-    # pylint: disable=R0912 too-many-branches
-    # pylint: disable=R0914 too-many-locals
-    # pylint: disable=R0915 too-many-statements
-
     roboauto_state["should_log"] = True
 
     active_list = robot_list_dir(roboauto_state["active_home"])
@@ -493,7 +481,7 @@ def keep_online(argv):
 
     try:
         with filelock.SoftFileLock(
-            robot_get_lock_file(roboauto_state["lock_home"] + "/" + "keep-online"),
+            roboauto_state["lock_home"] + "/" + "keep-online",
             timeout=0
         ):
             return keep_online_no_lock()

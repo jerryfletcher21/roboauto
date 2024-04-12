@@ -1,7 +1,17 @@
 #!/bin/sh
 
+# R0911 too-many-return-statements
+# R0912 too-many-branches
+# R0913 too-many-arguments
+# R0914 too-many-locals
+# R0915 too-many-statements
+# R1705 no-else-return
+
 # check python scripts
-pylint -s n roboauto/* bin/roboauto setup.py
+pylint \
+    -s n \
+    -d R0911,R0912,R0913,R0914,R0915,R1705 \
+    roboauto/* bin/roboauto setup.py
 
 # check sh scripts
 shellcheck data/* scripts/* completions/roboauto.bash-completion

@@ -4,7 +4,6 @@
 
 # pylint: disable=C0116 missing-function-docstring
 # pylint: disable=C0209 consider-using-f-string
-# pylint: disable=R1705 no-else-return
 
 import os
 import re
@@ -29,8 +28,6 @@ def get_order_data(
     payment_method, premium,
     public_duration, escrow_duration, bond_size
 ):
-    # pylint: disable=R0913 too-many-arguments
-
     return {
         "type":                 type_id,
         "currency":             currency_id,
@@ -50,8 +47,6 @@ def get_order_user(
     type_string, currency_string, min_amount_user, max_amount_user,
     payment_method, premium, public_duration, escrow_duration, bond_size
 ):
-    # pylint: disable=R0913 too-many-arguments
-
     return {
         "type":                 type_string,
         "currency":             currency_string,
@@ -66,8 +61,6 @@ def get_order_user(
 
 
 def get_offer_dic(offer, coordinator):
-    # pylint: disable=R0914 too-many-locals
-
     offer_id = offer.get("id", "")
     expires_at = offer.get("expires_at", "")
     order_type_bool = offer.get("type", "")
@@ -257,9 +250,6 @@ def order_info_local_print_ordered_list(robot_list):
 
 
 def order_info_dir(argv):
-    # pylint: disable=R0911 too-many-return-statements
-    # pylint: disable=R0912 too-many-branches
-
     if len(argv) < 1:
         print_err("insert arguments")
         return False
@@ -358,7 +348,7 @@ def robot_handle_taken(robot_name, status_id, order_id, other):
 
     if file_is_executable(roboauto_state["message_notification_command"]):
         message_output = subprocess_run_command([
-            roboauto_state["message_notification_command"],
+            roboauto_state["message_notification_command"], "order-taken",
             robot_name + " " + order_id + " " + other
         ])
         if message_output is False:
@@ -372,11 +362,6 @@ def robot_handle_taken(robot_name, status_id, order_id, other):
 
 
 def order_data_from_order_user(order_user):
-    # pylint: disable=R0911 too-many-return-statements
-    # pylint: disable=R0912 too-many-branches
-    # pylint: disable=R0914 too-many-locals
-    # pylint: disable=R0915 too-many-statements
-
     type_string = order_user.get("type", False)
     if not type_string:
         print_err("type not present")

@@ -46,21 +46,21 @@ def roboauto_get_coordinator_from_url(coordinator_url):
 def get_coordinator_from_param(param):
     multi_false = False, False
 
-    coordinator_option = param[2:]
-    if len(coordinator_option) < 3:
+    coordinator_value = param[2:]
+    if len(coordinator_value) < 3:
         print_err(
             "coordinator name should be at least 3 characters long: "
-            f"{coordinator_option} invalid"
+            f"{coordinator_value} invalid"
         )
         return multi_false
     coordinator_found = False
     for name in roboauto_options["federation"]:
-        if name[:3] == coordinator_option[:3]:
+        if name[:3] == coordinator_value[:3]:
             coordinator = name
             coordinator_found = True
             break
     if coordinator_found is False:
-        print_err(f"coordinator {coordinator_option} not present")
+        print_err(f"coordinator {coordinator_value} not present")
         return multi_false
 
     return coordinator, roboauto_options["federation"][coordinator]
@@ -134,20 +134,18 @@ def dir_make_sure_exists(directory):
     return True
 
 
-def update_single_option(name, new_option, print_info=False):
-    if roboauto_options[name] != new_option:
-        old_option = roboauto_options[name]
-        roboauto_options[name] = new_option
+def update_single_option(name, new_value, print_info=False):
+    if roboauto_options[name] != new_value:
+        old_value = roboauto_options[name]
+        roboauto_options[name] = new_value
         if print_info:
             print_out(
                 "option %s changed from %s to %s" %
-                (name, str(old_option), str(new_option))
+                (name, str(old_value), str(new_value))
             )
 
 
-def update_federation_option(name, new_option, print_info=False):
-    # pylint: disable=R0912 too-many-branches
-
+def update_federation_option(name, new_value, print_info=False):
     if len(name) < 3:
         print_err("coordinators name should be longer than 3 letters %s not valid" % name)
         return False
@@ -157,31 +155,31 @@ def update_federation_option(name, new_option, print_info=False):
             return False
 
     # pylint: disable=R1703 simplifiable-if-statement
-    if new_option in ("false", "False", "FALSE", "none", "None", "NONE"):
-        new_option_is_none = True
+    if new_value in ("false", "False", "FALSE", "none", "None", "NONE"):
+        new_value_is_none = True
     else:
-        new_option_is_none = False
+        new_value_is_none = False
 
-    old_option = roboauto_options["federation"].get(name, False)
-    if old_option is False:
-        if new_option_is_none is False:
-            roboauto_options["federation"].update({name: new_option})
+    old_value = roboauto_options["federation"].get(name, False)
+    if old_value is False:
+        if new_value_is_none is False:
+            roboauto_options["federation"].update({name: new_value})
             if print_info:
-                print_out("new coordinator %s added with url %s" % (name, new_option))
-    elif old_option != new_option:
-        if new_option_is_none is True:
+                print_out("new coordinator %s added with url %s" % (name, new_value))
+    elif old_value != new_value:
+        if new_value_is_none is True:
             del roboauto_options["federation"][name]
             if print_info:
                 print_out(
                     "coordinator %s deactivated old url %s" %
-                    (name, str(old_option))
+                    (name, str(old_value))
                 )
         else:
-            roboauto_options["federation"][name] = new_option
+            roboauto_options["federation"][name] = new_value
             if print_info:
                 print_out(
                     "coordinator %s changed from %s to %s" %
-                    (name, str(old_option), str(new_option))
+                    (name, str(old_value), str(new_value))
                 )
 
     return True
@@ -196,25 +194,45 @@ def update_roboauto_options(print_info=False):
 
         if parser.has_section(general_section):
             for option in (
-                "user_agent",
-                "default_duration", "default_escrow",
-                "default_bond_size", "date_format"
+                "user_agent", "date_format"
             ):
                 if parser.has_option(general_section, option):
-                    new_option = parser.get(general_section, option).strip("'\"")
-                    update_single_option(option, new_option, print_info=print_info)
+                    new_value = parser.get(general_section, option).strip("'\"")
+                    update_single_option(option, new_value, print_info=print_info)
 
             for option in (
                 "book_interval", "pending_interval", "pay_interval", "error_interval",
-                "time_zone", "tab_size", "order_maximum", "routing_budget_ppm"
+                "time_zone", "tab_size", "order_maximum", "routing_budget_ppm",
+                "default_duration", "default_escrow"
             ):
                 if parser.has_option(general_section, option):
                     try:
-                        new_option = parser.getint(general_section, option)
+                        new_value = parser.getint(general_section, option)
                     except (ValueError, TypeError):
                         print_err("reading %s" % option)
                         return False
-                    update_single_option(option, new_option, print_info=print_info)
+
+                    if option != "time_zone" and new_value < 0:
+                        print_err(f"{option} can not be negative")
+                        return False
+
+                    update_single_option(option, new_value, print_info=print_info)
+
+            for option in (
+                "default_bond_size"
+            ):
+                if parser.has_option(general_section, option):
+                    try:
+                        new_value = parser.getfloat(general_section, option)
+                    except (ValueError, TypeError):
+                        print_err("reading %s" % option)
+                        return False
+
+                    if new_value < 0:
+                        print_err(f"{option} can not be negative")
+                        return False
+
+                    update_single_option(option, new_value, print_info=print_info)
 
         federation_section = "federation"
 

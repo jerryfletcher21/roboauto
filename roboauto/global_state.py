@@ -5,6 +5,7 @@
 # options that can be changed in config file
 roboauto_options = {
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; rv:102.0) Gecko/20100101 Firefox/102.0",
+    "date_format": "%Y/%m/%d %H:%M:%S",
     "book_interval": 120,
     "pending_interval": 120,
     "pay_interval": 2,
@@ -13,10 +14,9 @@ roboauto_options = {
     "tab_size": 4,
     "order_maximum": 2,
     "routing_budget_ppm": 1000,
-    "default_duration": "86400",
-    "default_escrow": "28800",
-    "default_bond_size": "3.00",
-    "date_format": "%Y/%m/%d %H:%M:%S",
+    "default_duration": 86400,
+    "default_escrow": 28800,
+    "default_bond_size": 3.00,
     "federation": {
         "exp": "http://robosats6tkf3eva7x2voqso3a5wcorsnw34jveyxfqi2fu7oyheasid.onion",
         "sau": "http://satstraoq35jffvkgpfoqld32nzw2siuvowanruindbfojowpwsjdgad.onion",

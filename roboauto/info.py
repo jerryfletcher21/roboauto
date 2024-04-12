@@ -143,10 +143,6 @@ def robosats_info(argv):
 
 
 def robot_info_argv(argv):
-    # pylint: disable=R0911 too-many-return-statements
-    # pylint: disable=R0912 too-many-branches
-    # pylint: disable=R0915 too-many-statements
-
     """print info about a robot"""
 
     robot_dic = None
@@ -194,9 +190,6 @@ def robot_info_argv(argv):
 
 
 def order_info_argv(argv):
-    # pylint: disable=R0911 too-many-return-statements
-    # pylint: disable=R0912 too-many-branches
-
     full_mode = True
     local_mode = False
     while len(argv) > 0:
@@ -263,9 +256,6 @@ def order_info_argv(argv):
 
 
 def robot_chat(argv):
-    # pylint: disable=R0911 too-many-return-statements
-    # pylint: disable=R0912 too-many-branches
-
     from_local = False
     if len(argv) > 0 and argv[0] == "--local":
         from_local = True

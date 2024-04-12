@@ -136,8 +136,6 @@ def list_offers_per_hour_argv(argv):
 
 
 def get_book_response_json(coordinator, until_true=False):
-    # pylint: disable=R0911 too-many-return-statements
-
     """wrap around requests_api_book to check if the response
     is correct"""
     base_url = roboauto_get_coordinator_url(coordinator)
@@ -260,8 +258,6 @@ def get_multi_book_response_json(coordinators):
 
 
 def list_offers_argv(argv):
-    # pylint: disable=R0912 too-many-branches
-
     coordinators, argv = roboauto_get_multi_coordinators_from_argv(argv)
     if coordinators is False:
         return False

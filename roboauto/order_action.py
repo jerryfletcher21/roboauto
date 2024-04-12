@@ -3,7 +3,6 @@
 """order_action.py"""
 
 # pylint: disable=C0116 missing-function-docstring
-# pylint: disable=R1705 no-else-return
 
 import os
 
@@ -34,8 +33,6 @@ from roboauto.gpg_key import gpg_sign_message
 
 
 def order_take_argv(argv):
-    # pylint: disable=R0911 too-many-return-statements
-
     robot_dic, argv = robot_input_from_argv(argv)
     if robot_dic is False:
         return False
@@ -72,9 +69,6 @@ def order_take_argv(argv):
 
 
 def order_buyer_update_invoice(robot_dic, budget_ppm=None):
-    # pylint: disable=R0911 too-many-return-statements
-    # pylint: disable=R0914 too-many-locals
-
     robot_name, _, robot_dir, token, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     order_dic = order_requests_order_dic(robot_dic, order_id=False)
@@ -193,27 +187,33 @@ def order_seller_bond_escrow(robot_dic):
     order_description = order_info["order_description"]
     print_out(f"{robot_name} {order_id} {order_description}")
 
-    escrow_invoice = order_response_json.get("escrow_invoice", False)
-    if escrow_invoice is False:
-        print_err("escrow invoice not present in order response")
-        return False
-
     peer_nick = peer_nick_from_response(order_response_json)
 
     amount_correct = amount_correct_from_response(order_response_json)
     if amount_correct is False:
         amount_correct = order_info["amount_string"]
 
-    pay_command = [
-        roboauto_state["lightning_node_command"], "pay",
-        escrow_invoice,
-        robot_name + "-" + peer_nick + "-" + order_id + "-" +
-        order_user["type"] + "-" + order_user["currency"] + "-" +
+    escrow_satoshis = order_response_json.get("escrow_satoshis", False)
+    if escrow_satoshis is False:
+        print_err(
+            f"{robot_name} {order_id} escrow_satoshis not present, invoice can not be checked"
+        )
+        return False
+
+    escrow_invoice = order_response_json.get("escrow_invoice", False)
+    if escrow_invoice is False:
+        print_err(
+            f"{robot_name} {order_id} escrow_invoice not present, invoice can not be checked"
+        )
+        return False
+
+    pay_label = \
+        robot_name + "-" + peer_nick + "-" + order_id + "-" + \
+        order_user["type"] + "-" + order_user["currency"] + "-" + \
         amount_correct + "-" + premium_string_get(order_user["premium"])
-    ]
     return subprocess_pay_invoice_and_check(
         robot_dic, order_id,
-        pay_command,
+        escrow_invoice, str(escrow_satoshis), pay_label,
         lambda order_status : \
             not order_is_waiting_seller_buyer(order_status) and \
             not order_is_waiting_seller(order_status),
@@ -229,10 +229,6 @@ def order_post_action_simple(
     string_error, string_or_bad_request,
     extra_arg=None
 ):
-    # pylint: disable=R0911 too-many-return-statements
-    # pylint: disable=R0913 too-many-arguments
-    # pylint: disable=R0914 too-many-locals
-
     robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     order_dic = order_requests_order_dic(robot_dic, order_id=False)
@@ -368,9 +364,6 @@ def order_rate_coordinator(robot_dic, rating):
 
 
 def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
-    # pylint: disable=R0911 too-many-return-statements
-    # pylint: disable=R0912 too-many-branches
-
     robot_dic, argv = robot_input_from_argv(argv)
     if robot_dic is False:
         return False

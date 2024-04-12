@@ -22,8 +22,6 @@ from roboauto.gpg_key import \
 
 
 def robot_requests_chat(robot_dir, token_base91, robot_url):
-    # pylint: disable=R0911 too-many-return-statements
-
     multi_false = False, False
 
     order_dic = order_get_order_dic(robot_dir, error_print=False)
@@ -100,10 +98,6 @@ def chat_print_single_message(message_dic):
 
 
 def chat_print_encrypted_messages(chat_response_json, robot_dir, token):
-    # pylint: disable=R0911 too-many-return-statements
-    # pylint: disable=R0912 too-many-branches
-    # pylint: disable=R0914 too-many-locals
-
     unsorted_messages = chat_response_json.get("messages", False)
     if unsorted_messages is False:
         print_err(chat_response_json, end="", error=False, date=False)
@@ -171,9 +165,6 @@ def chat_print_encrypted_messages(chat_response_json, robot_dir, token):
 
 
 def robot_send_chat_message(robot_dic, message):
-    # pylint: disable=R0911 too-many-return-statements
-    # pylint: disable=R0914 too-many-locals
-
     robot_name = robot_dic["name"]
     robot_dir = robot_dic["dir"]
     token = robot_dic["token"]

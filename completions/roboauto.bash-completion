@@ -111,7 +111,7 @@ $(
     }
 
     ___roboauto_get_robots() {
-        find "$@" -mindepth 1 -maxdepth 1 -type d |
+        find "$@" -mindepth 1 -maxdepth 1 -type d 2>/dev/null |
         rev |
         cut -d "/" -f 1 |
         rev
@@ -163,22 +163,12 @@ $(
         local inactive_home="$roboauto_home/inactive"
         local paused_home="$roboauto_home/paused"
 
-        if
-            [ ! -d "$active_home" ] ||
-            [ ! -d "$pending_home" ] ||
-            [ ! -d "$inactive_home" ] ||
-            [ ! -d "$paused_home" ]
-        then
-            return 0
-        fi
-
         case "$action" in
         list-payment-methods)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="
 --fiat
---swap
-"
+--swap"
             fi
         ;;
         import-robot)
@@ -188,8 +178,7 @@ $(
                 OPTS="
 --pending
 --paused
---inactive
-"
+--inactive"
             fi
         ;;
         print-token|print-coordinator)
@@ -347,8 +336,7 @@ $(___roboauto_get_robots "$pending_home")"
 $(___roboauto_get_coordinators)"
             all_currencies="
 all
-$(roboauto list-currencies)
-"
+$(roboauto list-currencies)"
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$possible_coordinatos"
             elif [ "${cword}" -eq 3 ]; then
@@ -398,21 +386,38 @@ $(___roboauto_get_robots "$paused_home")"
             if [ "${cword}" -eq 2 ]; then
                 OPTS="
 --no-cancel
---no-bond
-$(___roboauto_get_robots "$active_home")"
-            elif \
-                [ "${cword}" -eq 3 ] && {
-                    [ "$prev" = "--no-cancel" ] || [ "$prev" = "--no-bond" ]
-                }
-            then
-                case "$prev" in
+--no-bond"
+            fi
+            if [ "${cword}" -eq 3 ]; then
+                if [ "$prev" == "--no-cancel" ]; then
+                    OPTS="--no-bond"
+                elif [ "$prev" == "--no-bond" ]; then
+                    OPTS="--no-cancel"
+                fi
+            fi
+            local should_cancel=true
+            for word in "${words[@]}"; do
+                case "$word" in
                 --no-cancel)
-                    OPTS="$(___roboauto_get_robots "$paused_home" "$inactive_home")"
-                ;;
-                --no-bond)
-                    OPTS="$(___roboauto_get_robots "$active_home")"
+                    should_cancel=false
+                    break
                 ;;
                 esac
+            done
+            if \
+                [ "${cword}" -eq 2 ] || {
+                    { [ "${cword}" -eq 3 ] || [ "${cword}" -eq 4 ]; } && \
+                    { [ "$prev" = "--no-cancel" ] || [ "$prev" = "--no-bond" ]; }
+                }
+            then
+                local robots
+                if [ "$should_cancel" = true ]; then
+                    robots="$(___roboauto_get_robots "$active_home")"
+                else
+                    robots="$(___roboauto_get_robots "$paused_home" "$inactive_home")"
+                fi
+                OPTS="$OPTS
+$robots"
             elif [ "$advanced_completion" = true ]; then
                 ___roboauto_complete_order_fields
             fi

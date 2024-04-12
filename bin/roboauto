@@ -2,8 +2,6 @@
 
 """roboauto"""
 
-# pylint: disable=C0103 invalid-name
-
 import sys
 import re
 import signal
@@ -32,9 +30,9 @@ from roboauto.book import list_offers_per_hour_argv, list_offers_argv
 from roboauto.keep_online import keep_online
 
 
-version = "0.1"
+VERSION = "0.1"
 
-info = """\
+INFO = """\
 roboauto action [options]
 
 list-configs
@@ -42,43 +40,43 @@ list-currencies
 list-payment-methods [--fiat, --swap]
 list-order-fields
 import-robot --{coordinator-name} [--pending, --paused, --inactive] [robot-name] [token]
-print-token [robot-name]
-print-coordinator [robot-name]
+print-token robot-name
+print-coordinator robot-name
 list-active|list-pending|list-inactive|list-paused [--coordinator]
 list-waiting-queue
-set-active [robot-name]
-set-pending|set-inactive|set-paused [robot-name/--all]
-order-info-dir --active/--pending/--paused/--inactive
+set-active robot-name
+set-pending|set-inactive|set-paused robot-name|--all
+order-info-dir --active|--pending|--paused|--inactive
 order-info-dir --dir directory
 robosats-info --{coordinator-name}
 generate-robot --{coordinator-name} [--active, --pending, --inactive]
-robot-info [robot-name]
+robot-info robot-name
 robot-info --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
-order-info [--local] [--simple] [robot-name] [order-id]
-chat-print [--local] [robot-name]
-message-send [robot-name]
+order-info [--local] [--simple] robot-name [order-id]
+chat-print [--local] robot-name
+message-send robot-name
 list-historical --{coordinator-name}
 list-limits --{coordinator-name}
 list-price --{coordinator-name}
 list-ticks --{coordinator-name} [start-date] [end-date]
 list-hours [--relative]
-list-offers --{coordinators}/--all [--sell|--buy] [currency] [search]
-create-order [--no-bond, --no-active] [robot-name] [key=value]
-cancel-order [robot-name]
-recreate-order [--no-cancel, --no-bond] robot-name key=value
-take-order [robot-name] [order-id] [take-amount]
-pause-toggle [robot-name]
-escrow-pay [robot-name]
-invoice-send [robot-name] [budget-ppm]
-collaborative-cancel [robot-name]
-confirm-send [robot-name]
-confirm-undo [robot-name]
-dispute-start [robot-name]
-rate-coordinator [robot-name] rating
+list-offers --{coordinators}|--all [--sell|--buy] [currency] [search]
+create-order [--no-bond] [--no-active] robot-name [key=value]
+cancel-order robot-name
+recreate-order [--no-cancel] [--no-bond] robot-name key=value
+take-order robot-name order-id [take-amount]
+pause-toggle robot-name
+escrow-pay robot-name
+invoice-send robot-name [budget-ppm]
+collaborative-cancel robot-name
+confirm-send robot-name
+confirm-undo robot-name
+dispute-start robot-name
+rate-coordinator robot-name rating
 keep-online [--quiet]
 """
 
-info_verbose = """\
+INFO_VERBOSE = """\
 roboauto action [options]
 
 -h|--help
@@ -108,10 +106,10 @@ import-robot --{coordinator-name} [--pending, --paused, --inactive] [robot-name]
     --inactive imports the robot in the inactive directory
     --paused imports the robot in the paused directory
 
-print-token [robot-name]
+print-token robot-name
     print robot token
 
-print-coordinator [robot-name]
+print-coordinator robot-name
     print robot coordinator and url
 
 list-active|list-pending|list-inactive|list-paused [--coordinator]
@@ -121,14 +119,14 @@ list-active|list-pending|list-inactive|list-paused [--coordinator]
 list-waiting-queue
     list waiting queue
 
-set-active [robot-name]
+set-active robot-name
     set a pending|inactive|paused robot active
 
-set-pending|set-inactive|set-paused [robot-name/--all]
+set-pending|set-inactive|set-paused robot-name|--all
     set an active robot active|pending|inactive|paused
     if --all, set all robot
 
-order-info-dir --active/--pending/--paused/--inactive
+order-info-dir --active|--pending|--paused|--inactive
 order-info-dir --dir directory
     print local info about all orders of a robot directory
 
@@ -138,23 +136,23 @@ robosats-info --{coordinator-name}
 generate-robot --{coordinator-name} [--active, --pending, --inactive]
     generate a robot on coordinator by default in paused dir
 
-robot-info [robot-name]
+robot-info robot-name
 robot-info --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
     get info about a robot
     if instead of robot-name --stdin or --stdin-base91 is passed
     token is taken from stdin and coordinator is also required
 
-order-info [--local] [--simple] [robot-name] [order-id]
+order-info [--local] [--simple] robot-name [order-id]
     get info about the order of a robot
     if --simple only print important data
     if --local print the order saved on disk, order-id can be
     specified for old orders
 
-chat-print [--local] [robot-name]
+chat-print [--local] robot-name
     print messages of robot-name
     if --local print from local, after having previously run without --local
 
-message-send [robot-name] [message]
+message-send robot-name [message]
     send message from robot-name
     if message starts with # do not encrypt it
 
@@ -178,23 +176,25 @@ list-hours [--relative]
     list orders per hours of the day
     if --relative is passed list orders per hours relative from current time
 
-list-offers --{coordinators}/--all [--sell|--buy] [currency] [search]
+list-offers --{coordinators}|--all [--sell|--buy] [currency] [search]
     list all [buy|sell] offers in the order book
     multiple coordinators can be specified or --all
     search is the string to be searched in the payment method
 
-create-order [--no-bond, --no-active] [robot-name] [key=value]
+create-order [--no-bond] [--no-active] robot-name [key=value]
     create a new order
     if --no-bond create order but do not bond
     if --no-active do not set the robot to the active directory
     if key=value are not provided they will be asked
     list of keys can be get with roboauto list-order-fields
     payment_method can be provided multiple times
+    if public_duration, escrow_duration and bond_size are not specified,
+    default values from config.ini will be used
 
-cancel-order [robot-name]
+cancel-order robot-name
     cancel robot order just if order is public or paused
 
-recreate-order [--no-cancel, --no-bond] robot-name key=value
+recreate-order [--no-cancel] [--no-bond] robot-name key=value
     recreate robot order just if order is public or paused
     if --no-cancel do not cancel the order, recreate is from
     last saved order
@@ -203,38 +203,38 @@ recreate-order [--no-cancel, --no-bond] robot-name key=value
     and will overwrite the old order
     payment_method can be provided multiple times
 
-take-order [robot-name] [order-id] [take-amount]
+take-order robot-name order-id [take-amount]
     take the order-id order with
     make sure the order-id is of the same coordinator as your robot
     if the order has a range specify take-amount
 
-pause-toggle [robot-name]
+pause-toggle robot-name
     toggle pause order in robosats
 
-escrow-pay [robot-name]
+escrow-pay robot-name
     pay the escrow of a sell order
 
-invoice-send [robot-name] [budget-ppm]
+invoice-send robot-name [budget-ppm]
     generate and send invoice of a buy order
     budget-ppm can be specified otherwise default is used
 
-collaborative-cancel [robot-name]
+collaborative-cancel robot-name
     ask for a collaborative cancel or if the peer already asked for
     it accept a collaborative cancel
     can only be sent when waiting only for buyer invoice or
     sending fiat in the chat
 
-confirm-send [robot-name]
+confirm-send robot-name
     send confirmation of payment send if buyer or
     confirm payment arrived if seller
 
-confirm-undo [robot-name]
+confirm-undo robot-name
     undo confirmation of payment sent if buyer
 
-dispute-start [robot-name]
+dispute-start robot-name
     start a dispute
 
-rate-coordinator [robot-name] rating
+rate-coordinator robot-name rating
     rate a coordinator for a successful order
 
 keep-online [--quiet]
@@ -246,139 +246,146 @@ keep-online [--quiet]
     if --quiet print less non important errors
 """
 
-signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-argv = sys.argv[1:]
-if len(argv) < 1:
-    print_err("insert parameters")
-    sys.exit(1)
+def main(argv):
+    """main function"""
 
-while len(argv) > 0:
-    option = argv[0]
-    if option in ("-h", "--help"):
-        print_out(info, end="")
-        sys.exit(0)
-    elif option == "--verbose-help":
-        print_out(info_verbose, end="")
-        sys.exit(0)
-    elif option in ("-v", "--version"):
-        print_out(version)
-        sys.exit(0)
-    elif re.match('^-', option) is not None:
-        print_err("option " + option + " not recognized")
-        sys.exit(1)
-    else:
-        break
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+    if len(argv) < 1:
+        print_err("insert parameters")
+        return False
+
+    while len(argv) > 0:
+        option = argv[0]
+        if option in ("-h", "--help"):
+            print_out(INFO, end="")
+            return True
+        elif option == "--verbose-help":
+            print_out(INFO_VERBOSE, end="")
+            return True
+        elif option in ("-v", "--version"):
+            print_out(VERSION)
+            return True
+        elif re.match('^-', option) is not None:
+            print_err("option " + option + " not recognized")
+            return False
+        else:
+            break
+        argv = argv[1:]
+
+    if len(argv) < 1:
+        print_err("insert action")
+        return False
+    action = argv[0]
     argv = argv[1:]
 
-if len(argv) < 1:
-    print_err("insert action")
-    sys.exit(1)
-action = argv[0]
-argv = argv[1:]
+    if global_setup() is False:
+        return False
 
-if global_setup() is False:
-    sys.exit(1)
+    try:
+        if update_roboauto_options() is False:
+            print_err("reading the config file")
+            return False
 
-try:
-    if update_roboauto_options() is False:
-        print_err("reading the config file")
-        sys.exit(1)
+        if action == "list-configs":
+            return_status = list_configs()
+        elif action == "list-currencies":
+            return_status = list_currencies()
+        elif action == "list-payment-methods":
+            return_status = list_payment_methods(argv)
+        elif action == "list-order-fields":
+            return_status = list_order_fields()
+        elif action == "import-robot":
+            return_status = robot_import(argv)
+        elif action == "print-token":
+            return_status = robot_print_token(argv)
+        elif action == "print-coordinator":
+            return_status = robot_print_coordinator(argv)
+        elif action == "list-active":
+            return_status = robot_print_dir_argv("active", argv)
+        elif action == "list-pending":
+            return_status = robot_print_dir_argv("pending", argv)
+        elif action == "list-inactive":
+            return_status = robot_print_dir_argv("inactive", argv)
+        elif action == "list-paused":
+            return_status = robot_print_dir_argv("paused", argv)
+        elif action == "list-waiting-queue":
+            return_status = waiting_queue_print()
+        elif action == "set-active":
+            return_status = robot_change_dir_from_argv("active", argv)
+        elif action == "set-pending":
+            return_status = robot_change_dir_from_argv("pending", argv)
+        elif action == "set-inactive":
+            return_status = robot_change_dir_from_argv("inactive", argv)
+        elif action == "set-paused":
+            return_status = robot_change_dir_from_argv("paused", argv)
+        elif action == "order-info-dir":
+            return_status = order_info_dir(argv)
+        elif action == "robosats-info":
+            return_status = robosats_info(argv)
+        elif action == "generate-robot":
+            return_status = robot_generate(argv)
+        elif action == "robot-info":
+            return_status = robot_info_argv(argv)
+        elif action == "order-info":
+            return_status = order_info_argv(argv)
+        elif action == "chat-print":
+            return_status = robot_chat(argv)
+        elif action == "message-send":
+            return_status = robot_send_chat_message_argv(argv)
+        elif action == "list-historical":
+            return_status = list_historical(argv)
+        elif action == "list-limits":
+            return_status = list_limits(argv)
+        elif action == "list-price":
+            return_status = list_price(argv)
+        elif action == "list-ticks":
+            return_status = list_ticks(argv)
+        elif action == "list-hours":
+            return_status = list_offers_per_hour_argv(argv)
+        elif action == "list-offers":
+            return_status = list_offers_argv(argv)
+        elif action == "create-order":
+            return_status = create_order(argv)
+        elif action == "cancel-order":
+            return_status = cancel_order(argv)
+        elif action == "recreate-order":
+            return_status = recreate_order(argv)
+        elif action == "take-order":
+            return_status = order_take_argv(argv)
+        elif action == "pause-toggle":
+            return_status = order_pause_toggle_argv(argv)
+        elif action == "escrow-pay":
+            return_status = order_seller_bond_escrow_argv(argv)
+        elif action == "invoice-send":
+            return_status = order_buyer_update_invoice_argv(argv)
+        elif action == "collaborative-cancel":
+            return_status = order_collaborative_cancel_argv(argv)
+        elif action == "confirm-send":
+            return_status = order_send_confirm_argv(argv)
+        elif action == "confirm-undo":
+            return_status = order_undo_confirm_argv(argv)
+        elif action == "dispute-start":
+            return_status = order_start_dispute_argv(argv)
+        elif action == "rate-coordinator":
+            return_status = order_rate_coordinator_argv(argv)
+        elif action == "keep-online":
+            return_status = keep_online(argv)
+        else:
+            print_err("action " + action + " not recognized")
+            return False
+    except KeyboardInterrupt:
+        print_out("\n", end="", date=False)
+        return_status = False
+    finally:
+        global_shutdown()
 
-    if action == "list-configs":
-        return_status = list_configs()
-    elif action == "list-currencies":
-        return_status = list_currencies()
-    elif action == "list-payment-methods":
-        return_status = list_payment_methods(argv)
-    elif action == "list-order-fields":
-        return_status = list_order_fields()
-    elif action == "import-robot":
-        return_status = robot_import(argv)
-    elif action == "print-token":
-        return_status = robot_print_token(argv)
-    elif action == "print-coordinator":
-        return_status = robot_print_coordinator(argv)
-    elif action == "list-active":
-        return_status = robot_print_dir_argv("active", argv)
-    elif action == "list-pending":
-        return_status = robot_print_dir_argv("pending", argv)
-    elif action == "list-inactive":
-        return_status = robot_print_dir_argv("inactive", argv)
-    elif action == "list-paused":
-        return_status = robot_print_dir_argv("paused", argv)
-    elif action == "list-waiting-queue":
-        return_status = waiting_queue_print()
-    elif action == "set-active":
-        return_status = robot_change_dir_from_argv("active", argv)
-    elif action == "set-pending":
-        return_status = robot_change_dir_from_argv("pending", argv)
-    elif action == "set-inactive":
-        return_status = robot_change_dir_from_argv("inactive", argv)
-    elif action == "set-paused":
-        return_status = robot_change_dir_from_argv("paused", argv)
-    elif action == "order-info-dir":
-        return_status = order_info_dir(argv)
-    elif action == "robosats-info":
-        return_status = robosats_info(argv)
-    elif action == "generate-robot":
-        return_status = robot_generate(argv)
-    elif action == "robot-info":
-        return_status = robot_info_argv(argv)
-    elif action == "order-info":
-        return_status = order_info_argv(argv)
-    elif action == "chat-print":
-        return_status = robot_chat(argv)
-    elif action == "message-send":
-        return_status = robot_send_chat_message_argv(argv)
-    elif action == "list-historical":
-        return_status = list_historical(argv)
-    elif action == "list-limits":
-        return_status = list_limits(argv)
-    elif action == "list-price":
-        return_status = list_price(argv)
-    elif action == "list-ticks":
-        return_status = list_ticks(argv)
-    elif action == "list-hours":
-        return_status = list_offers_per_hour_argv(argv)
-    elif action == "list-offers":
-        return_status = list_offers_argv(argv)
-    elif action == "create-order":
-        return_status = create_order(argv)
-    elif action == "cancel-order":
-        return_status = cancel_order(argv)
-    elif action == "recreate-order":
-        return_status = recreate_order(argv)
-    elif action == "take-order":
-        return_status = order_take_argv(argv)
-    elif action == "pause-toggle":
-        return_status = order_pause_toggle_argv(argv)
-    elif action == "escrow-pay":
-        return_status = order_seller_bond_escrow_argv(argv)
-    elif action == "invoice-send":
-        return_status = order_buyer_update_invoice_argv(argv)
-    elif action == "collaborative-cancel":
-        return_status = order_collaborative_cancel_argv(argv)
-    elif action == "confirm-send":
-        return_status = order_send_confirm_argv(argv)
-    elif action == "confirm-undo":
-        return_status = order_undo_confirm_argv(argv)
-    elif action == "dispute-start":
-        return_status = order_start_dispute_argv(argv)
-    elif action == "rate-coordinator":
-        return_status = order_rate_coordinator_argv(argv)
-    elif action == "keep-online":
-        return_status = keep_online(argv)
+    return return_status
+
+
+if __name__ == "__main__":
+    if main(sys.argv[1:]) is True:
+        sys.exit(0)
     else:
-        print_err("action " + action + " not recognized")
         sys.exit(1)
-except KeyboardInterrupt:
-    print_out("\n", end="", date=False)
-    return_status = False
-finally:
-    global_shutdown()
-
-if return_status:
-    sys.exit(0)
-else:
-    sys.exit(1)

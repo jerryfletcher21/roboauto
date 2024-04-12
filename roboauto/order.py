@@ -4,7 +4,6 @@
 
 # pylint: disable=C0116 missing-function-docstring
 # pylint: disable=C0209 consider-using-f-string
-# pylint: disable=R1705 no-else-return
 
 import os
 import time
@@ -76,9 +75,9 @@ def order_user_empty_get(with_default):
     )
 
     if with_default:
-        empty_order["public_duration"] = roboauto_options["default_duration"]
-        empty_order["escrow_duration"] = roboauto_options["default_escrow"]
-        empty_order["bond_size"] = roboauto_options["default_bond_size"]
+        empty_order["public_duration"] = str(roboauto_options["default_duration"])
+        empty_order["escrow_duration"] = str(roboauto_options["default_escrow"])
+        empty_order["bond_size"] = str(roboauto_options["default_bond_size"])
 
     return empty_order
 
@@ -103,11 +102,6 @@ def amount_correct_format(amount, is_fiat):
 def order_requests_order_dic(
     robot_dic, order_id, order_function=None, take_amount=None
 ):
-    # pylint: disable=R0911 too-many-return-statements
-    # pylint: disable=R0912 too-many-branches
-    # pylint: disable=R0914 too-many-locals
-    # pylint: disable=R0915 too-many-statements
-
     """get the order_dic making a request to the coordinator
     order_function can be set to requests_api_order_take
     when taking an order
@@ -163,15 +157,14 @@ def order_requests_order_dic(
     max_amount = order_response_json.get("max_amount", False)
     payment_method = order_response_json.get("payment_method", False)
     premium = order_response_json.get("premium", False)
-    invoice = order_response_json.get("bond_invoice", False)
     public_duration = order_response_json.get(
-        "public_duration", roboauto_options["default_duration"]
+        "public_duration", str(roboauto_options["default_duration"])
     )
     escrow_duration = order_response_json.get(
-        "escrow_duration", roboauto_options["default_escrow"]
+        "escrow_duration", str(roboauto_options["default_escrow"])
     )
     bond_size = order_response_json.get(
-        "bond_size", roboauto_options["default_bond_size"]
+        "bond_size", str(roboauto_options["default_bond_size"])
     )
     is_taken = order_response_json.get("taker_locked", False)
 
@@ -229,7 +222,6 @@ def order_requests_order_dic(
             "status_string":        status_string,
             "amount_string":        amount_string,
             "order_description":    order_description,
-            "invoice":              invoice,
             "is_taken":             is_taken
         },
         "order_response_json":      order_response_json
@@ -245,8 +237,6 @@ def order_requests_order_dic(
 # you are returned your bond. This may change in the future to prevent
 # DDoSing the LN node and you won't be returned the maker bond.
 def robot_cancel_order(robot_dic):
-    # pylint: disable=R0911 too-many-return-statements
-
     robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     if robot_dic["state"] != "active":
@@ -302,17 +292,33 @@ def robot_cancel_order(robot_dic):
 
 
 def subprocess_pay_invoice_and_check(
-    robot_dic, order_id, pay_command, is_paid_function,
+    robot_dic, order_id,
+    invoice, amount_satoshis_string,
+    pay_label, is_paid_function,
     string_checking, string_paid, string_not_paid,
     maximum_retries=None, failure_function=None
 ):
-    # pylint: disable=R0913 too-many-arguments
-    # pylint: disable=R0914 too-many-locals
+    if failure_function is None:
+        failure_function = order_is_expired
 
     robot_name = robot_dic["name"]
 
-    if failure_function is None:
-        failure_function = order_is_expired
+    check_output = subprocess_run_command([
+        roboauto_state["lightning_node_command"], "check",
+        invoice, amount_satoshis_string
+    ])
+    if check_output is False:
+        print_err(
+            "lightning-node check returned false, invoice will not be paid"
+        )
+        return False
+    print_out(check_output.decode(), end="", date=False)
+    print_out("invoice checked successfully")
+
+    pay_command = [
+        roboauto_state["lightning_node_command"], "pay",
+        invoice, pay_label
+    ]
 
     retries = 0
     with subprocess.Popen(pay_command, start_new_session=True) as pay_subprocess:
@@ -385,9 +391,6 @@ def premium_string_get(premium):
 
 
 def bond_order(robot_dic, order_id, taker=False, take_amount=None):
-    # pylint: disable=R0911 too-many-return-statements
-    # pylint: disable=R0914 too-many-locals
-
     """bond an order, after checking the invoice with lightning-node check
     will run lightning-node check and lightning-node pay as subprocesses"""
 
@@ -438,36 +441,25 @@ def bond_order(robot_dic, order_id, taker=False, take_amount=None):
 
     bond_satoshis = order_response_json.get("bond_satoshis", False)
     if bond_satoshis is False:
-        print_err("%s %s bond_satoshis not present, invoice can not be checked" % (
-            robot_name, order_id
-        ))
-        return False
-
-    check_output = subprocess_run_command([
-        roboauto_state["lightning_node_command"], "check",
-        order_info["invoice"], str(bond_satoshis)
-    ])
-    if check_output is False:
         print_err(
-            "lightning-node check returned false, "
-            "invoice will not be paid and robot will be moved to inactive"
+            f"{robot_name} {order_id} bond_satoshis not present, invoice can not be checked"
         )
         return False
-    print_out(check_output.decode(), end="", date=False)
-    print_out("invoice checked successfully")
+
+    bond_invoice = order_response_json.get("bond_invoice", False)
+    if bond_invoice is False:
+        print_err(
+            f"{robot_name} {order_id} bond_invoice not present, invoice can not be checked"
+        )
+        return False
 
     pay_label = \
         "bond-" + name_pay_label + "-" + order_id + "-" + \
         order_user["type"] + "-" + order_user["currency"] + "-" + \
         order_info["amount_string"] + "-" + premium_string_get(order_user["premium"])
-    pay_command = [
-        roboauto_state["lightning_node_command"], "pay",
-        order_info["invoice"],
-        pay_label
-    ]
     return subprocess_pay_invoice_and_check(
         robot_dic, order_id,
-        pay_command,
+        bond_invoice, str(bond_satoshis), pay_label,
         lambda order_status : not checking_function(order_status),
         "checking if order is bonded...",
         string_paid, string_not_paid,
@@ -550,9 +542,6 @@ def order_user_from_argv(argv, with_default=False):
 
 
 def create_order(argv):
-    # pylint: disable=R0911 too-many-return-statements
-    # pylint: disable=R0912 too-many-branches
-
     should_bond = True
     should_set_active = True
     while len(argv) > 0:
@@ -633,12 +622,9 @@ def cancel_order(argv):
 
 
 def recreate_order(argv):
-    # pylint: disable=R0911 too-many-return-statements
-    # pylint: disable=R0912 too-many-branches
-
     should_cancel = True
     should_bond = True
-    if len(argv) >= 1:
+    while len(argv) >= 1:
         if argv[0] == "--no-cancel":
             should_cancel = False
             argv = argv[1:]
@@ -648,6 +634,10 @@ def recreate_order(argv):
         elif re.match('^-', argv[0]) is not None:
             print_err("option %s not recognized" % argv[0])
             return False
+        else:
+            break
+
+    # pylint: disable=R0801 duplicate-code
     robot_dic, argv = robot_input_from_argv(argv)
     if robot_dic is False:
         return False

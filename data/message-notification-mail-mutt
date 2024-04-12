@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# send a notification mail with mutt
+
+if [ "$#" -lt 2 ]; then
+    echo "error: there are not enough parameters" >&2
+    exit 1
+fi
+event="$1"
+message="$2"
+shift 2
+
+contact="satoshin@gmx.com"
+subject="roboauto - $event"
+
+printf "%s\n" "$message" |
+mutt -s "$subject" "$contact"

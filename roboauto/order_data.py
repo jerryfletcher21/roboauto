@@ -4,7 +4,6 @@
 
 # pylint: disable=C0116 missing-function-docstring
 # pylint: disable=R1703 simplifiable-if-statement
-# pylint: disable=R1705 no-else-return
 
 
 def get_type_string(target, reverse=False):
