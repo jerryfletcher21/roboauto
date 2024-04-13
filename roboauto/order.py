@@ -303,7 +303,7 @@ def robot_cancel_order(robot_dic):
                 print_err("getting cancel response %s %s" % (robot_name, order_id))
                 return False
 
-            print_out(bad_request)
+            print_out(bad_request, date=False)
     except filelock.Timeout:
         print_err("filelock timeout %d" % roboauto_state["filelock_timeout"])
         return False
@@ -514,7 +514,7 @@ def make_order(
     if order_id_number is False:
         bad_request = make_response_json.get("bad_request", False)
         if bad_request is not False:
-            print_err(bad_request, error=False)
+            print_err(bad_request, error=False, date=False)
             print_err("making order")
         else:
             print_err(make_response, end="", error=False, date=False)

@@ -279,10 +279,10 @@ def order_post_action_simple(
             print_err(f"{robot_name} {order_id} problems in the response")
             return False
 
-        print_out(bad_request)
+        print_out(bad_request, date=False)
     else:
         if bad_request is not False:
-            print_err(bad_request)
+            print_err(bad_request, error=False, date=False)
             print_err(f"{robot_name} {order_id} problems in the response")
             return False
 
