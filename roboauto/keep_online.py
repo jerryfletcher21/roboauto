@@ -247,10 +247,7 @@ def robot_handle_pending(robot_dic):
             return False
 
     order_dic = order_requests_order_dic(robot_dic, order_id)
-    if order_dic is None:
-        print_out(robot_name + " moving to inactive")
-        return robot_change_dir(robot_name, "inactive")
-    elif order_dic is False:
+    if order_dic is False or order_dic is None:
         return False
 
     order_info = order_dic["order_info"]

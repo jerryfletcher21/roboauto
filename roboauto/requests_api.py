@@ -162,8 +162,8 @@ def requests_api_robot_generate(
         "Content-Type": "application/json",
         "Authorization":
             "Token " + token_base91 +
-            " | Public " + public_key.replace("\n", "\\") +
-            " | Private " + private_key.replace("\n", "\\"),
+            " | Public " + public_key +
+            " | Private " + private_key,
         "Origin": "null",
         "Connection": "keep-alive",
         "Sec-Fetch-Dest": "empty",
