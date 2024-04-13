@@ -24,7 +24,7 @@ lightning_check() {
         return 1
     fi
     invoice="$1"
-    bond_amount="$2"
+    amount="$2"
     shift 2
 
     if ! invoice_amount_msat="$(
@@ -45,21 +45,21 @@ lightning_check() {
         return 1
     fi
 
-    if [ "$invoice_amount" -ne "$bond_amount" ]; then
-        echo "bond amount: $bond_amount invoice amount: $invoice_amount" >&2
-        if [ "$invoice_amount" -gt "$bond_amount" ]; then
+    if [ "$invoice_amount" -ne "$amount" ]; then
+        echo "amount: $amount invoice amount: $invoice_amount" >&2
+        if [ "$invoice_amount" -gt "$amount" ]; then
             echo "error: invoice amount is too big" >&2
-        elif [ "$invoice_amount" -lt "$bond_amount" ]; then
+        elif [ "$invoice_amount" -lt "$amount" ]; then
             echo "error: invoice amount is too small" >&2
         fi
         return 1
     fi
 
-    # optionally also check if the bond amount is greater than a maximum amount
+    # optionally also check if the amount is greater than a maximum amount
 
-    # maximum_bond_amount="10000000"
-    # if [ "$invoice_amount" -gt "$maximum_bond_amount" ]; then
-    #     echo "invoice amount: $invoice_amount maximum amount: $maximum_bond_amount" >&2
+    # maximum_amount="10000000"
+    # if [ "$invoice_amount" -gt "$maximum_amount" ]; then
+    #     echo "invoice amount: $invoice_amount maximum amount: $maximum_amount" >&2
     #     echo "error: invoice amount is greater than maximum amount" >&2
     #     return 1
     # fi

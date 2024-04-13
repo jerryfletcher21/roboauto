@@ -2,10 +2,32 @@
 
 A [robosats](https://github.com/RoboSats/robosats) command-line interface
 
-Main function is keep-online, after you have imported one or more robots from
-different coordinators, run `roboauto keep-online` to automatically recreate the
-orders when they expire, and get notified if the order is taken, running the
-message-notification script. An example for simplex is provided
+Roboauto aims to be a full robosats client, and an alternative to the main
+web client. It is mainly intended for makers with multiple offers. To
+use it, it requires a lightning node, or a wallet that exposes apis for
+creating and paying invoices.
+
+Robots are divided in 4 directories: active, pending, paused and inactive.
+
+Active are all the robots that have an active offer not yet taken.
+
+Pending are robots that have pending offers.
+
+Paused are robots that do not currently have an online offer, for example
+robots just generated, and robots that have a paused offer.
+
+Inactive are old robots that have a completed offer.
+
+Main command of roboauto is `keep-online`. After you have generated
+robots from different coordinators, and created make offers, `roboauto
+keep-online` will automatically recreate offers when they expire, and
+notify the user when an order is taken, by running the message-notification
+script.
+
+Examples scripts for simplex and mutt are provided.
+
+`roboauto keep-online` should be used inside tmux
+(or others terminal multiplexers)
 
 ## Installation
 
@@ -23,10 +45,22 @@ $ pip install --break-system-packages -r requirements.txt
 $ pip install --break-system-packages .
 ```
 
-Copy config/config.ini in ~/.config/roboauto/ and edit it
+## Configuration
 
-Create scripts lightning-node and message-notification in ~/.config/roboauto/,
-some examples are in data/
+Copy config/config.ini to ~/.config/roboauto/config.ini and edit it.
+
+Create scripts lightning-node and message-notification in
+~/.config/roboauto/, some examples are in data/
+
+lightning-node should support 3 actions:
+* check: takes an invoice and an amount and exits with an error status
+  if the invoice is not for the correct amount
+* pay: takes an invoice and a label and pays the invoice
+* invoice: takes an amount and a label, create the invoice and prints it
+  to stdout
+
+message-notification takes an event and a message, and should send a
+message notification.
 
 If you use core lightning and simplex for notifications:
 ```
@@ -36,7 +70,8 @@ cp data/message-notification-simplex ~/.config/roboauto/message-notification
 
 Source completions/roboauto.bash-completion in ~/.bashrc
 
-## Configuration
+If the bash completion package is installed there are better completions in
+`create-order` and `recreate-order`
 
 ## Usage
 
@@ -61,6 +96,10 @@ checking if order is bonded...
 RobotName bonded successfully, order is public
 RobotName order created successfully
 
+# if you have roboauto keep-online running
+# (will add to waiting queue if orders this hour exceed maximum orders per hour)
+# $ roboauto create-order --no-bond RobotName type=sell currency=eur min_amount=300 max_amount=900 payment_method="Instant SEPA" premium=5
+
 # print the token if you want to import it in the robosats website
 $ roboauto print-token RobotName
 ************************************
@@ -75,8 +114,10 @@ insert token:
 
 #### then keep generated and imported robots online (with tmux, it will keep running)
 ```
-# get notified when your offers get taken
+# get notified when your offers get taken and recreate them when they expire
 $ roboauto keep-online
+# or with less non important erorr messages
+# $ roboauto keep-online --quiet
 ```
 
 #### take an offer
@@ -87,8 +128,8 @@ exp ord-id PeerRobotName            sell usd   8h  3.00   4.00%  -      150     
 ...
 
 # lock the bond
-$ roboauto take-order YourRobotName order-id
-YourRobotName PeerRobotName order-id sell usd 200 4.00 Strike Waiting for taker bond
+$ roboauto take-order YourRobotName order-id 200
+YourRobotName PeerRobotName order-id sell usd 150-300 4.00 Strike Waiting for taker bond
 invoice checked successfully
 checking if order is bonded...
 checking if order is bonded...
@@ -129,7 +170,7 @@ YourRobotName order-id robosats rated 5 stars
 
 ## Features
 
-- [X] simple api: info historical limits price ticks
+- [X] simple apis: info historical limits price ticks
 - [X] import robot
 - [X] generate robot
 - [X] list the books of the coordinators
@@ -149,7 +190,9 @@ YourRobotName order-id robosats rated 5 stars
 - [X] set a maximum of offer per hour
 - [X] core lightning
 - [ ] lnd, eclair, ldk, other nodes or wallets with apis
+- [ ] change orders next time they expire
 - [ ] send dispute statement
+- [ ] update stealth option, update_address
 - [ ] handle rewards
 - [ ] fast chat with websocket
 

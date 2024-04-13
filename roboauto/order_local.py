@@ -193,12 +193,18 @@ def order_dic_print(order_dic, robot_name, coordinator, one_line, full_mode):
                 print_out(json_dumps({"error": "no order user and info"}))
             else:
                 order_dic_list = {}
+
                 if "order_info" in order_dic:
-                    for key in ("coordinator", "order_id", "status_string"):
+                    for key in (
+                        "coordinator", "order_id", "status_string",
+                        "peer_nick", "amount_single"
+                    ):
                         if key in order_dic["order_info"]:
                             order_dic_list.update({key: order_dic["order_info"][key]})
+
                 if "order_user" in order_dic:
                     order_dic_list.update(order_dic["order_user"])
+
                 print_out(json_dumps(order_dic_list))
     else:
         if "order_response_json" in order_dic:

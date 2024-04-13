@@ -30,7 +30,7 @@ from roboauto.requests_api import \
     requests_api_order, requests_api_order_cancel, \
     requests_api_make, response_is_error, requests_api_order_take
 from roboauto.utils import \
-    json_dumps, subprocess_run_command, \
+    json_dumps, subprocess_run_command, string_is_false_none_null, \
     json_loads, input_ask, roboauto_get_coordinator_url, \
     roboauto_get_coordinator_from_url, token_get_base91
 
@@ -91,12 +91,27 @@ def list_order_fields():
 
 
 def amount_correct_format(amount, is_fiat):
+    if amount is False or amount is None or string_is_false_none_null(amount):
+        return "null"
+
     if is_fiat is True:
         amount_format = "%.0f"
     else:
         amount_format = "%.3f"
 
     return amount_format % float(amount)
+
+
+def peer_nick_from_response(order_response_json):
+    if order_response_json.get("is_maker", True) is True:
+        peer_nick = order_response_json.get("taker_nick", None)
+    else:
+        peer_nick = order_response_json.get("maker_nick", None)
+
+    if string_is_false_none_null(peer_nick):
+        return None
+
+    return peer_nick
 
 
 def order_requests_order_dic(
@@ -168,6 +183,8 @@ def order_requests_order_dic(
     )
     is_taken = order_response_json.get("taker_locked", False)
 
+    peer_nick = peer_nick_from_response(order_response_json)
+
     status_string = get_order_string(status_id)
 
     type_string = get_type_string(type_id)
@@ -175,6 +192,7 @@ def order_requests_order_dic(
     currency_string = get_currency_string(currency_id).lower()
     is_fiat = currency_string != "btc"
 
+    amount_single = None
     if is_taken or not has_range:
         amount_single = amount_correct_format(amount, is_fiat)
         if not amount_single:
@@ -222,7 +240,9 @@ def order_requests_order_dic(
             "status_string":        status_string,
             "amount_string":        amount_string,
             "order_description":    order_description,
-            "is_taken":             is_taken
+            "is_taken":             is_taken,
+            "peer_nick":            peer_nick,
+            "amount_single":        amount_single
         },
         "order_response_json":      order_response_json
     }
@@ -361,16 +381,6 @@ def subprocess_pay_invoice_and_check(
     return False
 
 
-def peer_nick_from_response(order_response_json):
-    null_nick = "null"
-    if order_response_json.get("is_maker", True) is True:
-        peer_nick = order_response_json.get("taker_nick", null_nick)
-    else:
-        peer_nick = order_response_json.get("maker_nick", null_nick)
-
-    return peer_nick
-
-
 def amount_correct_from_response(order_response_json):
     amount_correct = order_response_json.get("amount", False)
     if amount_correct is False or amount_correct is None:
@@ -388,6 +398,13 @@ def premium_string_get(premium):
         return "below-" + premium[1:]
     else:
         return "above-" + premium
+
+
+def order_string_status_print(robot_name, order_id, order_description, peer_nick):
+    if peer_nick is False or peer_nick is None:
+        print_out(f"{robot_name} {order_id} {order_description}")
+    else:
+        print_out(f"{robot_name} {peer_nick} {order_id} {order_description}")
 
 
 def bond_order(robot_dic, order_id, taker=False, take_amount=None):
@@ -422,7 +439,7 @@ def bond_order(robot_dic, order_id, taker=False, take_amount=None):
         string_paid = "bonded successfully, order is public"
         string_not_paid = "bond expired, order is not public"
 
-        print_out(f"{robot_name} {order_id} {order_description}")
+        order_string_status_print(robot_name, order_id, order_description, None)
 
         name_pay_label = robot_name
     else:
@@ -435,9 +452,10 @@ def bond_order(robot_dic, order_id, taker=False, take_amount=None):
         string_not_paid = "bond expired, order is not taken"
 
         peer_nick = peer_nick_from_response(order_response_json)
-        print_out(f"{robot_name} {peer_nick} {order_id} {order_description}")
 
-        name_pay_label = robot_name + "-" + peer_nick
+        order_string_status_print(robot_name, order_id, order_description, peer_nick)
+
+        name_pay_label = robot_name + "-" + str(peer_nick)
 
     bond_satoshis = order_response_json.get("bond_satoshis", False)
     if bond_satoshis is False:

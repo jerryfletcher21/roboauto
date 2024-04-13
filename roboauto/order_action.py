@@ -23,7 +23,7 @@ from roboauto.order_data import \
 from roboauto.order import \
     order_requests_order_dic, peer_nick_from_response, bond_order, \
     amount_correct_from_response, subprocess_pay_invoice_and_check, \
-    premium_string_get
+    premium_string_get, order_string_status_print
 from roboauto.requests_api import \
     requests_api_order_invoice, requests_api_order_pause, \
     requests_api_order_confirm, requests_api_order_undo_confirm, \
@@ -95,7 +95,10 @@ def order_buyer_update_invoice(robot_dic, budget_ppm=None):
         return False
 
     order_description = order_info["order_description"]
-    print_out(f"{robot_name} {order_id} {order_description}")
+
+    peer_nick = peer_nick_from_response(order_response_json)
+
+    order_string_status_print(robot_name, order_id, order_description, peer_nick)
 
     invoice_amount = order_response_json.get("invoice_amount", False)
     if invoice_amount is False:
@@ -108,8 +111,6 @@ def order_buyer_update_invoice(robot_dic, budget_ppm=None):
     correct_invoice_amount = \
         int(invoice_amount * (1 - budget_ppm / 1000000))
 
-    peer_nick = peer_nick_from_response(order_response_json)
-
     amount_correct = amount_correct_from_response(order_response_json)
     if amount_correct is False:
         amount_correct = order_info["amount_string"]
@@ -117,7 +118,7 @@ def order_buyer_update_invoice(robot_dic, budget_ppm=None):
     invoice_generate_output = subprocess_run_command([
         roboauto_state["lightning_node_command"], "invoice",
         str(correct_invoice_amount),
-        robot_name + "-" + peer_nick + "-" + order_id + "-" +
+        robot_name + "-" + str(peer_nick) + "-" + order_id + "-" +
         order_user["type"] + "-" + order_user["currency"] + "-" +
         amount_correct + "-" + premium_string_get(order_user["premium"])
     ])
@@ -185,9 +186,10 @@ def order_seller_bond_escrow(robot_dic):
         return False
 
     order_description = order_info["order_description"]
-    print_out(f"{robot_name} {order_id} {order_description}")
 
     peer_nick = peer_nick_from_response(order_response_json)
+
+    order_string_status_print(robot_name, order_id, order_description, peer_nick)
 
     amount_correct = amount_correct_from_response(order_response_json)
     if amount_correct is False:
@@ -208,7 +210,7 @@ def order_seller_bond_escrow(robot_dic):
         return False
 
     pay_label = \
-        robot_name + "-" + peer_nick + "-" + order_id + "-" + \
+        robot_name + "-" + str(peer_nick) + "-" + order_id + "-" + \
         order_user["type"] + "-" + order_user["currency"] + "-" + \
         amount_correct + "-" + premium_string_get(order_user["premium"])
     return subprocess_pay_invoice_and_check(
@@ -236,6 +238,7 @@ def order_post_action_simple(
         return False
 
     order_info = order_dic["order_info"]
+    order_response_json = order_dic["order_response_json"]
 
     status_id = order_info["status"]
     order_id = order_info["order_id"]
@@ -245,7 +248,10 @@ def order_post_action_simple(
         return False
 
     order_description = order_info["order_description"]
-    print_out(f"{robot_name} {order_id} {order_description}")
+
+    peer_nick = peer_nick_from_response(order_response_json)
+
+    order_string_status_print(robot_name, order_id, order_description, peer_nick)
 
     if extra_arg is False or extra_arg is None:
         order_post_response_all = order_post_function(

@@ -134,6 +134,18 @@ def dir_make_sure_exists(directory):
     return True
 
 
+def string_is_false_none_null(string):
+    # pylint: disable=R1703 simplifiable-if-statement
+    if string in (
+        "false", "False", "FALSE",
+        "none", "None", "NONE",
+        "null", "Null", "NULL"
+    ):
+        return True
+    else:
+        return False
+
+
 def update_single_option(name, new_value, print_info=False):
     if roboauto_options[name] != new_value:
         old_value = roboauto_options[name]
@@ -154,11 +166,7 @@ def update_federation_option(name, new_value, print_info=False):
             print_err("coordinator name %s not valid, similar to %s" % (name, key))
             return False
 
-    # pylint: disable=R1703 simplifiable-if-statement
-    if new_value in ("false", "False", "FALSE", "none", "None", "NONE"):
-        new_value_is_none = True
-    else:
-        new_value_is_none = False
+    new_value_is_none = string_is_false_none_null(new_value)
 
     old_value = roboauto_options["federation"].get(name, False)
     if old_value is False:
@@ -212,7 +220,9 @@ def update_roboauto_options(print_info=False):
                         print_err("reading %s" % option)
                         return False
 
-                    if option != "time_zone" and new_value < 0:
+                    if option == "time_zone":
+                        new_value *= -1
+                    elif new_value < 0:
                         print_err(f"{option} can not be negative")
                         return False
 
@@ -393,6 +403,7 @@ def file_json_write(file_name, data):
     try:
         with open(file_name, "w", encoding="utf8") as file:
             json.dump(data, file, indent=roboauto_options["tab_size"])
+            file.write("\n")
     except EnvironmentError:
         print_err("writing json data to %s" % file_name)
         return False
