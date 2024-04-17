@@ -5,16 +5,12 @@
 # pylint: disable=C0116 missing-function-docstring
 # pylint: disable=C0209 consider-using-f-string
 
-import os
-import time
 import re
-import subprocess
-import signal
 
 from roboauto.logger import print_out, print_err
-from roboauto.global_state import roboauto_state, roboauto_options
+from roboauto.global_state import roboauto_options
 from roboauto.order_data import \
-    get_order_string, get_type_string, get_currency_string, order_is_expired, \
+    get_order_string, get_type_string, get_currency_string, \
     order_is_public, order_is_paused, order_is_waiting_maker_bond, \
     get_all_currencies, get_fiat_payment_methods, get_swap_payment_methods, \
     order_is_waiting_taker_bond
@@ -28,9 +24,10 @@ from roboauto.requests_api import \
     requests_api_order, requests_api_order_cancel, \
     requests_api_make, response_is_error, requests_api_order_take
 from roboauto.utils import \
-    json_dumps, subprocess_run_command, string_is_false_none_null, \
+    json_dumps, string_is_false_none_null, \
     json_loads, input_ask, roboauto_get_coordinator_url, \
     roboauto_get_coordinator_from_url, token_get_base91
+from roboauto.subprocess_commands import subprocess_pay_invoice_and_check
 
 
 def list_currencies():
@@ -304,76 +301,6 @@ def robot_cancel_order(robot_dic):
     return True
 
 
-def subprocess_pay_invoice_and_check(
-    robot_dic, order_id,
-    invoice, amount_satoshis_string,
-    pay_label, is_paid_function,
-    string_checking, string_paid, string_not_paid,
-    maximum_retries=None, failure_function=None
-):
-    if failure_function is None:
-        failure_function = order_is_expired
-
-    robot_name = robot_dic["name"]
-
-    check_output = subprocess_run_command([
-        roboauto_state["lightning_node_command"], "check",
-        invoice, amount_satoshis_string
-    ])
-    if check_output is False:
-        print_err(
-            "lightning-node check returned false, invoice will not be paid"
-        )
-        return False
-    print_out(check_output.decode(), end="", date=False)
-    print_out("invoice checked successfully")
-
-    pay_command = [
-        roboauto_state["lightning_node_command"], "pay",
-        invoice, pay_label
-    ]
-
-    retries = 0
-    with subprocess.Popen(pay_command, start_new_session=True) as pay_subprocess:
-        while True:
-            if maximum_retries is not None and retries > maximum_retries:
-                print_err("maximum retries occured for pay command")
-                return False
-
-            print_out(string_checking)
-
-            order_dic = order_requests_order_dic(robot_dic, order_id)
-            if order_dic is False or order_dic is None:
-                return False
-
-            order_response_json = order_dic["order_response_json"]
-
-            order_status = order_response_json.get("status", False)
-            if order_status is False:
-                print_err(json_dumps(order_response_json), error=False, date=False)
-                print_err(f"getting order_status of {robot_name} {order_id}")
-                return False
-
-            if is_paid_function(order_status):
-                if not failure_function(order_status):
-                    print_out(robot_name + " " + string_paid)
-                    return_status = True
-                else:
-                    print_err(robot_name + " " + string_not_paid)
-                    return_status = False
-                try:
-                    os.killpg(os.getpgid(pay_subprocess.pid), signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
-
-                return return_status
-
-            retries += 1
-            time.sleep(roboauto_options["pay_interval"])
-
-    return False
-
-
 def amount_correct_from_response(order_response_json):
     amount_correct = order_response_json.get("amount", False)
     if amount_correct is False or amount_correct is None:
@@ -474,7 +401,7 @@ def bond_order(robot_dic, order_id, taker=False, take_amount=None):
         lambda order_status : not checking_function(order_status),
         "checking if order is bonded...",
         string_paid, string_not_paid,
-        failure_function=failure_function
+        order_requests_order_dic, failure_function
     )
 
 

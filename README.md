@@ -175,6 +175,7 @@ YourRobotName order-id robosats rated 5 stars
 - [X] generate robot
 - [X] list the books of the coordinators
 - [X] robot info
+- [X] update stealth option
 - [X] order info
 - [X] create/recreate order
 - [X] cancel order
@@ -185,16 +186,15 @@ YourRobotName order-id robosats rated 5 stars
 - [X] second/undo confirmations of payments
 - [X] start dispute
 - [X] rate coordinator
+- [X] claim rewards
 - [X] keep online orders, recreate them when they expire
 - [X] send message notification when an order is taken
 - [X] set a maximum of offer per hour
 - [X] different tor circuit for each robot
 - [X] core lightning
 - [ ] lnd, eclair, ldk, other nodes or wallets with apis
+- [ ] update order `update_address` and `submit_statement`
 - [ ] change orders next time they expire
-- [ ] send dispute statement
-- [ ] update stealth option, update_address
-- [ ] handle rewards
 - [ ] fast chat with websocket
 
 ## License

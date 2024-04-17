@@ -13,9 +13,9 @@ from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state
 from roboauto.utils import \
     get_date_short, json_dumps, file_json_read, \
-    file_is_executable, subprocess_run_command, \
     is_float, get_int, dir_make_sure_exists, file_json_write, \
     directory_get_last_number_file
+from roboauto.subprocess_commands import message_notification_send
 from roboauto.order_data import \
     get_currency_string, order_is_pending, get_type_string
 from roboauto.robot import \
@@ -352,17 +352,14 @@ def robot_handle_taken(robot_name, status_id, order_id, other):
         )
         return False
 
-    if file_is_executable(roboauto_state["message_notification_command"]):
-        message_output = subprocess_run_command([
-            roboauto_state["message_notification_command"], "order-taken",
-            robot_name + " " + order_id + " " + other
-        ])
-        if message_output is False:
-            print_err("sending message")
-            return False
-        print_out(message_output.decode(), end="", date=False)
-    else:
-        print_err("message notification command not found, no messages will be sent")
+    message_output = message_notification_send(
+        "order-taken",
+        robot_name + " " + order_id + " " + other
+    )
+    if message_output is False:
+        return False
+
+    print_out(message_output, end="", date=False)
 
     return True
 

@@ -178,6 +178,7 @@ def robot_info_argv(argv):
             if robot_url is False:
                 return False
 
+    # pylint: disable=R0801 duplicate-code
     robot_response, robot_response_json = robot_requests_robot(
         token_base91, robot_url, robot_dic
     )

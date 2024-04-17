@@ -320,6 +320,36 @@ def requests_api_chat_post(
     )
 
 
+def requests_api_reward(
+    token_base91, base_url, user, signed_invoice,
+    until_true=True, error_print=True
+):
+    return requests_api_post(
+        token_base91, base_url, user,
+        "/robot/",
+        "/api/reward/",
+        json_dumps({
+            "invoice": signed_invoice
+        }),
+        until_true=until_true, error_print=error_print
+    )
+
+
+def requests_api_stealth(
+    token_base91, base_url, user, wants_stealth,
+    until_true=True, error_print=True
+):
+    return requests_api_post(
+        token_base91, base_url, user,
+        "/robot/",
+        "/api/stealth/",
+        json_dumps({
+            "wantsStealth": wants_stealth
+        }),
+        until_true=until_true, error_print=error_print
+    )
+
+
 def requests_api_order_post(
     token_base91, order_id, base_url, user, order_action,
     until_true=True, error_print=True

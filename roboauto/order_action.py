@@ -6,10 +6,10 @@
 
 import os
 
-from roboauto.global_state import roboauto_state, roboauto_options
+from roboauto.global_state import roboauto_options
 from roboauto.utils import \
-    print_out, print_err, get_uint, subprocess_run_command, \
-    json_loads, input_ask, file_write, file_read
+    print_out, print_err, get_uint, json_loads, budget_ppm_from_argv, \
+    input_ask, file_write, file_read, invoice_get_correct_amount
 from roboauto.robot import \
     robot_get_current_fingerprint, robot_var_from_dic, \
     robot_input_from_argv, robot_change_dir
@@ -17,17 +17,20 @@ from roboauto.order_data import \
     order_is_waiting_seller_buyer, order_is_waiting_buyer, \
     order_is_waiting_seller, order_is_waiting_fiat_sent, \
     order_is_fiat_sent, order_is_public, order_is_paused, \
-    order_is_sucessful
+    order_is_sucessful, order_is_expired
 from roboauto.order import \
     order_requests_order_dic, peer_nick_from_response, bond_order, \
-    amount_correct_from_response, subprocess_pay_invoice_and_check, \
-    premium_string_get, order_string_status_print
+    amount_correct_from_response, premium_string_get, \
+    order_string_status_print
 from roboauto.requests_api import \
     requests_api_order_invoice, requests_api_order_pause, \
     requests_api_order_confirm, requests_api_order_undo_confirm, \
     requests_api_order_dispute, response_is_error, \
     requests_api_order_cancel, requests_api_order_rate
 from roboauto.gpg_key import gpg_sign_message
+from roboauto.subprocess_commands import \
+    subprocess_generate_invoice, \
+    subprocess_pay_invoice_and_check
 
 
 def order_take_argv(argv):
@@ -106,25 +109,20 @@ def order_buyer_update_invoice(robot_dic, budget_ppm=None):
     if budget_ppm is None:
         budget_ppm = roboauto_options["routing_budget_ppm"]
 
-    correct_invoice_amount = \
-        int(invoice_amount * (1 - budget_ppm / 1000000))
+    correct_invoice_amount = invoice_get_correct_amount(invoice_amount, budget_ppm)
 
     amount_correct = amount_correct_from_response(order_response_json)
     if amount_correct is False:
         amount_correct = order_info["amount_string"]
 
-    invoice_generate_output = subprocess_run_command([
-        roboauto_state["lightning_node_command"], "invoice",
+    invoice = subprocess_generate_invoice(
         str(correct_invoice_amount),
         robot_name + "-" + str(peer_nick) + "-" + order_id + "-" +
         order_user["type"] + "-" + order_user["currency"] + "-" +
         amount_correct + "-" + premium_string_get(order_user["premium"])
-    ])
-    if invoice_generate_output is False:
-        print_err("generating the invoice")
+    )
+    if invoice is False:
         return False
-
-    invoice = invoice_generate_output.decode()
 
     fingerprint = robot_get_current_fingerprint(robot_dir)
     if fingerprint is False:
@@ -220,6 +218,7 @@ def order_seller_bond_escrow(robot_dic):
         "checking if escrow is paid...",
         "escrow paid successfully",
         "escrow not paid in time",
+        order_requests_order_dic, order_is_expired,
         maximum_retries=100
     )
 
@@ -373,12 +372,9 @@ def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
         return False
 
     if extra_type == "budget_ppm":
-        budget_ppm = None
-        if len(argv) >= 1:
-            budget_ppm = get_uint(argv[0])
-            if budget_ppm is False:
-                return False
-            argv = argv[1:]
+        budget_ppm, argv = budget_ppm_from_argv(argv)
+        if argv is False:
+            return False
 
         extra_arg = budget_ppm
     elif extra_type == "rating":

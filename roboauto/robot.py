@@ -10,12 +10,13 @@ import shutil
 
 from roboauto.logger import print_out, print_err, print_war
 from roboauto.requests_api import \
-    requests_api_robot, response_is_error, requests_api_robot_generate
+    requests_api_robot, response_is_error, requests_api_stealth, \
+    requests_api_robot_generate, requests_api_reward
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.utils import \
     file_read, file_write, \
     file_json_read, file_json_write, \
-    json_loads, \
+    json_loads, date_get_current, \
     input_ask_robot, password_ask_token, \
     generate_random_token_base62, \
     roboauto_first_coordinator, \
@@ -24,7 +25,8 @@ from roboauto.utils import \
     token_get_base91, \
     dir_make_sure_exists, \
     string_from_multiline_format, string_to_multiline_format
-from roboauto.gpg_key import gpg_generate_robot, gpg_import_key
+from roboauto.gpg_key import gpg_generate_robot, gpg_import_key, gpg_sign_message
+from roboauto.subprocess_commands import subprocess_generate_invoice
 
 
 def robot_get_dir_dic():
@@ -349,6 +351,7 @@ def robot_requests_robot(token_base91, robot_url, robot_dic):
         return multi_false
 
     nickname = robot_response_json.get("nickname", "robot")
+
     earned_rewards = robot_response_json.get("earned_rewards", 0)
     if earned_rewards is not False and earned_rewards is not None and earned_rewards > 0:
         print_out(f"{nickname} have {earned_rewards} earned rewards")
@@ -604,5 +607,145 @@ def robot_unwait(robot_name=None):
     ) is False:
         print_err("writing waiting queue")
         return False
+
+    return True
+
+
+def robot_claim_reward(robot_dic, reward_amount):
+    robot_name, _, robot_dir, token, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+
+    date_current = date_get_current(
+        roboauto_options["date_format"].replace(" ", "-").replace("/", "-").replace(":", "-")
+    )
+
+    invoice = subprocess_generate_invoice(
+        str(reward_amount),
+        "reward-" + robot_name + "-" + date_current
+    )
+    if invoice is False:
+        return False
+
+    fingerprint = robot_get_current_fingerprint(robot_dir)
+    if fingerprint is False:
+        return False
+
+    signed_invoice = gpg_sign_message(invoice, fingerprint, passphrase=token)
+    if signed_invoice is False:
+        print_err("signing reward invoice")
+        return False
+
+    reward_response_all = requests_api_reward(
+        token_base91, robot_url, robot_name, signed_invoice
+    )
+    if response_is_error(reward_response_all):
+        return False
+    reward_response = reward_response_all.text
+    reward_response_json = json_loads(reward_response)
+    if reward_response_json is False:
+        print_err(reward_response, end="", error=False, date=False)
+        print_err("getting reward response")
+        return False
+
+    bad_request = reward_response_json.get("bad_request", False)
+    if bad_request is not False:
+        print_err(bad_request, date=False, error=False)
+        print_err("reward not claimed")
+        return False
+
+    successful_withdrawal = reward_response_json.get("successful_withdrawal", False)
+    if successful_withdrawal is False:
+        bad_invoice = reward_response_json.get("bad_invoice", False)
+        if bad_invoice is not False:
+            print_err(bad_invoice, error=False, date=False)
+        print_err("withdrawing not successful")
+        return False
+
+    print_out("invoice reward sent successfully")
+
+    return True
+
+
+def robot_claim_rewards_argv(argv):
+    robot_dic, argv = robot_input_from_argv(argv)
+    if robot_dic is False:
+        return False
+
+    robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+
+    # pylint: disable=R0801 duplicate-code
+    robot_response, robot_response_json = robot_requests_robot(
+        token_base91, robot_url, robot_dic
+    )
+    if robot_response is False:
+        return False
+
+    earned_rewards = robot_response_json.get("earned_rewards", 0)
+    if earned_rewards is False or earned_rewards is None or earned_rewards == 0:
+        print_err(f"{robot_name} does not have claimable rewards")
+        return False
+
+    if robot_claim_reward(robot_dic, earned_rewards) is False:
+        return False
+
+    # pylint: disable=R0801 duplicate-code
+    robot_response, robot_response_json = robot_requests_robot(
+        token_base91, robot_url, robot_dic
+    )
+    if robot_response is False:
+        return False
+
+    earned_rewards = robot_response_json.get("earned_rewards", 0)
+    if earned_rewards is not False and earned_rewards is not None and earned_rewards > 0:
+        print_err("coordinator does not have yet paid the reward invoice")
+        return False
+
+    return True
+
+
+def robot_update_stealth_invoice_option_argv(argv):
+    robot_dic, argv = robot_input_from_argv(argv)
+    if robot_dic is False:
+        return False
+
+    robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+
+    if len(argv) < 1:
+        print_err("insert stealth invoice option")
+        return False
+    wants_stealth_input = argv[0]
+    argv = argv[1:]
+
+    if wants_stealth_input.lower() == "true":
+        wants_stealth_bool = True
+    elif wants_stealth_input.lower() == "false":
+        wants_stealth_bool = False
+    else:
+        print_err("stealth invoice option should be true/false")
+        return False
+
+    stealth_response_all = requests_api_stealth(
+        token_base91, robot_url, robot_name, wants_stealth_bool
+    )
+    if response_is_error(stealth_response_all):
+        return False
+    stealth_response = stealth_response_all.text
+    stealth_response_json = json_loads(stealth_response)
+    if stealth_response_json is False:
+        print_err(stealth_response, end="", error=False, date=False)
+        print_err("getting stealth response")
+        return False
+
+    bad_request = stealth_response_json.get("bad_request", False)
+    if bad_request is not False:
+        print_err(bad_request, date=False, error=False)
+        print_err("changing stealth option")
+        return False
+
+    wants_stealth = stealth_response_json.get("wantsStealth", False)
+    if wants_stealth is not wants_stealth_bool:
+        print_err("stealth option not changed")
+        return False
+
+    print_out(f"{robot_name} stealth option changed to {wants_stealth}")
 
     return True

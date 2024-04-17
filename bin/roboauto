@@ -12,7 +12,8 @@ from roboauto.utils import \
     list_configs, update_roboauto_options
 from roboauto.robot import \
     robot_import, robot_print_token, robot_print_coordinator, robot_print_dir_argv, \
-    waiting_queue_print, robot_change_dir_from_argv, robot_generate
+    waiting_queue_print, robot_change_dir_from_argv, robot_generate, \
+    robot_claim_rewards_argv, robot_update_stealth_invoice_option_argv
 from roboauto.order_local import order_info_dir
 from roboauto.order import \
     create_order, cancel_order, recreate_order, list_order_fields, \
@@ -52,6 +53,8 @@ robosats-info --{coordinator-name}
 generate-robot --{coordinator-name} [--active, --pending, --inactive]
 robot-info robot-name
 robot-info --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
+claim-reward robot-name
+stealth-option robot-name true|false
 order-info [--local] [--simple] robot-name [order-id]
 chat-print [--local] robot-name
 message-send robot-name
@@ -141,6 +144,12 @@ robot-info --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
     get info about a robot
     if instead of robot-name --stdin or --stdin-base91 is passed
     token is taken from stdin and coordinator is also required
+
+claim-reward robot-name
+    claim reward for robot name
+
+stealth-option robot-name true|false
+    set stealth invoice option for robot-name
 
 order-info [--local] [--simple] robot-name [order-id]
     get info about the order of a robot
@@ -328,6 +337,10 @@ def main(argv):
             return_status = robot_generate(argv)
         elif action == "robot-info":
             return_status = robot_info_argv(argv)
+        elif action == "claim-reward":
+            return_status = robot_claim_rewards_argv(argv)
+        elif action == "stealth-option":
+            return_status = robot_update_stealth_invoice_option_argv(argv)
         elif action == "order-info":
             return_status = order_info_argv(argv)
         elif action == "chat-print":

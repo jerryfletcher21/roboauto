@@ -359,3 +359,10 @@ def order_is_finished(data):
         return True
     else:
         return False
+
+
+def order_is_finished_for_seller(data):
+    if data in (13, 15):
+        return True
+    else:
+        return False

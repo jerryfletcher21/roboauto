@@ -12,21 +12,25 @@ import filelock
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import \
-    robot_list_dir, robot_load_from_name, \
+    robot_list_dir, robot_load_from_name, robot_requests_robot, \
     waiting_queue_get, robot_change_dir, robot_requests_get_order_id, \
-    robot_get_dir_dic, robot_var_from_dic, robot_wait, robot_unwait
+    robot_get_dir_dic, robot_var_from_dic, robot_wait, robot_unwait, \
+    robot_claim_reward
 from roboauto.order_data import  \
-    order_is_public, order_is_paused, order_is_finished, order_is_pending, \
-    order_is_waiting_maker_bond, order_is_waiting_taker_bond, order_is_expired
+    order_is_public, order_is_paused, order_is_finished, \
+    order_is_pending, order_is_waiting_maker_bond, \
+    order_is_waiting_taker_bond, order_is_expired, \
+    order_is_finished_for_seller
 from roboauto.order_local import \
     robot_handle_taken, order_get_order_dic
 from roboauto.order import \
     order_requests_order_dic, bond_order, make_order
 from roboauto.book import \
-    get_book_response_json, get_hour_offer, \
+    get_book_response_json, get_hour_offer
+from roboauto.utils import \
+    update_roboauto_options, lock_file_name_get, \
     get_current_timestamp, \
     get_current_hour_from_timestamp, get_current_minutes_from_timestamp
-from roboauto.utils import update_roboauto_options, lock_file_name_get
 
 
 def robot_check_expired(robot_dic, robot_this_hour):
@@ -230,7 +234,7 @@ def should_remove_from_waiting_queue(
 
 
 def robot_handle_pending(robot_dic):
-    robot_name, _, robot_dir, _, _, _, _ = robot_var_from_dic(robot_dic)
+    robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     old_order_dic = order_get_order_dic(robot_dir, error_print=False)
     if old_order_dic is not False:
@@ -249,17 +253,32 @@ def robot_handle_pending(robot_dic):
         return False
 
     order_info = order_dic["order_info"]
+    order_response_json = order_dic["order_response_json"]
 
     status_id = order_info["status"]
 
-    # add order_is_finished_for_seller: sending satoshi to buyer and payment failed
+    is_seller = order_response_json.get("is_seller", False)
+
     if not order_is_pending(status_id):
         status_string = order_info["status_string"]
         print_out(f"{robot_name} {order_id} {status_string}")
 
-        if order_is_finished(status_id):
-            print_out(f"{robot_name} {order_id} is completed, moving to inactive")
-            return robot_change_dir(robot_name, "inactive")
+        if \
+            order_is_finished(status_id) or \
+            (is_seller and order_is_finished_for_seller(status_id)):
+            robot_response, robot_response_json = robot_requests_robot(
+                token_base91, robot_url, robot_dic
+            )
+            if robot_response is False:
+                return False
+
+            earned_rewards = robot_response_json.get("earned_rewards", 0)
+            if earned_rewards is not False and earned_rewards is not None and earned_rewards > 0:
+                # will be moved to inactive next loop if coordinator paid the invoice
+                return robot_claim_reward(robot_dic, earned_rewards)
+            else:
+                print_out(f"{robot_name} {order_id} is completed, moving to inactive")
+                return robot_change_dir(robot_name, "inactive")
         elif order_is_public(status_id):
             # check rewards and claim them
             print_out(

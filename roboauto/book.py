@@ -4,73 +4,17 @@
 
 # pylint: disable=C0116 missing-function-docstring
 
-import datetime
-
 from roboauto.logger import print_out, print_err
-from roboauto.global_state import roboauto_state, roboauto_options
+from roboauto.global_state import roboauto_state
 from roboauto.robot import robot_list_dir, waiting_queue_get
 from roboauto.order_data import get_currency_string
 from roboauto.order_local import \
     get_offer_dic, offer_dic_print, order_get_order_dic
 from roboauto.requests_api import response_is_error, requests_api_book
 from roboauto.utils import \
-    json_loads, roboauto_get_multi_coordinators_from_argv, roboauto_get_coordinator_url
-
-
-def get_hour_offer(hour_timestamp, current_timestamp, relative):
-    """get the hour from the timestamp, if relative the hour relative
-    to current timestamp"""
-    try:
-        robosats_date_format = roboauto_state["robot_date_format"]
-        if relative:
-            unix_time = int(
-                datetime.datetime.strptime(
-                    hour_timestamp, robosats_date_format
-                ).replace(
-                    tzinfo=datetime.timezone(datetime.timedelta(hours=0))
-                ).timestamp()
-            )
-            date_hour = (23 - int((current_timestamp - unix_time) / 3600)) % 24
-        else:
-            time_zone = roboauto_options["time_zone"]
-            date_hour = int(
-                datetime.datetime.strptime(
-                    hour_timestamp, robosats_date_format
-                ).replace(
-                    tzinfo=datetime.timezone(datetime.timedelta(hours=time_zone))
-                ).astimezone(datetime.timezone.utc).strftime(
-                    "%H"
-                )
-            )
-    except (ValueError, TypeError):
-        print_err("getting hour")
-        return False
-
-    return date_hour
-
-
-def get_current_timestamp():
-    return int(datetime.datetime.now().timestamp())
-
-
-def get_current_hour_from_timestamp(timestamp):
-    return int(
-        datetime.datetime.fromtimestamp(timestamp).replace(
-            tzinfo=datetime.timezone(datetime.timedelta(hours=0))
-        ).astimezone(datetime.timezone.utc).strftime(
-            "%H"
-        )
-    )
-
-
-def get_current_minutes_from_timestamp(timestamp):
-    return int(
-        datetime.datetime.fromtimestamp(timestamp).replace(
-            tzinfo=datetime.timezone(datetime.timedelta(hours=0))
-        ).astimezone(datetime.timezone.utc).strftime(
-            "%M"
-        )
-    )
+    json_loads, roboauto_get_multi_coordinators_from_argv, \
+    roboauto_get_coordinator_url, \
+    get_hour_offer, get_current_timestamp
 
 
 def get_offers_per_hour(relative):

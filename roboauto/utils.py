@@ -10,7 +10,6 @@ import re
 import datetime
 import getpass
 import json
-import subprocess
 import configparser
 import secrets
 import hashlib
@@ -120,6 +119,20 @@ def roboauto_get_multi_coordinators_from_argv(argv):
         return multi_false
 
     return coordinators, argv
+
+
+def budget_ppm_from_argv(argv):
+    multi_false = False, False
+
+    budget_ppm = None
+    if len(argv) >= 1:
+        budget_ppm = get_uint(argv[0])
+        if budget_ppm is False:
+            return multi_false
+
+        argv = argv[1:]
+
+    return budget_ppm, argv
 
 
 def dir_make_sure_exists(directory):
@@ -362,20 +375,6 @@ def file_is_executable(file_path):
     return os.access(file_path, os.X_OK)
 
 
-def subprocess_run_command(program, error_print=True):
-    try:
-        process = subprocess.run(program, capture_output=True, check=False)
-    except FileNotFoundError:
-        print_err("error: command %s does not exists" % program[0])
-        return False
-    if process.returncode != 0:
-        if error_print:
-            print_err(process.stderr.decode(), end="", error=False, date=False)
-        return False
-
-    return process.stdout
-
-
 def json_loads(data):
     try:
         return json.loads(data)
@@ -534,15 +533,6 @@ def token_get_base91(token_string):
     return base91_encode(hashlib.sha256(token_string.encode("utf-8")).digest())
 
 
-def get_date_short(date_unformat):
-    try:
-        date_short = date_unformat.split("T")[1].split(".")[0]
-    except IndexError:
-        date_short = "???"
-
-    return date_short
-
-
 def directory_get_last_number_file(dir_number, error_print=True):
     list_number = []
     for file_number in os.listdir(dir_number):
@@ -574,6 +564,71 @@ def string_to_multiline_format(string):
     return string.replace("\n", "\\")
 
 
+def get_date_short(date_unformat):
+    try:
+        date_short = date_unformat.split("T")[1].split(".")[0]
+    except IndexError:
+        date_short = "???"
+
+    return date_short
+
+
+def get_hour_offer(hour_timestamp, current_timestamp, relative):
+    """get the hour from the timestamp, if relative the hour relative
+    to current timestamp"""
+    try:
+        robosats_date_format = roboauto_state["robot_date_format"]
+        if relative:
+            unix_time = int(
+                datetime.datetime.strptime(
+                    hour_timestamp, robosats_date_format
+                ).replace(
+                    tzinfo=datetime.timezone(datetime.timedelta(hours=0))
+                ).timestamp()
+            )
+            date_hour = (23 - int((current_timestamp - unix_time) / 3600)) % 24
+        else:
+            time_zone = roboauto_options["time_zone"]
+            date_hour = int(
+                datetime.datetime.strptime(
+                    hour_timestamp, robosats_date_format
+                ).replace(
+                    tzinfo=datetime.timezone(datetime.timedelta(hours=time_zone))
+                ).astimezone(datetime.timezone.utc).strftime(
+                    "%H"
+                )
+            )
+    except (ValueError, TypeError):
+        print_err("getting hour")
+        return False
+
+    return date_hour
+
+
+def get_current_timestamp():
+    return int(datetime.datetime.now().timestamp())
+
+
+def get_current_hour_from_timestamp(timestamp):
+    return int(
+        datetime.datetime.fromtimestamp(timestamp).replace(
+            tzinfo=datetime.timezone(datetime.timedelta(hours=0))
+        ).astimezone(datetime.timezone.utc).strftime(
+            "%H"
+        )
+    )
+
+
+def get_current_minutes_from_timestamp(timestamp):
+    return int(
+        datetime.datetime.fromtimestamp(timestamp).replace(
+            tzinfo=datetime.timezone(datetime.timedelta(hours=0))
+        ).astimezone(datetime.timezone.utc).strftime(
+            "%M"
+        )
+    )
+
+
 def date_to_format_and_time_zone(date_string):
     return datetime.datetime.strptime(
         date_string, roboauto_state["robot_date_format"]
@@ -586,5 +641,21 @@ def date_to_format_and_time_zone(date_string):
     ).strftime(roboauto_options["date_format"])
 
 
+def date_get_current(date_format=roboauto_options["date_format"]):
+    return datetime.datetime.now().strftime(date_format)
+
+    # return datetime.datetime.fromtimestamp(get_current_timestamp()).replace(
+    #     tzinfo=datetime.timezone(
+    #         datetime.timedelta(hours=roboauto_options["time_zone"])
+    #     )
+    # ).astimezone(
+    #     datetime.timezone.utc
+    # ).strftime(date_format)
+
+
 def lock_file_name_get(name):
     return roboauto_state["lock_home"] + "/" + name
+
+
+def invoice_get_correct_amount(amount, budget_ppm):
+    return int(amount * (1 - budget_ppm / 1000000))
