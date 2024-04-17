@@ -477,6 +477,10 @@ def generate_random_token_base62():
     return random_string
 
 
+def sha256_single(string):
+    return hashlib.sha256(string.encode("utf-8")).hexdigest()
+
+
 def token_get_double_sha256(token_string):
     return hashlib.sha256(
         hashlib.sha256(

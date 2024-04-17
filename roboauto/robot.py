@@ -22,7 +22,7 @@ from roboauto.utils import \
     roboauto_first_coordinator, \
     roboauto_get_coordinator_url, \
     roboauto_get_coordinator_from_argv, \
-    token_get_base91, \
+    token_get_base91, sha256_single, \
     dir_make_sure_exists, \
     string_from_multiline_format, string_to_multiline_format
 from roboauto.gpg_key import gpg_generate_robot, gpg_import_key, gpg_sign_message
@@ -338,7 +338,8 @@ def robot_requests_robot(token_base91, robot_url, robot_dic):
     if robot_dic is not None:
         user = robot_dic["name"]
     else:
-        user = robot_dic["coordinator"]
+        # base91 have strange characters can not be used
+        user = sha256_single(token_base91)
 
     robot_response_all = requests_api_robot(token_base91, robot_url, user)
     if response_is_error(robot_response_all):
