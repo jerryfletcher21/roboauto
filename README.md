@@ -188,6 +188,7 @@ YourRobotName order-id robosats rated 5 stars
 - [X] keep online orders, recreate them when they expire
 - [X] send message notification when an order is taken
 - [X] set a maximum of offer per hour
+- [X] different tor circuit for each robot
 - [X] core lightning
 - [ ] lnd, eclair, ldk, other nodes or wallets with apis
 - [ ] change orders next time they expire

@@ -170,10 +170,6 @@ def robot_get_state_from_argv(argv, default_state="active"):
     return robot_state, argv
 
 
-def robot_get_lock_file(robot_name):
-    return roboauto_state["lock_home"] + "/" + robot_name
-
-
 def robot_import(argv):
     coordinator, _, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator is False:
@@ -337,7 +333,12 @@ def robot_requests_robot(token_base91, robot_url, robot_dic):
 
     multi_false = False, False
 
-    robot_response_all = requests_api_robot(token_base91, robot_url)
+    if robot_dic is not None:
+        user = robot_dic["name"]
+    else:
+        user = robot_dic["coordinator"]
+
+    robot_response_all = requests_api_robot(token_base91, robot_url, user)
     if response_is_error(robot_response_all):
         return multi_false
     robot_response = robot_response_all.text
@@ -504,7 +505,7 @@ def robot_generate(argv):
         token_base91,
         string_to_multiline_format(public_key),
         string_to_multiline_format(private_key),
-        coordinator_url,
+        coordinator_url, coordinator,
         until_true=True
     )
     if response_is_error(generate_response_all):

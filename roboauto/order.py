@@ -11,8 +11,6 @@ import re
 import subprocess
 import signal
 
-import filelock
-
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.order_data import \
@@ -24,8 +22,8 @@ from roboauto.order_local import \
     order_data_from_order_user, get_order_data, order_get_order_dic, \
     order_save_order_file, get_order_user
 from roboauto.robot import \
-    robot_get_lock_file, robot_input_from_argv, \
-    robot_change_dir, robot_var_from_dic, robot_requests_get_order_id
+    robot_input_from_argv, robot_change_dir, \
+    robot_var_from_dic, robot_requests_get_order_id
 from roboauto.requests_api import \
     requests_api_order, requests_api_order_cancel, \
     requests_api_make, response_is_error, requests_api_order_take
@@ -137,10 +135,12 @@ def order_requests_order_dic(
             return False
 
     if order_function is None:
-        order_response_all = requests_api_order(token_base91, order_id, robot_url)
+        order_response_all = requests_api_order(
+            token_base91, order_id, robot_url, robot_name
+        )
     else:
         order_response_all = order_function(
-            token_base91, order_id, robot_url, take_amount=take_amount
+            token_base91, order_id, robot_url, robot_name, take_amount=take_amount
         )
 
     # error 500 when the old order is purged from the server
@@ -263,50 +263,43 @@ def robot_cancel_order(robot_dic):
         print_err("robot %s is not in the active directory" % robot_name)
         return False
 
-    try:
-        with filelock.SoftFileLock(
-            robot_get_lock_file(robot_name), timeout=roboauto_state["filelock_timeout"]
-        ):
-            order_dic = order_requests_order_dic(robot_dic, order_id=False)
-            if order_dic is False or order_dic is None:
-                return False
-
-            order_info = order_dic["order_info"]
-
-            order_id = order_info["order_id"]
-            status_id = order_info["status"]
-
-            if \
-                not order_is_public(status_id) and \
-                not order_is_paused(status_id) and \
-                not order_is_waiting_maker_bond(status_id):
-                print_err("robot order %s %s is not public or paused" % (robot_name, order_id))
-                return False
-
-            print_out("robot %s cancel order %s" % (robot_name, order_id))
-
-            order_cancel_response_all = requests_api_order_cancel(
-                token_base91, order_id, robot_url
-            )
-            if response_is_error(order_cancel_response_all):
-                return False
-            order_cancel_response = order_cancel_response_all.text
-            order_cancel_response_json = json_loads(order_cancel_response)
-            if order_cancel_response_json is False:
-                print_err(order_cancel_response, end="", error=False, date=False)
-                print_err("cancelling order %s %s" % (robot_name, token_base91))
-                return False
-
-            bad_request = order_cancel_response_json.get("bad_request", False)
-            if bad_request is False:
-                print_err(order_cancel_response, end="", error=False, date=False)
-                print_err("getting cancel response %s %s" % (robot_name, order_id))
-                return False
-
-            print_out(bad_request, date=False)
-    except filelock.Timeout:
-        print_err("filelock timeout %d" % roboauto_state["filelock_timeout"])
+    order_dic = order_requests_order_dic(robot_dic, order_id=False)
+    if order_dic is False or order_dic is None:
         return False
+
+    order_info = order_dic["order_info"]
+
+    order_id = order_info["order_id"]
+    status_id = order_info["status"]
+
+    if \
+        not order_is_public(status_id) and \
+        not order_is_paused(status_id) and \
+        not order_is_waiting_maker_bond(status_id):
+        print_err("robot order %s %s is not public or paused" % (robot_name, order_id))
+        return False
+
+    print_out("robot %s cancel order %s" % (robot_name, order_id))
+
+    order_cancel_response_all = requests_api_order_cancel(
+        token_base91, order_id, robot_url, robot_name
+    )
+    if response_is_error(order_cancel_response_all):
+        return False
+    order_cancel_response = order_cancel_response_all.text
+    order_cancel_response_json = json_loads(order_cancel_response)
+    if order_cancel_response_json is False:
+        print_err(order_cancel_response, end="", error=False, date=False)
+        print_err("cancelling order %s %s" % (robot_name, token_base91))
+        return False
+
+    bad_request = order_cancel_response_json.get("bad_request", False)
+    if bad_request is False:
+        print_err(order_cancel_response, end="", error=False, date=False)
+        print_err("getting cancel response %s %s" % (robot_name, order_id))
+        return False
+
+    print_out(bad_request, date=False)
 
     return True
 
@@ -500,7 +493,7 @@ def make_order(
         return False
 
     make_response_all = requests_api_make(
-        token_base91, order_id, robot_url, make_data=json_dumps(make_data)
+        token_base91, order_id, robot_url, robot_name, make_data=json_dumps(make_data)
     )
     if response_is_error(make_response_all):
         return False

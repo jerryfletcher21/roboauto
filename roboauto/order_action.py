@@ -6,15 +6,13 @@
 
 import os
 
-import filelock
-
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.utils import \
     print_out, print_err, get_uint, subprocess_run_command, \
     json_loads, input_ask, file_write, file_read
 from roboauto.robot import \
     robot_get_current_fingerprint, robot_var_from_dic, \
-    robot_input_from_argv, robot_get_lock_file, robot_change_dir
+    robot_input_from_argv, robot_change_dir
 from roboauto.order_data import \
     order_is_waiting_seller_buyer, order_is_waiting_buyer, \
     order_is_waiting_seller, order_is_waiting_fiat_sent, \
@@ -138,7 +136,7 @@ def order_buyer_update_invoice(robot_dic, budget_ppm=None):
         return False
 
     order_invoice_response_all = requests_api_order_invoice(
-        token_base91, order_id, robot_url, signed_invoice, budget_ppm
+        token_base91, order_id, robot_url, robot_name, signed_invoice, budget_ppm
     )
     if response_is_error(order_invoice_response_all):
         return False
@@ -255,7 +253,7 @@ def order_post_action_simple(
 
     if extra_arg is False or extra_arg is None:
         order_post_response_all = order_post_function(
-            token_base91, order_id, robot_url
+            token_base91, order_id, robot_url, robot_name
         )
     else:
         order_post_response_all = order_post_function(
@@ -408,18 +406,10 @@ def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
 
         extra_arg = rating
 
-    try:
-        with filelock.SoftFileLock(
-            robot_get_lock_file(robot_dic["name"]), timeout=roboauto_state["filelock_timeout"]
-        ):
-            if extra_type is None or extra_type is None:
-                return order_post_function(robot_dic)
-            else:
-                return order_post_function(robot_dic, extra_arg)
-    except filelock.Timeout:
-        # pylint: disable=C0209 consider-using-f-string
-        print_err("filelock timeout %d" % roboauto_state["filelock_timeout"])
-        return False
+    if extra_type is None or extra_type is None:
+        return order_post_function(robot_dic)
+    else:
+        return order_post_function(robot_dic, extra_arg)
 
 
 def order_buyer_update_invoice_argv(argv):

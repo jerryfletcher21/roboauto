@@ -584,3 +584,7 @@ def date_to_format_and_time_zone(date_string):
     ).astimezone(
         datetime.timezone.utc
     ).strftime(roboauto_options["date_format"])
+
+
+def lock_file_name_get(name):
+    return roboauto_state["lock_home"] + "/" + name

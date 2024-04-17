@@ -12,7 +12,7 @@ import filelock
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import \
-    robot_get_lock_file, robot_list_dir, robot_load_from_name, \
+    robot_list_dir, robot_load_from_name, \
     waiting_queue_get, robot_change_dir, robot_requests_get_order_id, \
     robot_get_dir_dic, robot_var_from_dic, robot_wait, robot_unwait
 from roboauto.order_data import  \
@@ -26,7 +26,7 @@ from roboauto.book import \
     get_book_response_json, get_hour_offer, \
     get_current_timestamp, \
     get_current_hour_from_timestamp, get_current_minutes_from_timestamp
-from roboauto.utils import update_roboauto_options
+from roboauto.utils import update_roboauto_options, lock_file_name_get
 
 
 def robot_check_expired(robot_dic, robot_this_hour):
@@ -150,6 +150,7 @@ def count_active_orders_this_hour(
 def robot_check_expired_handle(robot_dic, current_timestamp, robot_this_hour):
     robot_name = robot_dic["name"]
     robot_dir = roboauto_state["active_home"] + "/" + robot_name
+
     order = order_get_order_dic(robot_dir, error_print=False)
     if order is not False and order_is_this_hour(
         order, current_timestamp,
@@ -159,11 +160,13 @@ def robot_check_expired_handle(robot_dic, current_timestamp, robot_this_hour):
         if robot_this_hour < 0:
             print_err("negative robot this hour")
             robot_this_hour = 0
+
     robot_online = robot_check_expired(
         robot_dic, robot_this_hour
     )
     if robot_online is False or robot_online == 0:
         return robot_this_hour
+
     order = order_get_order_dic(robot_dir, error_print=False)
     if order is not False and order_is_this_hour(
         order, current_timestamp,
@@ -193,19 +196,11 @@ def list_orders_single_book(
 
         if robot_name not in nicks:
             if robot_name not in nicks_waiting:
-                try:
-                    with filelock.SoftFileLock(
-                        robot_get_lock_file(robot_name),
-                        timeout=roboauto_state["filelock_timeout"]
-                    ):
-                        robot_check_expired_handle(
-                            robot_dic, current_timestamp, robot_this_hour
-                        )
-                except filelock.Timeout:
-                    # pylint: disable=C0209 consider-using-f-string
-                    print_err("filelock timeout %d" % roboauto_state["filelock_timeout"])
-                    continue
+                robot_this_hour = robot_check_expired_handle(
+                    robot_dic, current_timestamp, robot_this_hour
+                )
         elif robot_name in nicks_waiting:
+            print_out(f"{robot_name} was in waiting queue but is active")
             if robot_unwait(robot_name):
                 order = order_get_order_dic(
                     roboauto_state["active_home"] + "/" + robot_name, error_print=False
@@ -224,7 +219,7 @@ def should_remove_from_waiting_queue(
 ):
     # let old orders expire
     current_minutes = get_current_minutes_from_timestamp(current_timestamp)
-    min_minutes = 10
+    min_minutes = roboauto_state["waiting_queue_remove_after"]
     if \
         current_minutes > min_minutes and \
         robot_this_hour < roboauto_options["order_maximum"] and \
@@ -480,8 +475,8 @@ def keep_online(argv):
         argv = argv[1:]
 
     try:
-        with filelock.SoftFileLock(
-            roboauto_state["lock_home"] + "/" + "keep-online",
+        with filelock.FileLock(
+            lock_file_name_get("keep-online"),
             timeout=0
         ):
             return keep_online_no_lock()

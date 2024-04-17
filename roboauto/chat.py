@@ -8,21 +8,22 @@ import re
 
 from roboauto.logger import print_out, print_err
 from roboauto.utils import \
-    json_loads, string_from_multiline_format, token_get_base91, \
-    roboauto_get_coordinator_url, string_to_multiline_format, \
+    json_loads, string_from_multiline_format, string_to_multiline_format, \
     input_ask, file_json_write, date_to_format_and_time_zone
 from roboauto.order_local import order_get_order_dic
 from roboauto.requests_api import \
     response_is_error, requests_api_chat_post, requests_api_chat
 from roboauto.robot import \
     robot_save_peer_gpg_public_key, robot_get_current_fingerprint, \
-    robot_get_peer_fingerprint, robot_input_from_argv
+    robot_get_peer_fingerprint, robot_input_from_argv, robot_var_from_dic
 from roboauto.gpg_key import \
     gpg_import_key, gpg_encrypt_sign_message, gpg_decrypt_check_message
 
 
-def robot_requests_chat(robot_dir, token_base91, robot_url):
+def robot_requests_chat(robot_dic):
     multi_false = False, False
+
+    robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     order_dic = order_get_order_dic(robot_dir, error_print=False)
     if order_dic is False:
@@ -37,7 +38,7 @@ def robot_requests_chat(robot_dir, token_base91, robot_url):
     if order_id is False:
         return multi_false
 
-    chat_response_all = requests_api_chat(token_base91, order_id, robot_url)
+    chat_response_all = requests_api_chat(token_base91, order_id, robot_url, robot_name)
     if response_is_error(chat_response_all):
         return multi_false
     chat_response = chat_response_all.text
@@ -165,11 +166,7 @@ def chat_print_encrypted_messages(chat_response_json, robot_dir, token):
 
 
 def robot_send_chat_message(robot_dic, message):
-    robot_name = robot_dic["name"]
-    robot_dir = robot_dic["dir"]
-    token = robot_dic["token"]
-    token_base91 = token_get_base91(token)
-    robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
+    robot_name, _, robot_dir, token, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     order_dic = order_get_order_dic(robot_dir)
     if order_dic is False:
@@ -198,9 +195,7 @@ def robot_send_chat_message(robot_dic, message):
         peer_fingerprint = robot_get_peer_fingerprint(robot_dir, error_print=False)
         if peer_fingerprint is False:
             print_out("peer gpg key not yet present, searching it")
-            chat_response, _ = robot_requests_chat(
-                robot_dir, token_base91, robot_url
-            )
+            chat_response, _ = robot_requests_chat(robot_dic)
             if chat_response is False:
                 return False
             peer_fingerprint = robot_get_peer_fingerprint(robot_dir)
@@ -217,7 +212,7 @@ def robot_send_chat_message(robot_dic, message):
             return False
 
     chat_response_post_all = requests_api_chat_post(
-        token_base91, order_id, robot_url, message_send
+        token_base91, order_id, robot_url, robot_name, message_send
     )
     if response_is_error(chat_response_post_all):
         print_err(f"{robot_name} sending message")

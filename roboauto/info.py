@@ -28,8 +28,10 @@ from roboauto.utils import \
     token_get_base91
 
 
-def requests_simple_handle(requests_function, coordinator_url, description_string):
-    response_all = requests_function(coordinator_url)
+def requests_simple_handle(
+    requests_function, coordinator_url, coordinator, description_string
+):
+    response_all = requests_function(coordinator_url, coordinator)
     if response_is_error(response_all):
         return False
     response = response_all.text
@@ -43,12 +45,12 @@ def requests_simple_handle(requests_function, coordinator_url, description_strin
 
 
 def list_historical(argv):
-    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator_url is False:
         return False
 
     historical_response_json = requests_simple_handle(
-        requests_api_historical, coordinator_url, "historical"
+        requests_api_historical, coordinator_url, coordinator, "historical"
     )
     if historical_response_json is False:
         return False
@@ -59,12 +61,12 @@ def list_historical(argv):
 
 
 def list_limits(argv):
-    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator_url is False:
         return False
 
     limits_response_json = requests_simple_handle(
-        requests_api_limits, coordinator_url, "limits"
+        requests_api_limits, coordinator_url, coordinator, "limits"
     )
     if limits_response_json is False:
         return False
@@ -75,12 +77,12 @@ def list_limits(argv):
 
 
 def list_price(argv):
-    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator_url is False:
         return False
 
     price_response_json = requests_simple_handle(
-        requests_api_price, coordinator_url, "price"
+        requests_api_price, coordinator_url, coordinator, "price"
     )
     if price_response_json is False:
         return False
@@ -91,7 +93,7 @@ def list_price(argv):
 
 
 def list_ticks(argv):
-    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator_url is False:
         return False
 
@@ -107,7 +109,9 @@ def list_ticks(argv):
     end_date = argv[0]
     argv = argv[1:]
 
-    ticks_response_all = requests_api_ticks(coordinator_url, start_date, end_date)
+    ticks_response_all = requests_api_ticks(
+        coordinator_url, coordinator, start_date, end_date
+    )
     if response_is_error(ticks_response_all):
         return False
     ticks_response = ticks_response_all.text
@@ -123,18 +127,14 @@ def list_ticks(argv):
 
 
 def robosats_info(argv):
-    _, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator_url is False:
         return False
 
-    info_response_all = requests_api_info(coordinator_url)
-    if response_is_error(info_response_all):
-        return False
-    info_response = info_response_all.text
-    info_response_json = json_loads(info_response)
+    info_response_json = requests_simple_handle(
+        requests_api_info, coordinator_url, coordinator, "info"
+    )
     if info_response_json is False:
-        print_err(info_response, end="", error=False, date=False)
-        print_err("info response is not json")
         return False
 
     print_out(json_dumps(info_response_json))
@@ -267,13 +267,9 @@ def robot_chat(argv):
 
     robot_dir = robot_dic["dir"]
     token = robot_dic["token"]
-    token_base91 = token_get_base91(token)
-    robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
 
     if from_local is False:
-        chat_response, chat_response_json = robot_requests_chat(
-            robot_dir, token_base91, robot_url
-        )
+        chat_response, chat_response_json = robot_requests_chat(robot_dic)
         if chat_response is False:
             return False
 

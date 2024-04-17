@@ -151,7 +151,7 @@ def get_book_response_json(coordinator, until_true=False):
         error_print_book = True
         terminal = True
     book_response_all = requests_api_book(
-        base_url, until_true=until_true, error_print=error_print_book
+        base_url, coordinator, until_true=until_true, error_print=error_print_book
     )
     if response_is_error(book_response_all):
         print_err(f"connecting to coordinator {coordinator}", terminal=terminal)
