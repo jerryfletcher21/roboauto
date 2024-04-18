@@ -13,7 +13,7 @@ from roboauto.order_data import \
     get_order_string, get_type_string, get_currency_string, \
     order_is_public, order_is_paused, order_is_waiting_maker_bond, \
     get_all_currencies, get_fiat_payment_methods, get_swap_payment_methods, \
-    order_is_waiting_taker_bond
+    order_is_waiting_taker_bond, order_is_expired
 from roboauto.order_local import \
     order_data_from_order_user, get_order_data, order_get_order_dic, \
     order_save_order_file, get_order_user
@@ -352,7 +352,7 @@ def bond_order(robot_dic, order_id, taker=False, take_amount=None):
     order_description = order_info["order_description"]
     if taker is False:
         checking_function = order_is_waiting_maker_bond
-        failure_function = None
+        failure_function = order_is_expired
         if not checking_function(order_info["status"]):
             print_err(f"{robot_name} {order_id} is not waiting maker bond")
             return False
