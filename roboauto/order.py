@@ -5,6 +5,7 @@
 # pylint: disable=C0116 missing-function-docstring
 # pylint: disable=C0209 consider-using-f-string
 
+import os
 import re
 
 from roboauto.logger import print_out, print_err
@@ -25,8 +26,8 @@ from roboauto.requests_api import \
     requests_api_make, response_is_error, requests_api_order_take
 from roboauto.utils import \
     json_dumps, string_is_false_none_null, \
-    json_loads, input_ask, roboauto_get_coordinator_url, \
-    roboauto_get_coordinator_from_url, token_get_base91
+    json_loads, input_ask, roboauto_get_coordinator_from_url, \
+    file_json_read, file_json_write, file_remove
 from roboauto.subprocess_commands import subprocess_pay_invoice_and_check
 
 
@@ -406,14 +407,28 @@ def bond_order(robot_dic, order_id, taker=False, take_amount=None):
 
 
 def make_order(
-    robot_dic, order_id, make_data, should_bond=True
+    robot_dic, order_id, make_data, should_bond=True, check_change=False
 ):
-    """make the request to the coordinator to create an order,
-    and if should_bond is true, also bond it"""
+    """make the request to the coordinator to create an order.
+    if should_bond is true, also bond it.
+    if check_change is true, change the order from data saved on disk"""
 
-    robot_name = robot_dic["name"]
-    token_base91 = token_get_base91(robot_dic["token"])
-    robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
+    robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+
+    change_order_file = robot_dir + "/change-next-order"
+
+    if check_change is True:
+        if os.path.isfile(change_order_file):
+            change_order = file_json_read(change_order_file)
+            if change_order is not False:
+                for key, value in change_order.items():
+                    if value is not False:
+                        old_value = make_data[key]
+                        make_data[key] = value
+                        print_out(
+                            f"{robot_name} {order_id} {key} "
+                            f"changed from {old_value} to {value}"
+                        )
 
     if not make_data["bond_size"]:
         print_err("bond size percentage not defined")
@@ -436,6 +451,9 @@ def make_order(
         if bad_request is not False:
             print_err(bad_request, error=False, date=False)
             print_err("making order")
+            if "Your order maximum amount is too big" in bad_request:
+                if not robot_change_dir(robot_name, "paused"):
+                    return False
         else:
             print_err(make_response, end="", error=False, date=False)
             print_err(make_data, error=False, date=False)
@@ -444,14 +462,18 @@ def make_order(
 
     order_id = str(order_id_number)
 
+    if check_change is True:
+        if os.path.isfile(change_order_file):
+            file_remove(change_order_file)
+
     if not should_bond:
-        print_out(f"order {order_id} will not be bonded")
+        print_out(f"{robot_name} order {order_id} will not be bonded")
         return True
 
     return bond_order(robot_dic, order_id)
 
 
-def order_user_from_argv(argv, with_default=False):
+def order_user_from_argv(argv, with_default=False, only_set=False):
     """get order_user's fields from argv"""
     order_user = order_user_empty_get(with_default)
 
@@ -476,7 +498,10 @@ def order_user_from_argv(argv, with_default=False):
             print_err("%s is not a valid key" % key)
             return False
 
-    return order_user
+    if only_set is False:
+        return order_user
+    else:
+        return {k: v for k, v in order_user.items() if v is not False}
 
 
 def create_order(argv):
@@ -626,5 +651,55 @@ def recreate_order(argv):
     if should_cancel is False:
         if not robot_change_dir(robot_name, "active"):
             return False
+
+    return True
+
+
+def order_change_next_expire(argv):
+    action = "set"
+    if len(argv) > 0:
+        first_arg = argv[0]
+        if first_arg in ("--print", "--remove"):
+            argv = argv[1:]
+            action = first_arg.split("-", 2)[2]
+
+    robot_dic, argv = robot_input_from_argv(argv)
+    if robot_dic is False:
+        return False
+
+    robot_name, _, robot_dir, _, _, _, _ = robot_var_from_dic(robot_dic)
+
+    change_order_file = robot_dir + "/change-next-order"
+
+    if action in ("print", "remove"):
+        if not os.path.isfile(change_order_file):
+            print_out(f"{robot_name} change order not set")
+        else:
+            change_order = file_json_read(change_order_file)
+            if change_order is False:
+                return False
+            print_out(json_dumps(change_order))
+
+            if action == "remove":
+                if not file_remove(change_order_file):
+                    return False
+    elif action == "set":
+        order_user = order_user_from_argv(argv, only_set=True)
+        if order_user is False:
+            return False
+
+        something_set = False
+        for _, value in order_user.items():
+            if value is not False:
+                something_set = True
+                break
+        if something_set is False:
+            print_err("nothing set to change")
+            return False
+
+        if not file_json_write(change_order_file, order_user):
+            return False
+
+        print_out(json_dumps(order_user))
 
     return True

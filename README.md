@@ -71,7 +71,7 @@ cp data/message-notification-simplex ~/.config/roboauto/message-notification
 Source completions/roboauto.bash-completion in ~/.bashrc
 
 If the bash completion package is installed there are better completions in
-`create-order` and `recreate-order`
+`create-order`, `recreate-order` and `change-order-expire`
 
 ## Usage
 
@@ -188,13 +188,13 @@ YourRobotName order-id robosats rated 5 stars
 - [X] rate coordinator
 - [X] claim rewards
 - [X] keep online orders, recreate them when they expire
+- [X] change orders next time they expire
 - [X] send message notification when an order is taken
 - [X] set a maximum of offer per hour
 - [X] different tor circuit for each robot
 - [X] core lightning
 - [ ] lnd, eclair, ldk, other nodes or wallets with apis
-- [ ] update order `update_address` and `submit_statement`
-- [ ] change orders next time they expire
+- [ ] update order: `update_address` and `submit_statement`
 - [ ] fast chat with websocket
 
 ## License

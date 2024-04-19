@@ -436,6 +436,16 @@ def file_json_read(file_name):
     return data
 
 
+def file_remove(file_name):
+    try:
+        os.remove(file_name)
+    except OSError:
+        print_err(f"removing {file_name}")
+        return False
+
+    return True
+
+
 def input_ask(question):
     try:
         answer = input(question)

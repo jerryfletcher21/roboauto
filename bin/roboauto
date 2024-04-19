@@ -17,7 +17,7 @@ from roboauto.robot import \
 from roboauto.order_local import order_info_dir
 from roboauto.order import \
     create_order, cancel_order, recreate_order, list_order_fields, \
-    list_currencies, list_payment_methods
+    list_currencies, list_payment_methods, order_change_next_expire
 from roboauto.order_action import \
     order_buyer_update_invoice_argv, order_seller_bond_escrow_argv, \
     order_pause_toggle_argv, order_collaborative_cancel_argv, order_take_argv, \
@@ -31,7 +31,7 @@ from roboauto.book import list_offers_per_hour_argv, list_offers_argv
 from roboauto.keep_online import keep_online
 
 
-VERSION = "0.2"
+VERSION = "0.2.2"
 
 INFO = """\
 roboauto action [options]
@@ -64,9 +64,10 @@ list-price --{coordinator-name}
 list-ticks --{coordinator-name} [start-date] [end-date]
 list-hours [--relative]
 list-offers --{coordinators}|--all [--sell|--buy] [currency] [search]
-create-order [--no-bond] [--no-active] robot-name [key=value]
+create-order [--no-bond] [--no-active] robot-name [key=value...]
 cancel-order robot-name
-recreate-order [--no-cancel] [--no-bond] robot-name key=value
+recreate-order [--no-cancel] [--no-bond] robot-name key=value...
+change-order-expire [--print, --remove] robot-name [key=value...]
 take-order robot-name order-id [take-amount]
 pause-toggle robot-name
 escrow-pay robot-name
@@ -190,11 +191,11 @@ list-offers --{coordinators}|--all [--sell|--buy] [currency] [search]
     multiple coordinators can be specified or --all
     search is the string to be searched in the payment method
 
-create-order [--no-bond] [--no-active] robot-name [key=value]
+create-order [--no-bond] [--no-active] robot-name [key=value...]
     create a new order
     if --no-bond create order but do not bond
     if --no-active do not set the robot to the active directory
-    if key=value are not provided they will be asked
+    if key=value... are not provided they will be asked
     list of keys can be get with roboauto list-order-fields
     payment_method can be provided multiple times
     if public_duration, escrow_duration and bond_size are not specified,
@@ -203,14 +204,21 @@ create-order [--no-bond] [--no-active] robot-name [key=value]
 cancel-order robot-name
     cancel robot order just if order is public or paused
 
-recreate-order [--no-cancel] [--no-bond] robot-name key=value
+recreate-order [--no-cancel] [--no-bond] robot-name key=value...
     recreate robot order just if order is public or paused
     if --no-cancel do not cancel the order, recreate is from
     last saved order
     if --no-bond create order but do not bond
-    the list of key=value is the same as for create-order
+    the list of key=value... is the same as for create-order
     and will overwrite the old order
     payment_method can be provided multiple times
+
+change-order-expire [--print, --remove] robot-name [key=value...]
+    change an order next time it is recreated after if has expired
+    while running keep-online
+    the list of key=value... is the same as for create-order
+    if --print prints the current changes if present
+    if --remove removes the current changes if present and prints it
 
 take-order robot-name order-id [take-amount]
     take the order-id order with
@@ -365,6 +373,8 @@ def main(argv):
             return_status = cancel_order(argv)
         elif action == "recreate-order":
             return_status = recreate_order(argv)
+        elif action == "change-order-expire":
+            return_status = order_change_next_expire(argv)
         elif action == "take-order":
             return_status = order_take_argv(argv)
         elif action == "pause-toggle":

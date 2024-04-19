@@ -83,7 +83,8 @@ def robot_check_expired(robot_dic, robot_this_hour):
         if robot_this_hour < roboauto_options["order_maximum"]:
             if not make_order(
                 robot_dic, order_id,
-                order_dic["order_data"]
+                order_dic["order_data"],
+                check_change=True
             ):
                 return False
             return 1

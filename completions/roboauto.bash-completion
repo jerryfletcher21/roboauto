@@ -442,6 +442,35 @@ $robots"
                 ___roboauto_complete_order_fields
             fi
         ;;
+        change-order-expire)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="
+--print
+--remove"
+            fi
+            if \
+                [ "${cword}" -eq 2 ] || {
+                    [ "${cword}" -eq 3 ] && \
+                    { [ "$prev" = "--print" ] || [ "$prev" = "--remove" ]; }
+                }
+            then
+                OPTS="$OPTS
+$(___roboauto_get_robots "$active_home")"
+            elif [ "$advanced_completion" = true ]; then
+                local should_complete=true
+                for word in "${words[@]}"; do
+                    case "$word" in
+                    --print|--remove)
+                        should_complete=false
+                        break
+                    ;;
+                    esac
+                done
+                if [ "$should_complete" = true ]; then
+                    ___roboauto_complete_order_fields
+                fi
+            fi
+        ;;
         take-order)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$(___roboauto_get_robots "$paused_home")"
