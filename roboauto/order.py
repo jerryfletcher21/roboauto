@@ -152,6 +152,7 @@ def order_requests_order_dic(
     if response_is_error(order_response_all):
         print_err(f"{robot_name} {order_id} not found")
         return False
+
     order_response = order_response_all.text
     order_response_json = json_loads(order_response)
     if order_response_json is False:

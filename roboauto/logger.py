@@ -5,13 +5,9 @@
 # pylint: disable=C0116 missing-function-docstring
 
 import sys
-import datetime
 
-from roboauto.global_state import roboauto_options, roboauto_state
-
-
-def get_date():
-    return datetime.datetime.today().strftime(roboauto_options["date_format"])
+from roboauto.global_state import roboauto_state
+from roboauto.date_utils import date_get_current
 
 
 def print_and_log(arg, end="\n", file=None, terminal=True):
@@ -40,7 +36,7 @@ def print_out(arg, end="\n", date=True, terminal=True):
     string_print = arg
 
     if roboauto_state["should_log"] and date:
-        date_current = get_date()
+        date_current = date_get_current()
         string_print = "[" + date_current + "] " + string_print
 
     print_and_log(string_print, end=end, terminal=terminal)
@@ -53,7 +49,7 @@ def print_stderr(error_string, arg, end="\n", date=True, error=True, terminal=Tr
         string_print = error_string + string_print
 
     if roboauto_state["should_log"] and date:
-        date_current = get_date()
+        date_current = date_get_current()
         string_print = "[" + date_current + "] " + string_print
 
     print_and_log(string_print, end=end, file=sys.stderr, terminal=terminal)

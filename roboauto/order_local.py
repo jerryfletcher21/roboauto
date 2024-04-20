@@ -11,10 +11,10 @@ import shutil
 
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state
+from roboauto.date_utils import date_convert_time_zone_and_format_string
 from roboauto.utils import \
-    get_date_short, json_dumps, file_json_read, \
-    is_float, get_int, dir_make_sure_exists, file_json_write, \
-    directory_get_last_number_file
+    json_dumps, file_json_read, is_float, get_int, \
+    dir_make_sure_exists, file_json_write, directory_get_last_number_file
 from roboauto.subprocess_commands import message_notification_send
 from roboauto.order_data import \
     get_currency_string, order_is_pending, get_type_string
@@ -82,7 +82,10 @@ def get_offer_dic(offer, coordinator):
     elif order_type_bool == 2:
         order_type = "all"
 
-    date_end = get_date_short(expires_at)
+    date_end = date_convert_time_zone_and_format_string(
+        expires_at,
+        output_format="%H:%M:%S"
+    )
 
     currency = get_currency_string(currency_id).lower()
 

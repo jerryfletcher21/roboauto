@@ -27,10 +27,11 @@ from roboauto.order import \
     order_requests_order_dic, bond_order, make_order
 from roboauto.book import \
     get_book_response_json, get_hour_offer
+from roboauto.date_utils import \
+    get_current_timestamp, get_current_hour_from_timestamp, \
+    get_current_minutes_from_timestamp
 from roboauto.utils import \
-    update_roboauto_options, lock_file_name_get, \
-    get_current_timestamp, \
-    get_current_hour_from_timestamp, get_current_minutes_from_timestamp
+    update_roboauto_options, lock_file_name_get
 
 
 def robot_check_expired(robot_dic, robot_this_hour):
@@ -44,13 +45,7 @@ def robot_check_expired(robot_dic, robot_this_hour):
         return False
 
     order_dic = order_requests_order_dic(robot_dic, order_id)
-    if order_dic is None:
-        print_out(robot_name + " moving to paused")
-        if not robot_change_dir(robot_name, "paused"):
-            print_err("moving " + robot_name + " to paused")
-            return False
-        return 0
-    elif order_dic is False:
+    if order_dic is False or order_dic is None:
         return False
 
     order_info = order_dic["order_info"]
@@ -247,14 +242,11 @@ def robot_handle_pending(robot_dic):
             return False
 
     order_dic = order_requests_order_dic(robot_dic, order_id)
-    if order_dic is None:
-        print_out(robot_name + " moving to paused")
-        return robot_change_dir(robot_name, "paused")
-    elif order_dic is False:
+    if order_dic is False or order_dic is None:
         return False
 
-    order_info = order_dic["order_info"]
     order_response_json = order_dic["order_response_json"]
+    order_info = order_dic["order_info"]
 
     status_id = order_info["status"]
 

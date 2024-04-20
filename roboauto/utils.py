@@ -7,7 +7,6 @@
 
 import os
 import re
-import datetime
 import getpass
 import json
 import configparser
@@ -223,7 +222,7 @@ def update_roboauto_options(print_info=False):
 
             for option in (
                 "book_interval", "pending_interval", "pay_interval", "error_interval",
-                "time_zone", "tab_size", "order_maximum", "routing_budget_ppm",
+                "tab_size", "order_maximum", "routing_budget_ppm",
                 "default_duration", "default_escrow"
             ):
                 if parser.has_option(general_section, option):
@@ -233,9 +232,7 @@ def update_roboauto_options(print_info=False):
                         print_err("reading %s" % option)
                         return False
 
-                    if option == "time_zone":
-                        new_value *= -1
-                    elif new_value < 0:
+                    if new_value < 0:
                         print_err(f"{option} can not be negative")
                         return False
 
@@ -576,95 +573,6 @@ def string_to_multiline_format(string):
         return string
 
     return string.replace("\n", "\\")
-
-
-def get_date_short(date_unformat):
-    try:
-        date_short = date_unformat.split("T")[1].split(".")[0]
-    except IndexError:
-        date_short = "???"
-
-    return date_short
-
-
-def get_hour_offer(hour_timestamp, current_timestamp, relative):
-    """get the hour from the timestamp, if relative the hour relative
-    to current timestamp"""
-    try:
-        robosats_date_format = roboauto_state["robot_date_format"]
-        if relative:
-            unix_time = int(
-                datetime.datetime.strptime(
-                    hour_timestamp, robosats_date_format
-                ).replace(
-                    tzinfo=datetime.timezone(datetime.timedelta(hours=0))
-                ).timestamp()
-            )
-            date_hour = (23 - int((current_timestamp - unix_time) / 3600)) % 24
-        else:
-            time_zone = roboauto_options["time_zone"]
-            date_hour = int(
-                datetime.datetime.strptime(
-                    hour_timestamp, robosats_date_format
-                ).replace(
-                    tzinfo=datetime.timezone(datetime.timedelta(hours=time_zone))
-                ).astimezone(datetime.timezone.utc).strftime(
-                    "%H"
-                )
-            )
-    except (ValueError, TypeError):
-        print_err("getting hour")
-        return False
-
-    return date_hour
-
-
-def get_current_timestamp():
-    return int(datetime.datetime.now().timestamp())
-
-
-def get_current_hour_from_timestamp(timestamp):
-    return int(
-        datetime.datetime.fromtimestamp(timestamp).replace(
-            tzinfo=datetime.timezone(datetime.timedelta(hours=0))
-        ).astimezone(datetime.timezone.utc).strftime(
-            "%H"
-        )
-    )
-
-
-def get_current_minutes_from_timestamp(timestamp):
-    return int(
-        datetime.datetime.fromtimestamp(timestamp).replace(
-            tzinfo=datetime.timezone(datetime.timedelta(hours=0))
-        ).astimezone(datetime.timezone.utc).strftime(
-            "%M"
-        )
-    )
-
-
-def date_to_format_and_time_zone(date_string):
-    return datetime.datetime.strptime(
-        date_string, roboauto_state["robot_date_format"]
-    ).replace(
-        tzinfo=datetime.timezone(
-            datetime.timedelta(hours=roboauto_options["time_zone"])
-        )
-    ).astimezone(
-        datetime.timezone.utc
-    ).strftime(roboauto_options["date_format"])
-
-
-def date_get_current(date_format=roboauto_options["date_format"]):
-    return datetime.datetime.now().strftime(date_format)
-
-    # return datetime.datetime.fromtimestamp(get_current_timestamp()).replace(
-    #     tzinfo=datetime.timezone(
-    #         datetime.timedelta(hours=roboauto_options["time_zone"])
-    #     )
-    # ).astimezone(
-    #     datetime.timezone.utc
-    # ).strftime(date_format)
 
 
 def lock_file_name_get(name):

@@ -4,12 +4,11 @@
 
 # pylint: disable=C0116 missing-function-docstring
 
-import datetime
-
 import gnupg
 
 from roboauto.global_state import roboauto_state
 from roboauto.logger import print_err
+from roboauto.date_utils import date_get_yesterday
 from roboauto.utils import token_get_double_sha256
 
 
@@ -28,7 +27,7 @@ def gpg_generate_robot(token):
 
     key_passphrase = token
 
-    yesterday = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    yesterday = date_get_yesterday(date_format="%Y-%m-%d")
 
     # stupid python-gnupg put by default Name-Email in gen_key_input and no option to remove it
     input_data = f"""\

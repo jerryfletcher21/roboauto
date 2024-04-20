@@ -10,7 +10,6 @@ roboauto_options = {
     "pending_interval": 120,
     "pay_interval": 2,
     "error_interval": 5,
-    "time_zone": 0,
     "tab_size": 4,
     "order_maximum": 2,
     "routing_budget_ppm": 1000,

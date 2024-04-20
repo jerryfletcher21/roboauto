@@ -11,10 +11,11 @@ from roboauto.order_data import get_currency_string
 from roboauto.order_local import \
     get_offer_dic, offer_dic_print, order_get_order_dic
 from roboauto.requests_api import response_is_error, requests_api_book
+from roboauto.date_utils import \
+    get_hour_offer, get_current_timestamp
 from roboauto.utils import \
     json_loads, roboauto_get_multi_coordinators_from_argv, \
-    roboauto_get_coordinator_url, \
-    get_hour_offer, get_current_timestamp
+    roboauto_get_coordinator_url
 
 
 def get_offers_per_hour(relative):

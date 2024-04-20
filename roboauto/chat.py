@@ -7,9 +7,10 @@
 import re
 
 from roboauto.logger import print_out, print_err
+from roboauto.date_utils import date_convert_time_zone_and_format_string
 from roboauto.utils import \
     json_loads, string_from_multiline_format, string_to_multiline_format, \
-    input_ask, file_json_write, date_to_format_and_time_zone
+    input_ask, file_json_write
 from roboauto.order_local import order_get_order_dic
 from roboauto.requests_api import \
     response_is_error, requests_api_chat_post, requests_api_chat
@@ -126,7 +127,7 @@ def chat_print_encrypted_messages(chat_response_json, robot_dir, token):
             print_err("getting message nick")
             return False
 
-        message_date = date_to_format_and_time_zone(message_time)
+        message_date = date_convert_time_zone_and_format_string(message_time)
 
         if re.match('^#', message_enc) is not None:
             status_char = "N"
