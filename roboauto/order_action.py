@@ -8,8 +8,9 @@ import os
 
 from roboauto.global_state import roboauto_options
 from roboauto.utils import \
-    print_out, print_err, get_uint, json_loads, budget_ppm_from_argv, \
-    input_ask, file_write, file_read, invoice_get_correct_amount
+    print_out, print_err, get_uint, json_loads, json_dumps, \
+    budget_ppm_from_argv, input_ask, file_write, file_read, \
+    invoice_get_correct_amount
 from roboauto.robot import \
     robot_get_current_fingerprint, robot_var_from_dic, \
     robot_input_from_argv, robot_change_dir
@@ -17,7 +18,7 @@ from roboauto.order_data import \
     order_is_waiting_seller_buyer, order_is_waiting_buyer, \
     order_is_waiting_seller, order_is_waiting_fiat_sent, \
     order_is_fiat_sent, order_is_public, order_is_paused, \
-    order_is_sucessful, order_is_expired
+    order_is_sucessful, order_is_expired, get_order_string
 from roboauto.order import \
     order_requests_order_dic, peer_nick_from_response, bond_order, \
     amount_correct_from_response, premium_string_get, \
@@ -148,6 +149,19 @@ def order_buyer_update_invoice(robot_dic, budget_ppm=None):
     bad_request = order_invoice_response_json.get("bad_request", False)
     if bad_request is not False:
         print_err(bad_request, date=False, error=False)
+        return False
+
+    new_status_id = order_invoice_response_json.get("status", False)
+    if new_status_id is False:
+        print_err(json_dumps(order_invoice_response_json), date=False, error=False)
+        print_err("invoice not sent, no new status")
+        return False
+
+    if \
+        not order_is_waiting_seller(new_status_id) and \
+        not order_is_waiting_fiat_sent(new_status_id):
+        print_err(json_dumps(order_invoice_response_json), date=False, error=False)
+        print_err("invoice not send, current status: " + get_order_string(new_status_id))
         return False
 
     print_out(f"{robot_name} {order_id} invoice sent successfully")

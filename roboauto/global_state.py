@@ -12,6 +12,7 @@ roboauto_options = {
     "error_interval": 5,
     "tab_size": 4,
     "order_maximum": 2,
+    "seconds_pending_order": 0,
     "routing_budget_ppm": 1000,
     "default_duration": 86400,
     "default_escrow": 28800,

@@ -20,16 +20,20 @@ from roboauto.order_data import  \
     order_is_public, order_is_paused, order_is_finished, \
     order_is_pending, order_is_waiting_maker_bond, \
     order_is_waiting_taker_bond, order_is_expired, \
-    order_is_finished_for_seller
+    order_is_finished_for_seller, order_is_waiting_seller_buyer, \
+    order_is_waiting_seller, order_is_waiting_buyer
 from roboauto.order_local import \
     robot_handle_taken, order_get_order_dic
 from roboauto.order import \
     order_requests_order_dic, bond_order, make_order
+from roboauto.order_action import \
+    order_seller_bond_escrow, order_buyer_update_invoice
 from roboauto.book import \
     get_book_response_json, get_hour_offer
 from roboauto.date_utils import \
     get_current_timestamp, get_current_hour_from_timestamp, \
-    get_current_minutes_from_timestamp
+    get_current_minutes_from_timestamp, timestamp_from_date_string, \
+    date_convert_time_zone_and_format_string
 from roboauto.utils import \
     update_roboauto_options, lock_file_name_get
 
@@ -229,6 +233,22 @@ def should_remove_from_waiting_queue(
     return False
 
 
+def pending_robot_should_act(expires_timestamp, escrow_duration):
+    remaining_seconds = expires_timestamp - get_current_timestamp()
+    if remaining_seconds < 0:
+        return False
+
+    seconds_pending_order = roboauto_options["seconds_pending_order"]
+    if seconds_pending_order > 0:
+        if remaining_seconds < seconds_pending_order:
+            return True
+    elif seconds_pending_order < 0:
+        if remaining_seconds < escrow_duration + seconds_pending_order:
+            return True
+
+    return False
+
+
 def robot_handle_pending(robot_dic):
     robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
@@ -252,7 +272,43 @@ def robot_handle_pending(robot_dic):
 
     is_seller = order_response_json.get("is_seller", False)
 
-    if not order_is_pending(status_id):
+    if order_is_pending(status_id):
+        expires_at = order_response_json.get("expires_at", False)
+        if expires_at is False:
+            print_err("no expires_at")
+            return False
+
+        escrow_duration = order_response_json.get("escrow_duration", False)
+        if escrow_duration is False:
+            print_err("no escrow_duration")
+            return False
+
+        if pending_robot_should_act(
+            timestamp_from_date_string(expires_at),
+            int(escrow_duration)
+        ):
+            date_short_expire = date_convert_time_zone_and_format_string(
+                expires_at, output_format="%H:%M:%S"
+            )
+            if is_seller:
+                if \
+                    order_is_waiting_seller_buyer(status_id) or \
+                    order_is_waiting_seller(status_id):
+                    print_out(
+                        f"{robot_name} {order_id} "
+                        f"expires at {date_short_expire}, paying escrow"
+                    )
+                    return order_seller_bond_escrow(robot_dic)
+            else:
+                if \
+                    order_is_waiting_seller_buyer(status_id) or \
+                    order_is_waiting_buyer(status_id):
+                    print_out(
+                        f"{robot_name} {order_id} "
+                        f"expires at {date_short_expire}, sending invoice"
+                    )
+                    return order_buyer_update_invoice(robot_dic)
+    else:
         status_string = order_info["status_string"]
         print_out(f"{robot_name} {order_id} {status_string}")
 

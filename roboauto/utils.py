@@ -206,6 +206,8 @@ def update_federation_option(name, new_value, print_info=False):
 
 
 def update_roboauto_options(print_info=False):
+    # pylint: disable=R1702 too-many-nested-blocks
+
     if os.path.isfile(roboauto_state["config_file"]):
         parser = configparser.RawConfigParser()
         parser.read(roboauto_state["config_file"])
@@ -222,7 +224,7 @@ def update_roboauto_options(print_info=False):
 
             for option in (
                 "book_interval", "pending_interval", "pay_interval", "error_interval",
-                "tab_size", "order_maximum", "routing_budget_ppm",
+                "tab_size", "order_maximum", "seconds_pending_order", "routing_budget_ppm",
                 "default_duration", "default_escrow"
             ):
                 if parser.has_option(general_section, option):
@@ -232,7 +234,17 @@ def update_roboauto_options(print_info=False):
                         print_err("reading %s" % option)
                         return False
 
-                    if new_value < 0:
+                    if option == "seconds_pending_order":
+                        seconds_min_value = 300
+                        if \
+                            new_value != 0 and \
+                            (-1 * seconds_min_value) < new_value < seconds_min_value:
+                            print_err(
+                                f"{option} if not 0, absolute value can "
+                                f"not be less than {seconds_min_value}"
+                            )
+                            return False
+                    elif new_value < 0:
                         print_err(f"{option} can not be negative")
                         return False
 

@@ -22,7 +22,8 @@ Main command of roboauto is `keep-online`. After you have generated
 robots from different coordinators, and created make offers, `roboauto
 keep-online` will automatically recreate offers when they expire, and
 notify the user when an order is taken, by running the message-notification
-script.
+script. Optionally it will also automatically pay escrow/send invoice of
+taken orders.
 
 Examples scripts for simplex and mutt are provided.
 
@@ -115,6 +116,7 @@ insert token:
 #### then keep generated and imported robots online (with tmux, it will keep running)
 ```
 # get notified when your offers get taken and recreate them when they expire
+# if you want to also pay escrow/send invoice check seconds_pending_order in config.ini
 $ roboauto keep-online
 # or with less non important erorr messages
 # $ roboauto keep-online --quiet
@@ -192,9 +194,11 @@ YourRobotName order-id robosats rated 5 stars
 - [X] send message notification when an order is taken
 - [X] set a maximum of offer per hour
 - [X] different tor circuit for each robot
+- [X] automatically pay escrow/send invoice
 - [X] core lightning
 - [ ] lnd, eclair, ldk, other nodes or wallets with apis
 - [ ] update order: `update_address` and `submit_statement`
+- [ ] handle expired/unpaid invoices
 - [ ] fast chat with websocket
 
 ## License
