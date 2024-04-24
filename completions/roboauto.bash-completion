@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # source this file in ~/.bashrc
-# if the bash completion package is installed there are better
-# completions in roboauto create-order and recreate-order
+# if the bash completion package is installed there are better completions
+# in roboauto create-order, recreate-order and change-order-expire
 
 __roboauto_completion() {
     local ifs_original="$IFS"
@@ -107,7 +107,8 @@ $(
     }
 
     ___roboauto_get_coordinators() {
-        roboauto list-configs | jq -r '.federation | keys[] as $k | "--\($k)"'
+        roboauto list-configs |
+        jq -r '.federation | keys[] as $k | "--\($k)"'
     }
 
     ___roboauto_get_robots() {
@@ -119,7 +120,7 @@ $(
 
     # shellcheck disable=SC2034
     local cur prev words=() cword
-    local word advanced_completion minimal_completion
+    local word advanced_completion default_completion
 
     # if bash completion is sourced
     if [ "$(type -t _get_comp_words_by_ref 2>/dev/null)" = "function" ]; then
@@ -135,7 +136,7 @@ $(
         advanced_completion=false
     fi
 
-    minimal_completion=false
+    default_completion=false
 
     OPTS=""
 
@@ -219,7 +220,7 @@ $(___roboauto_get_robots "$active_home")"
 --dir"
             fi
             if [ "${cword}" -eq 3 ] && [ "$prev" == "--dir" ]; then
-                minimal_completion=true
+                default_completion=true
             fi
         ;;
         robosats-info|list-historical|list-limits|list-price|list-ticks)
@@ -519,7 +520,7 @@ $(___roboauto_get_robots "$active_home")"
             ;;
             esac
         done
-    elif [ "$minimal_completion" = true ]; then
+    elif [ "$default_completion" = true ]; then
         if [ "$(type -t _minimal 2>/dev/null)" = "function" ]; then
             _minimal
         fi

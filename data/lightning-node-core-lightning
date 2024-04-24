@@ -16,7 +16,7 @@ lightning_cli() {
     lightning-cli "$@"
 }
 
-# check that the invoice is for the correct amount
+# check that an invoice is for the correct amount
 # decoding the invoice with core lightning
 lightning_check() {
     if [ "$#" -lt 2 ]; then
@@ -27,8 +27,14 @@ lightning_check() {
     amount="$2"
     shift 2
 
+    if ! invoice_decode="$(
+        lightning_cli decode "$invoice"
+    )"; then
+        echo "error: decoding invoice" >&2
+        return 1
+    fi
     if ! invoice_amount_msat="$(
-        lightning_cli decode "$invoice" |
+        printf "%s\n" "$invoice_decode" |
         jq -e -r '.amount_msat'
     )"; then
         echo "error: amount mast not present in invoice" >&2
@@ -67,7 +73,7 @@ lightning_check() {
     return 0
 }
 
-# pay the invoice with core lightning
+# pay an invoice with core lightning
 lightning_pay() {
     if [ "$#" -lt 2 ]; then
         echo "error: there are not enough parameters" >&2
@@ -114,6 +120,7 @@ lightning_invoice() {
             echo "error: there are more than one invoice with the same label" >&2
             return 1
         fi
+
         if ! invoice_status="$(
             printf "%s\n" "$list_invoices" |
             jq -e -r '.invoices[].status'
@@ -125,8 +132,22 @@ lightning_invoice() {
             echo "error: status of old invoice is $invoice_status instead of unpaid" >&2
             return 1
         fi
-        if ! lightning_cli -k delinvoice label="$invoice_label" status=unpaid >/dev/null; then
-            echo "error: deleting old invoice" >&2
+
+        if ! del_invoice="$(
+            lightning_cli -k delinvoice label="$invoice_label" status=unpaid
+        )"; then
+            echo "error: running delinvoice" >&2
+            return 1
+        fi
+        if ! deleted_label="$(
+            printf "%s\n" "$del_invoice" |
+            jq -e -r '.label'
+        )"; then
+            echo "error: getting deleted invoice label" >&2
+            return 1
+        fi
+        if [ "$deleted_label" != "$invoice_label" ]; then
+            echo "error: invoice label: $invoice_label deleted label: $deleted_label" >&2
             return 1
         fi
     fi

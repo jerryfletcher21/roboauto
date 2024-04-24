@@ -196,7 +196,9 @@ YourRobotName order-id robosats rated 5 stars
 - [X] different tor circuit for each robot
 - [X] automatically pay escrow/send invoice
 - [X] core lightning
-- [ ] lnd, eclair, ldk, other nodes or wallets with apis
+- [X] lnd
+- [ ] eclair, ldk, other nodes or wallets with apis
+- [ ] other message notification, ex telegram, nostr
 - [ ] update order: `update_address` and `submit_statement`
 - [ ] handle expired/unpaid invoices
 - [ ] fast chat with websocket
