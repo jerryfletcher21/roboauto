@@ -10,7 +10,7 @@ from roboauto.global_state import roboauto_options
 from roboauto.utils import \
     print_out, print_err, get_uint, json_loads, json_dumps, \
     budget_ppm_from_argv, input_ask, file_write, file_read, \
-    invoice_get_correct_amount
+    invoice_get_correct_amount, is_float
 from roboauto.robot import \
     robot_get_current_fingerprint, robot_var_from_dic, \
     robot_input_from_argv, robot_change_dir
@@ -27,7 +27,8 @@ from roboauto.requests_api import \
     requests_api_order_invoice, requests_api_order_pause, \
     requests_api_order_confirm, requests_api_order_undo_confirm, \
     requests_api_order_dispute, response_is_error, \
-    requests_api_order_cancel, requests_api_order_rate
+    requests_api_order_cancel, requests_api_order_rate, \
+    requests_api_order_address
 from roboauto.gpg_key import gpg_sign_message
 from roboauto.subprocess_commands import \
     subprocess_generate_invoice, \
@@ -70,14 +71,44 @@ def order_take_argv(argv):
     return True
 
 
-def order_buyer_update_invoice(robot_dic, budget_ppm=None):
+def get_invoice_for_order_taken(input_data):
+    order_user, order_info, order_response_json, \
+    robot_name, order_id, peer_nick, \
+    budget_ppm = input_data
+
+    invoice_amount = order_response_json.get("invoice_amount", False)
+    if invoice_amount is False:
+        print_err("invoice amount is not present")
+        return False
+
+    correct_invoice_amount = invoice_get_correct_amount(invoice_amount, budget_ppm)
+
+    amount_correct = amount_correct_from_response(order_response_json)
+    if amount_correct is False:
+        amount_correct = order_info["amount_string"]
+
+    invoice = subprocess_generate_invoice(
+        str(correct_invoice_amount),
+        robot_name + "-" + str(peer_nick) + "-" + order_id + "-" +
+        order_user["type"] + "-" + order_user["currency"] + "-" +
+        amount_correct + "-" + premium_string_get(order_user["premium"])
+    )
+    if invoice is False:
+        return False
+
+    return invoice
+
+
+def order_buyer_update_data(
+    robot_dic, get_message_function, requests_api_order_function,
+    extra_value, data_string
+):
     robot_name, _, robot_dir, token, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     order_dic = order_requests_order_dic(robot_dic, order_id=False)
     if order_dic is False or order_dic is None:
         return False
 
-    # pylint: disable=R0801 duplicate-code
     order_user = order_dic["order_user"]
     order_info = order_dic["order_info"]
     order_response_json = order_dic["order_response_json"]
@@ -102,71 +133,80 @@ def order_buyer_update_invoice(robot_dic, budget_ppm=None):
 
     order_string_status_print(robot_name, order_id, order_description, peer_nick)
 
-    invoice_amount = order_response_json.get("invoice_amount", False)
-    if invoice_amount is False:
-        print_err("invoice amount is not present")
-        return False
-
-    if budget_ppm is None:
-        budget_ppm = roboauto_options["routing_budget_ppm"]
-
-    correct_invoice_amount = invoice_get_correct_amount(invoice_amount, budget_ppm)
-
-    amount_correct = amount_correct_from_response(order_response_json)
-    if amount_correct is False:
-        amount_correct = order_info["amount_string"]
-
-    invoice = subprocess_generate_invoice(
-        str(correct_invoice_amount),
-        robot_name + "-" + str(peer_nick) + "-" + order_id + "-" +
-        order_user["type"] + "-" + order_user["currency"] + "-" +
-        amount_correct + "-" + premium_string_get(order_user["premium"])
-    )
-    if invoice is False:
+    message = get_message_function((
+        order_user, order_info, order_response_json,
+        robot_name, order_id, peer_nick,
+        extra_value
+    ))
+    if message is False:
         return False
 
     fingerprint = robot_get_current_fingerprint(robot_dir)
     if fingerprint is False:
         return False
 
-    signed_invoice = gpg_sign_message(invoice, fingerprint, passphrase=token)
-    if signed_invoice is False:
-        print_err("signing invoice")
+    signed_message = gpg_sign_message(message, fingerprint, passphrase=token)
+    if signed_message is False:
+        print_err(f"signing {data_string}")
         return False
 
-    order_invoice_response_all = requests_api_order_invoice(
-        token_base91, order_id, robot_url, robot_name, signed_invoice, budget_ppm
+    order_data_response_all = requests_api_order_function(
+        token_base91, order_id, robot_url, robot_name, signed_message, extra_value
     )
-    if response_is_error(order_invoice_response_all):
+    if response_is_error(order_data_response_all):
         return False
-    order_invoice_response = order_invoice_response_all.text
-    order_invoice_response_json = json_loads(order_invoice_response)
-    if order_invoice_response_json is False:
-        print_err(order_invoice_response, end="", error=False, date=False)
-        print_err(f"{robot_name} {order_id} sending invoice")
+    order_data_response = order_data_response_all.text
+    order_data_response_json = json_loads(order_data_response)
+    if order_data_response_json is False:
+        print_err(order_data_response, end="", error=False, date=False)
+        print_err(f"{robot_name} {order_id} sending {data_string}")
         return False
 
-    bad_request = order_invoice_response_json.get("bad_request", False)
+    bad_request = order_data_response_json.get("bad_request", False)
     if bad_request is not False:
         print_err(bad_request, date=False, error=False)
         return False
 
-    new_status_id = order_invoice_response_json.get("status", False)
+    new_status_id = order_data_response_json.get("status", False)
     if new_status_id is False:
-        print_err(json_dumps(order_invoice_response_json), date=False, error=False)
-        print_err("invoice not sent, no new status")
+        print_err(json_dumps(order_data_response_json), date=False, error=False)
+        print_err(f"{data_string} not sent, no new status")
         return False
 
     if \
         not order_is_waiting_seller(new_status_id) and \
         not order_is_waiting_fiat_sent(new_status_id):
-        print_err(json_dumps(order_invoice_response_json), date=False, error=False)
-        print_err("invoice not send, current status: " + get_order_string(new_status_id))
+        print_err(json_dumps(order_data_response_json), date=False, error=False)
+        print_err(f"{data_string} not send, current status: " + get_order_string(new_status_id))
         return False
 
-    print_out(f"{robot_name} {order_id} invoice sent successfully")
+    print_out(f"{robot_name} {order_id} {data_string} sent successfully")
 
     return True
+
+
+def order_buyer_update_invoice(robot_dic, extra_arg):
+    budget_ppm = extra_arg
+    if budget_ppm is None or budget_ppm is False:
+        budget_ppm = roboauto_options["routing_budget_ppm"]
+
+    return order_buyer_update_data(
+        robot_dic,
+        get_invoice_for_order_taken,
+        requests_api_order_invoice,
+        budget_ppm, "invoice"
+    )
+
+
+def order_buyer_update_address(robot_dic, extra_arg):
+    address, sat_per_vb = extra_arg
+
+    return order_buyer_update_data(
+        robot_dic,
+        lambda _ : address,
+        requests_api_order_address,
+        sat_per_vb, "address"
+    )
 
 
 def order_seller_bond_escrow(robot_dic):
@@ -362,7 +402,9 @@ def order_start_dispute(robot_dic):
     )
 
 
-def order_rate_coordinator(robot_dic, rating):
+def order_rate_coordinator(robot_dic, extra_arg):
+    rating = extra_arg
+
     if order_post_action_simple(
         robot_dic,
         requests_api_order_rate,
@@ -385,12 +427,30 @@ def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
     if robot_dic is False:
         return False
 
-    if extra_type == "budget_ppm":
+    if extra_type == "update_invoice":
         budget_ppm, argv = budget_ppm_from_argv(argv)
         if argv is False:
             return False
 
         extra_arg = budget_ppm
+    elif extra_type == "update_address":
+        if len(argv) < 1:
+            print_err("insert address")
+            return False
+        address = argv[0]
+        argv = argv[1:]
+
+        if len(argv) < 1:
+            print_err("insert sat per vb")
+            return False
+        sat_per_vb = argv[0]
+        argv = argv[1:]
+
+        if not is_float(sat_per_vb, additional_check="positive"):
+            print_err("sat per vb should be a positive float")
+            return False
+
+        extra_arg = (address, sat_per_vb)
     elif extra_type == "rating":
         robot_name = robot_dic["name"]
         rating_coordinator_file = robot_dic["dir"] + "/rating-coordinator"
@@ -416,7 +476,7 @@ def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
 
         extra_arg = rating
 
-    if extra_type is None or extra_type is None:
+    if extra_type is None or extra_type is False:
         return order_post_function(robot_dic)
     else:
         return order_post_function(robot_dic, extra_arg)
@@ -424,7 +484,13 @@ def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
 
 def order_buyer_update_invoice_argv(argv):
     return robot_order_post_action_argv(
-        argv, order_buyer_update_invoice, extra_type="budget_ppm"
+        argv, order_buyer_update_invoice, extra_type="update_invoice"
+    )
+
+
+def order_buyer_update_address_argv(argv):
+    return robot_order_post_action_argv(
+        argv, order_buyer_update_invoice, extra_type="update_address"
     )
 
 

@@ -378,6 +378,21 @@ def requests_api_order_invoice(
     )
 
 
+def requests_api_order_address(
+    token_base91, order_id, base_url, user, signed_address, sat_per_vb,
+    until_true=True, error_print=True
+):
+    return requests_api_order_post(
+        token_base91, order_id, base_url, user,
+        json_dumps({
+            "action": "update_address",
+            "address": signed_address,
+            "mining_fee_rate": sat_per_vb
+        }),
+        until_true=until_true, error_print=error_print
+    )
+
+
 def requests_api_order_rate(
     token_base91, order_id, base_url, user, rating,
     until_true=True, error_print=True

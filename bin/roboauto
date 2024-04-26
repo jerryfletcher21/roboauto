@@ -22,7 +22,7 @@ from roboauto.order_action import \
     order_buyer_update_invoice_argv, order_seller_bond_escrow_argv, \
     order_pause_toggle_argv, order_collaborative_cancel_argv, order_take_argv, \
     order_send_confirm_argv, order_undo_confirm_argv, order_start_dispute_argv, \
-    order_rate_coordinator_argv
+    order_rate_coordinator_argv, order_buyer_update_address_argv
 from roboauto.chat import robot_send_chat_message_argv
 from roboauto.info import \
     robosats_info, robot_info_argv, order_info_argv, robot_chat, \
@@ -72,6 +72,7 @@ take-order robot-name order-id [take-amount]
 pause-toggle robot-name
 escrow-pay robot-name
 invoice-send robot-name [budget-ppm]
+address-send robot-name address sat-per-vb
 collaborative-cancel robot-name
 confirm-send robot-name
 confirm-undo robot-name
@@ -235,6 +236,9 @@ invoice-send robot-name [budget-ppm]
     generate and send invoice of a buy order
     budget-ppm can be specified otherwise default is used
 
+address-send robot-name address sat-per-vb
+    send the address for on chain payout, specifying sat per vbyte
+
 collaborative-cancel robot-name
     ask for a collaborative cancel or if the peer already asked for
     it accept a collaborative cancel
@@ -383,6 +387,8 @@ def main(argv):
             return_status = order_seller_bond_escrow_argv(argv)
         elif action == "invoice-send":
             return_status = order_buyer_update_invoice_argv(argv)
+        elif action == "address-send":
+            return_status = order_buyer_update_address_argv(argv)
         elif action == "collaborative-cancel":
             return_status = order_collaborative_cancel_argv(argv)
         elif action == "confirm-send":

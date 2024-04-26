@@ -307,32 +307,30 @@ def robot_handle_pending(robot_dic):
                         f"{robot_name} {order_id} "
                         f"expires at {date_short_expire}, sending invoice"
                     )
-                    return order_buyer_update_invoice(robot_dic)
+                    return order_buyer_update_invoice(robot_dic, None)
     else:
         status_string = order_info["status_string"]
         print_out(f"{robot_name} {order_id} {status_string}")
 
+        robot_response, robot_response_json = robot_requests_robot(
+            token_base91, robot_url, robot_dic
+        )
+        if robot_response is False:
+            return False
+
+        earned_rewards = robot_response_json.get("earned_rewards", 0)
+        if earned_rewards is not False and earned_rewards is not None and earned_rewards > 0:
+            # while there are rewards to be claimed it is not moving from pending
+            return robot_claim_reward(robot_dic, earned_rewards)
+
         if \
             order_is_finished(status_id) or \
             (is_seller and order_is_finished_for_seller(status_id)):
-            robot_response, robot_response_json = robot_requests_robot(
-                token_base91, robot_url, robot_dic
-            )
-            if robot_response is False:
-                return False
-
-            earned_rewards = robot_response_json.get("earned_rewards", 0)
-            if earned_rewards is not False and earned_rewards is not None and earned_rewards > 0:
-                # will be moved to inactive next loop if coordinator paid the invoice
-                return robot_claim_reward(robot_dic, earned_rewards)
-            else:
-                print_out(f"{robot_name} {order_id} is completed, moving to inactive")
-                return robot_change_dir(robot_name, "inactive")
+            print_out(f"{robot_name} {order_id} is completed, moving to inactive")
+            return robot_change_dir(robot_name, "inactive")
         elif order_is_public(status_id):
-            # check rewards and claim them
             print_out(
-                f"{robot_name} was pending and now is public, "
-                "moving to active, check rewards"
+                f"{robot_name} {order_id} was pending and now is public, moving to active"
             )
             return robot_change_dir(robot_name, "active")
         else:

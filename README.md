@@ -183,7 +183,7 @@ YourRobotName order-id robosats rated 5 stars
 - [X] cancel order
 - [X] take order
 - [X] toggle pause for order
-- [X] pay escrow, send invoice for order
+- [X] pay escrow, send invoice/address for order
 - [X] print chat and send messages
 - [X] second/undo confirmations of payments
 - [X] start dispute
@@ -199,7 +199,7 @@ YourRobotName order-id robosats rated 5 stars
 - [X] lnd
 - [ ] eclair, ldk, other nodes or wallets with apis
 - [ ] other message notification, ex telegram, nostr
-- [ ] update order: `update_address` and `submit_statement`
+- [ ] update order `submit_statement`
 - [ ] handle expired/unpaid invoices
 - [ ] fast chat with websocket
 
