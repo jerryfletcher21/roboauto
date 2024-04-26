@@ -187,6 +187,7 @@ YourRobotName order-id robosats rated 5 stars
 - [X] print chat and send messages
 - [X] second/undo confirmations of payments
 - [X] start dispute
+- [X] submit dispute statement
 - [X] rate coordinator
 - [X] claim rewards
 - [X] keep online orders, recreate them when they expire
@@ -199,7 +200,6 @@ YourRobotName order-id robosats rated 5 stars
 - [X] lnd
 - [ ] eclair, ldk, other nodes or wallets with apis
 - [ ] other message notification, ex telegram, nostr
-- [ ] update order `submit_statement`
 - [ ] handle expired/unpaid invoices
 - [ ] fast chat with websocket
 

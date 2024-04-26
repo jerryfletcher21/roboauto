@@ -22,7 +22,8 @@ from roboauto.order_action import \
     order_buyer_update_invoice_argv, order_seller_bond_escrow_argv, \
     order_pause_toggle_argv, order_collaborative_cancel_argv, order_take_argv, \
     order_send_confirm_argv, order_undo_confirm_argv, order_start_dispute_argv, \
-    order_rate_coordinator_argv, order_buyer_update_address_argv
+    order_rate_coordinator_argv, order_buyer_update_address_argv, \
+    order_submit_statement_argv
 from roboauto.chat import robot_send_chat_message_argv
 from roboauto.info import \
     robosats_info, robot_info_argv, order_info_argv, robot_chat, \
@@ -77,6 +78,7 @@ collaborative-cancel robot-name
 confirm-send robot-name
 confirm-undo robot-name
 dispute-start robot-name
+statement-submit robot-name [statement | --file file-statement]
 rate-coordinator robot-name rating
 keep-online [--quiet]
 """
@@ -255,6 +257,9 @@ confirm-undo robot-name
 dispute-start robot-name
     start a dispute
 
+statement-submit robot-name [statement | --file file-statement]
+    submit the dispute statement
+
 rate-coordinator robot-name rating
     rate a coordinator for a successful order
 
@@ -397,6 +402,8 @@ def main(argv):
             return_status = order_undo_confirm_argv(argv)
         elif action == "dispute-start":
             return_status = order_start_dispute_argv(argv)
+        elif action == "statement-submit":
+            return_status = order_submit_statement_argv(argv)
         elif action == "rate-coordinator":
             return_status = order_rate_coordinator_argv(argv)
         elif action == "keep-online":

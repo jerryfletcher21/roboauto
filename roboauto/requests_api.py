@@ -407,6 +407,19 @@ def requests_api_order_rate(
     )
 
 
+def requests_api_order_submit_statement(
+    token_base91, order_id, base_url, user, statement, until_true=True, error_print=True
+):
+    return requests_api_order_post(
+        token_base91, order_id, base_url, user,
+        json_dumps({
+            "action": "submit_statement",
+            "statement": statement
+        }),
+        until_true=until_true, error_print=error_print
+    )
+
+
 def requests_api_order_take(
     token_base91, order_id, base_url, user, take_amount=None,
     until_true=True, error_print=True

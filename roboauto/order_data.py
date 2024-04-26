@@ -334,7 +334,14 @@ def order_is_fiat_sent(data):
 
 
 def order_is_in_dispute(data):
-    if data in (11, 16):
+    if data == 11:
+        return True
+    else:
+        return False
+
+
+def order_is_waiting_dispute_resolution(data):
+    if data == 16:
         return True
     else:
         return False

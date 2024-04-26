@@ -18,7 +18,8 @@ from roboauto.order_data import \
     order_is_waiting_seller_buyer, order_is_waiting_buyer, \
     order_is_waiting_seller, order_is_waiting_fiat_sent, \
     order_is_fiat_sent, order_is_public, order_is_paused, \
-    order_is_sucessful, order_is_expired, get_order_string
+    order_is_sucessful, order_is_expired, get_order_string, \
+    order_is_in_dispute
 from roboauto.order import \
     order_requests_order_dic, peer_nick_from_response, bond_order, \
     amount_correct_from_response, premium_string_get, \
@@ -28,7 +29,7 @@ from roboauto.requests_api import \
     requests_api_order_confirm, requests_api_order_undo_confirm, \
     requests_api_order_dispute, response_is_error, \
     requests_api_order_cancel, requests_api_order_rate, \
-    requests_api_order_address
+    requests_api_order_address, requests_api_order_submit_statement
 from roboauto.gpg_key import gpg_sign_message
 from roboauto.subprocess_commands import \
     subprocess_generate_invoice, \
@@ -280,7 +281,8 @@ def order_seller_bond_escrow(robot_dic):
 def order_post_action_simple(
     robot_dic, order_post_function, is_wrong_status,
     string_error, string_or_bad_request,
-    extra_arg=None
+    extra_arg=None,
+    should_be_buyer=False, should_be_seller=False
 ):
     robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
@@ -293,6 +295,14 @@ def order_post_action_simple(
 
     status_id = order_info["status"]
     order_id = order_info["order_id"]
+
+    if should_be_buyer and order_response_json.get("is_seller", False):
+        print_err(f"{robot_name} {order_id} is not buyer")
+        return False
+
+    if should_be_seller and order_response_json.get("is_buyer", False):
+        print_err(f"{robot_name} {order_id} is not seller")
+        return False
 
     if is_wrong_status(status_id):
         print_err(f"{robot_name} {order_id} " + string_error)
@@ -323,6 +333,7 @@ def order_post_action_simple(
 
     # strange reseponse for order post cancel
     # bad_request is set when success
+    # see https://github.com/RoboSats/robosats/issues/1245
     bad_request = order_post_response_json.get("bad_request", False)
     if string_or_bad_request is False:
         if bad_request is False:
@@ -378,7 +389,6 @@ def order_send_confirm(robot_dic):
     )
 
 
-# should check that is buyer
 def order_undo_confirm(robot_dic):
     return order_post_action_simple(
         robot_dic,
@@ -386,7 +396,8 @@ def order_undo_confirm(robot_dic):
         lambda status_id : \
             not order_is_fiat_sent(status_id),
         "can not undo confirm payment",
-        "confirmation undone"
+        "confirmation undone",
+        should_be_buyer=True
     )
 
 
@@ -399,6 +410,20 @@ def order_start_dispute(robot_dic):
             not order_is_fiat_sent(status_id),
         "can not start dispute",
         "dispute started"
+    )
+
+
+def order_submit_statement(robot_dic, extra_arg):
+    statement = extra_arg
+
+    return order_post_action_simple(
+        robot_dic,
+        requests_api_order_submit_statement,
+        lambda status_id : \
+            not order_is_in_dispute(status_id),
+        "can not send dispute statement",
+        "dispute statement submitted",
+        extra_arg=statement
     )
 
 
@@ -451,6 +476,41 @@ def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
             return False
 
         extra_arg = (address, sat_per_vb)
+    elif extra_type == "statement":
+        # see frontend/src/components/TradeBox/index.tsx
+        # maybe support also sending chat messages, not working in the main web client
+        if len(argv) < 1:
+            print_err("insert dispute statement")
+            return False
+        statement_arg = argv[0]
+        argv = argv[1:]
+
+        if statement_arg != "--file":
+            statement = statement_arg
+        else:
+            if len(argv) < 1:
+                print_err("insert dispute statement file")
+                return False
+            statement_file = argv[0]
+            argv = argv[1:]
+
+            if not os.path.isfile(statement_file):
+                print_err(f"{statement_file} is not a file")
+                return False
+            statement = file_read(statement_file)
+            if statement is False:
+                return False
+
+        statement_min_len = 100
+        statement_max_len = 5000
+        if len(statement) <= statement_min_len:
+            print_err(f"dispute statement should be at least {statement_min_len} characters long")
+            return False
+        elif len(statement) >= statement_max_len:
+            print_err(f"dispute statement should be at most {statement_max_len} characters long")
+            return False
+
+        extra_arg = statement
     elif extra_type == "rating":
         robot_name = robot_dic["name"]
         rating_coordinator_file = robot_dic["dir"] + "/rating-coordinator"
@@ -491,6 +551,12 @@ def order_buyer_update_invoice_argv(argv):
 def order_buyer_update_address_argv(argv):
     return robot_order_post_action_argv(
         argv, order_buyer_update_invoice, extra_type="update_address"
+    )
+
+
+def order_submit_statement_argv(argv):
+    return robot_order_post_action_argv(
+        argv, order_submit_statement, extra_type="statement"
     )
 
 
