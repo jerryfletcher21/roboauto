@@ -21,7 +21,8 @@ from roboauto.order_data import  \
     order_is_pending, order_is_waiting_maker_bond, \
     order_is_waiting_taker_bond, order_is_expired, \
     order_is_finished_for_seller, order_is_waiting_seller_buyer, \
-    order_is_waiting_seller, order_is_waiting_buyer
+    order_is_waiting_seller, order_is_waiting_buyer, \
+    order_is_failed_routing
 from roboauto.order_local import \
     robot_handle_taken, order_get_order_dic
 from roboauto.order import \
@@ -273,6 +274,12 @@ def robot_handle_pending(robot_dic):
     is_seller = order_response_json.get("is_seller", False)
 
     if order_is_pending(status_id):
+        if not is_seller and order_is_failed_routing(status_id):
+            print_out(
+                f"{robot_name} {order_id} old invoice failed, sending a new one"
+            )
+            return order_buyer_update_invoice(robot_dic, None)
+
         expires_at = order_response_json.get("expires_at", False)
         if expires_at is False:
             print_err("no expires_at")

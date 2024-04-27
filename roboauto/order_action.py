@@ -19,7 +19,8 @@ from roboauto.order_data import \
     order_is_waiting_seller, order_is_waiting_fiat_sent, \
     order_is_fiat_sent, order_is_public, order_is_paused, \
     order_is_sucessful, order_is_expired, get_order_string, \
-    order_is_in_dispute
+    order_is_in_dispute, order_is_failed_routing, \
+    order_is_sending_to_buyer
 from roboauto.order import \
     order_requests_order_dic, peer_nick_from_response, bond_order, \
     amount_correct_from_response, premium_string_get, \
@@ -72,37 +73,8 @@ def order_take_argv(argv):
     return True
 
 
-def get_invoice_for_order_taken(input_data):
-    order_user, order_info, order_response_json, \
-    robot_name, order_id, peer_nick, \
-    budget_ppm = input_data
-
-    invoice_amount = order_response_json.get("invoice_amount", False)
-    if invoice_amount is False:
-        print_err("invoice amount is not present")
-        return False
-
-    correct_invoice_amount = invoice_get_correct_amount(invoice_amount, budget_ppm)
-
-    amount_correct = amount_correct_from_response(order_response_json)
-    if amount_correct is False:
-        amount_correct = order_info["amount_string"]
-
-    invoice = subprocess_generate_invoice(
-        str(correct_invoice_amount),
-        robot_name + "-" + str(peer_nick) + "-" + order_id + "-" +
-        order_user["type"] + "-" + order_user["currency"] + "-" +
-        amount_correct + "-" + premium_string_get(order_user["premium"])
-    )
-    if invoice is False:
-        return False
-
-    return invoice
-
-
 def order_buyer_update_data(
-    robot_dic, get_message_function, requests_api_order_function,
-    extra_value, data_string
+    robot_dic, data_string, extra_value
 ):
     robot_name, _, robot_dir, token, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
@@ -125,8 +97,16 @@ def order_buyer_update_data(
     if \
         not order_is_waiting_seller_buyer(status_id) and \
         not order_is_waiting_buyer(status_id):
-        print_err(f"{robot_name} {order_id} is not waiting for buyer")
-        return False
+        if data_string == "invoice":
+            if not order_is_failed_routing(status_id):
+                print_err(
+                    f"{robot_name} {order_id} is not "
+                    "waiting for buyer or failed routing"
+                )
+                return False
+        else:
+            print_err(f"{robot_name} {order_id} is not waiting for buyer")
+            return False
 
     order_description = order_info["order_description"]
 
@@ -134,12 +114,44 @@ def order_buyer_update_data(
 
     order_string_status_print(robot_name, order_id, order_description, peer_nick)
 
-    message = get_message_function((
-        order_user, order_info, order_response_json,
-        robot_name, order_id, peer_nick,
-        extra_value
-    ))
-    if message is False:
+    if data_string == "invoice":
+        budget_ppm = extra_value
+
+        if not order_is_failed_routing(status_id):
+            invoice_amount = order_response_json.get("invoice_amount", False)
+            if invoice_amount is False:
+                print_err("invoice amount is not present")
+                return False
+        else:
+            invoice_amount = order_response_json.get("trade_satoshis", False)
+            if invoice_amount is False:
+                print_err("trade satoshis is not present")
+                return False
+
+        correct_invoice_amount = invoice_get_correct_amount(invoice_amount, budget_ppm)
+
+        amount_correct = amount_correct_from_response(order_response_json)
+        if amount_correct is False:
+            amount_correct = order_info["amount_string"]
+
+        invoice = subprocess_generate_invoice(
+            str(correct_invoice_amount),
+            robot_name + "-" + str(peer_nick) + "-" + order_id + "-" +
+            order_user["type"] + "-" + order_user["currency"] + "-" +
+            amount_correct + "-" + premium_string_get(order_user["premium"])
+        )
+        if invoice is False:
+            return False
+
+        message = invoice
+        requests_api_order_function = requests_api_order_invoice
+    elif data_string == "address":
+        address, _ = extra_value
+
+        message = address
+        requests_api_order_function = requests_api_order_address
+    else:
+        print_err(f"wrong order buyer update data {data_string}")
         return False
 
     fingerprint = robot_get_current_fingerprint(robot_dir)
@@ -176,7 +188,8 @@ def order_buyer_update_data(
 
     if \
         not order_is_waiting_seller(new_status_id) and \
-        not order_is_waiting_fiat_sent(new_status_id):
+        not order_is_waiting_fiat_sent(new_status_id) and \
+        not order_is_sending_to_buyer(new_status_id):
         print_err(json_dumps(order_data_response_json), date=False, error=False)
         print_err(f"{data_string} not send, current status: " + get_order_string(new_status_id))
         return False
@@ -192,21 +205,13 @@ def order_buyer_update_invoice(robot_dic, extra_arg):
         budget_ppm = roboauto_options["routing_budget_ppm"]
 
     return order_buyer_update_data(
-        robot_dic,
-        get_invoice_for_order_taken,
-        requests_api_order_invoice,
-        budget_ppm, "invoice"
+        robot_dic, "invoice", budget_ppm
     )
 
 
 def order_buyer_update_address(robot_dic, extra_arg):
-    address, sat_per_vb = extra_arg
-
     return order_buyer_update_data(
-        robot_dic,
-        lambda _ : address,
-        requests_api_order_address,
-        sat_per_vb, "address"
+        robot_dic, "address", extra_arg
     )
 
 

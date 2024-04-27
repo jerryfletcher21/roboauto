@@ -196,11 +196,11 @@ YourRobotName order-id robosats rated 5 stars
 - [X] set a maximum of offer per hour
 - [X] different tor circuit for each robot
 - [X] automatically pay escrow/send invoice
+- [X] handle expired/unpaid invoices
 - [X] core lightning
 - [X] lnd
 - [ ] eclair, ldk, other nodes or wallets with apis
 - [ ] other message notification, ex telegram, nostr
-- [ ] handle expired/unpaid invoices
 - [ ] fast chat with websocket
 
 ## License

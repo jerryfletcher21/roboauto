@@ -121,20 +121,23 @@ lightning_invoice() {
             return 1
         fi
 
-        if ! invoice_status="$(
+        if ! inv_status="$(
             printf "%s\n" "$list_invoices" |
             jq -e -r '.invoices[].status'
         )"; then
             echo "error: status of old invoice with the same label not present" >&2
             return 1
         fi
-        if [ "$invoice_status" != "unpaid" ]; then
-            echo "error: status of old invoice is $invoice_status instead of unpaid" >&2
-            return 1
-        fi
+        case "$inv_status" in
+            unpaid|expired) ;;
+            *)
+                echo "error: status of old invoice is $inv_status instead of unpaid/expired" >&2
+                return 1
+            ;;
+        esac
 
         if ! del_invoice="$(
-            lightning_cli -k delinvoice label="$invoice_label" status=unpaid
+            lightning_cli -k delinvoice label="$invoice_label" status="$inv_status"
         )"; then
             echo "error: running delinvoice" >&2
             return 1

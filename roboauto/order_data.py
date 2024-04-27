@@ -3,7 +3,6 @@
 """order_data.py"""
 
 # pylint: disable=C0116 missing-function-docstring
-# pylint: disable=R1703 simplifiable-if-statement
 
 
 def get_type_string(target, reverse=False):
@@ -257,119 +256,88 @@ def get_order_string(target, reverse=False):
 
 
 def order_is_waiting_maker_bond(data):
-    if data == 0:
-        return True
-    else:
-        return False
+    return data == 0
 
 
 def order_is_public(data):
-    if data == 1:
-        return True
-    else:
-        return False
+    return data == 1
 
 
 def order_is_paused(data):
-    if data == 2:
-        return True
-    else:
-        return False
+    return data == 2
 
 
 def order_is_waiting_taker_bond(data):
-    if data == 3:
-        return True
-    else:
-        return False
+    return data == 3
 
 
 def order_is_cancelled(data):
-    if data == 4:
-        return True
-    else:
-        return False
+    return data == 4
 
 
 def order_is_expired(data):
-    if data == 5:
-        return True
-    else:
-        return False
+    return data == 5
 
 
 def order_is_waiting_seller_buyer(data):
-    if data == 6:
-        return True
-    else:
-        return False
+    return data == 6
 
 
 def order_is_waiting_seller(data):
-    if data == 7:
-        return True
-    else:
-        return False
+    return data == 7
 
 
 def order_is_waiting_buyer(data):
-    if data == 8:
-        return True
-    else:
-        return False
+    return data == 8
 
 
 def order_is_waiting_fiat_sent(data):
-    if data == 9:
-        return True
-    else:
-        return False
+    return data == 9
 
 
 def order_is_fiat_sent(data):
-    if data == 10:
-        return True
-    else:
-        return False
+    return data == 10
 
 
 def order_is_in_dispute(data):
-    if data == 11:
-        return True
-    else:
-        return False
+    return data == 11
 
 
-def order_is_waiting_dispute_resolution(data):
-    if data == 16:
-        return True
-    else:
-        return False
+def order_is_collaborative_cancelled(data):
+    return data == 12
+
+
+def order_is_sending_to_buyer(data):
+    return data == 13
 
 
 def order_is_sucessful(data):
-    if data == 14:
-        return True
-    else:
-        return False
+    return data == 14
+
+
+def order_is_failed_routing(data):
+    return data == 15
+
+
+def order_is_waiting_dispute_resolution(data):
+    return data == 16
+
+
+def order_is_maker_lost_dispute(data):
+    return data == 17
+
+
+def order_is_taker_lost_dispute(data):
+    return data == 18
 
 
 def order_is_pending(data):
-    if data in (6, 7, 8, 9, 10, 11, 13, 15, 16):
-        return True
-    else:
-        return False
+    return data in (6, 7, 8, 9, 10, 11, 13, 15, 16)
 
 
 def order_is_finished(data):
-    if data in (4, 12, 14, 17, 18):
-        return True
-    else:
-        return False
+    return data in (4, 12, 14, 17, 18)
 
 
 def order_is_finished_for_seller(data):
-    if data in (13, 15):
-        return True
-    else:
-        return False
+    return data in (13, 15)
