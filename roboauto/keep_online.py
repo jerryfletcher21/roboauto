@@ -4,12 +4,13 @@
 
 # pylint: disable=C0116 missing-function-docstring
 
+import re
 import time
 import random
 
 import filelock
 
-from roboauto.logger import print_out, print_err
+from roboauto.logger import print_out, print_err, logger_flush
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import \
     robot_list_dir, robot_load_from_name, robot_requests_robot, \
@@ -36,7 +37,7 @@ from roboauto.date_utils import \
     get_current_minutes_from_timestamp, timestamp_from_date_string, \
     date_convert_time_zone_and_format_string
 from roboauto.utils import \
-    update_roboauto_options, lock_file_name_get
+    update_roboauto_options, lock_file_name_get, get_uint
 
 
 def robot_check_expired(robot_dic, robot_this_hour):
@@ -421,8 +422,6 @@ def robot_pending_dic_update(pending_dic):
 # this way pending robots are not checked all together,
 # but every one is checked at a different time
 def keep_online_no_lock():
-    roboauto_state["should_log"] = True
-
     active_list = robot_list_dir(roboauto_state["active_home"])
     pending_list = robot_list_dir(roboauto_state["pending_home"])
 
@@ -454,6 +453,8 @@ def keep_online_no_lock():
 
     current_time = 0
     book_last_checked = 0
+
+    logger_flush()
 
     while True:
         last_time = current_time
@@ -534,8 +535,7 @@ def keep_online_no_lock():
             print_out("there are no active or pending robots", date=False)
             return True
 
-        if roboauto_state["logger"] is not None:
-            roboauto_state["logger"].flush()
+        logger_flush()
 
         time.sleep(roboauto_state["sleep_interval"])
 
@@ -543,9 +543,29 @@ def keep_online_no_lock():
 
 
 def keep_online(argv):
-    if len(argv) >= 1 and argv[0] == "--quiet":
-        roboauto_state["quiet"] = True
+    if len(argv) >= 1:
+        first_arg = argv[0]
         argv = argv[1:]
+
+        if re.match('^--verbosity', first_arg) is None:
+            print_err(f"option {first_arg} not recognied", date=False, error=False)
+            return False
+
+        key_value = first_arg.split("=", 1)
+        if len(key_value) != 2:
+            print_err("verbosity is not --verbosity=number", date=False, error=False)
+            return False
+        verbosity_string, verbosity_number_string = key_value
+
+        if verbosity_string != "verbosity":
+            print_err(f"key {verbosity_string} not recognied", date=False, error=False)
+            return False
+
+        verbosity_number = get_uint(verbosity_number_string)
+        if verbosity_number is False:
+            return False
+
+        roboauto_state["log_level"] = verbosity_number
 
     try:
         with filelock.FileLock(
@@ -554,6 +574,6 @@ def keep_online(argv):
         ):
             return keep_online_no_lock()
     except filelock.Timeout:
-        print_err("keep online is already running")
+        print_err("keep online is already running", date=False, error=False)
 
     return False

@@ -28,11 +28,11 @@ roboauto_options = {
 
 # program state and options that can not be changed in the config file
 roboauto_state = {
-    "should_log": False,
+    "current_command_type": "info",
     "keep_online_hour_relative": False,
-    "quiet": False,
     "gpg": None,
     "logger": None,
+    "log_level": 0,
     "filelock_timeout": 120,
     "requests_timeout": 120,
     "requests_max_retries": 8,
@@ -47,8 +47,8 @@ roboauto_state = {
     "paused_home": "",
     "lock_home": "",
     "gnupg_home": "",
+    "log_home": "",
     "waiting_queue_file": "",
-    "log_file": "",
     "config_file": "",
     "message_notification_command": "",
     "lightning_node_command": "",

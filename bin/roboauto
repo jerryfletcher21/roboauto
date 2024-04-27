@@ -8,7 +8,7 @@ import signal
 
 from roboauto.logger import print_out, print_err
 from roboauto.utils import \
-    global_setup, global_shutdown, \
+    global_setup, global_shutdown, state_set_command_type, \
     list_configs, update_roboauto_options
 from roboauto.robot import \
     robot_import, robot_print_token, robot_print_coordinator, robot_print_dir_argv, \
@@ -80,7 +80,7 @@ confirm-undo robot-name
 dispute-start robot-name
 statement-submit robot-name [statement | --file file-statement]
 rate-coordinator robot-name rating
-keep-online [--quiet]
+keep-online [--verbosity=number]
 """
 
 INFO_VERBOSE = """\
@@ -263,13 +263,14 @@ statement-submit robot-name [statement | --file file-statement]
 rate-coordinator robot-name rating
     rate a coordinator for a successful order
 
-keep-online [--quiet]
+keep-online [--verbosity=number]
     keep the offers of the robots in the active directory online
     if message-notification program is present, send a message when
     something other than expirations happens to an offer
     pending robots are moved to the pending directory
     when the order is complete it is moved to the inactive directory
-    if --quiet print less non important errors
+    if verbosity=1 print more logs to the terminal, print every time
+    there is a book connection error to one coordinator
 """
 
 
@@ -308,6 +309,8 @@ def main(argv):
 
     if global_setup() is False:
         return False
+
+    return_status = None
 
     try:
         if update_roboauto_options() is False:
@@ -348,7 +351,10 @@ def main(argv):
             return_status = robot_change_dir_from_argv("paused", argv)
         elif action == "order-info-dir":
             return_status = order_info_dir(argv)
-        elif action == "robosats-info":
+
+        state_set_command_type("action")
+
+        if action == "robosats-info":
             return_status = robosats_info(argv)
         elif action == "generate-robot":
             return_status = robot_generate(argv)
@@ -406,9 +412,15 @@ def main(argv):
             return_status = order_submit_statement_argv(argv)
         elif action == "rate-coordinator":
             return_status = order_rate_coordinator_argv(argv)
-        elif action == "keep-online":
+
+        state_set_command_type("keep-online")
+
+        if action == "keep-online":
             return_status = keep_online(argv)
-        else:
+
+        state_set_command_type("info")
+
+        if return_status is None:
             print_err("action " + action + " not recognized")
             return False
     except KeyboardInterrupt:

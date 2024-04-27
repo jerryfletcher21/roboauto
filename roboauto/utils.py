@@ -298,9 +298,9 @@ def global_setup():
     roboauto_state["paused_home"] = roboauto_home + "/paused"
     roboauto_state["lock_home"] = roboauto_home + "/lock"
     roboauto_state["gnupg_home"] = roboauto_home + "/gnupg"
+    roboauto_state["log_home"] = roboauto_home + "/logs"
 
     roboauto_state["waiting_queue_file"] = roboauto_home + "/waiting-queue"
-    roboauto_state["log_file"] = roboauto_home + "/roboauto.log"
 
     roboauto_state["config_file"] = roboauto_config + "/config.ini"
     roboauto_state["message_notification_command"] = roboauto_config + "/message-notification"
@@ -313,7 +313,8 @@ def global_setup():
         roboauto_state["inactive_home"],
         roboauto_state["paused_home"],
         roboauto_state["lock_home"],
-        roboauto_state["gnupg_home"]
+        roboauto_state["gnupg_home"],
+        roboauto_state["log_home"]
     ):
         if not dir_make_sure_exists(directory):
             return False
@@ -339,6 +340,10 @@ def global_setup():
 def global_shutdown():
     if roboauto_state["logger"] is not None:
         roboauto_state["logger"].close()
+
+
+def state_set_command_type(command_type):
+    roboauto_state["current_command_type"] = command_type
 
 
 def get_int(string_number):

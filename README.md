@@ -27,8 +27,9 @@ taken orders.
 
 Examples scripts for simplex and mutt are provided.
 
-`roboauto keep-online` should be used inside tmux
-(or others terminal multiplexers)
+To run `roboauto keep-online` in the background it is recommended to
+use tmux (or others terminal multiplexers), akin to joinmarket
+[yieldgenerator](https://github.com/JoinMarket-Org/joinmarket-clientserver/blob/master/docs/YIELDGENERATOR.md#how-to-run-yield-generator-in-background)
 
 ## Installation
 
@@ -118,8 +119,8 @@ insert token:
 # get notified when your offers get taken and recreate them when they expire
 # if you want to also pay escrow/send invoice check seconds_pending_order in config.ini
 $ roboauto keep-online
-# or with less non important erorr messages
-# $ roboauto keep-online --quiet
+# or with more logs
+# $ roboauto keep-online --verbosity=1
 ```
 
 #### take an offer
