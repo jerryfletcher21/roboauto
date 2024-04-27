@@ -17,9 +17,12 @@ from roboauto.global_state import roboauto_options, roboauto_state
 def response_is_error(response):
     if response is False:
         return True
-    if not response.ok:
-        if response.status_code not in (400, 403, 404, 409):
-            return True
+
+    if not hasattr(response, "ok") or not hasattr(response, "status_code"):
+        return True
+
+    if not response.ok and response.status_code not in (400, 403, 404, 409):
+        return True
 
     return False
 

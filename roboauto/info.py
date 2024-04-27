@@ -233,7 +233,7 @@ def order_info_argv(argv):
                 return False
 
         order_dic = order_requests_order_dic(robot_dic, order_id)
-        if order_dic is False or order_dic is None:
+        if order_dic is False or isinstance(order_dic, str):
             return False
     else:
         if len(argv) >= 1:

@@ -94,7 +94,7 @@ def subprocess_pay_invoice_and_check(
             print_out(string_checking)
 
             order_dic = order_dic_function(robot_dic, order_id)
-            if order_dic is False or order_dic is None:
+            if order_dic is False or order_dic is None or isinstance(order_dic, str):
                 return False
 
             order_response_json = order_dic["order_response_json"]

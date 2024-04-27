@@ -666,14 +666,17 @@ def robot_claim_reward(robot_dic, reward_amount):
     return True
 
 
-def robot_claim_rewards_argv(argv):
-    robot_dic, argv = robot_input_from_argv(argv)
-    if robot_dic is False:
-        return False
+def robot_check_and_claim_reward(robot_dic):
+    """will return False if something went wrong,
+    earned_rewards (which could already be claimed) if there were rewards
+    we could make a second robot request to check if the invoice
+    sent by robot_claim_reward is already paid, but it is possible that is
+    not yet paid, better to wait.
+    Since this function is run in keep-online, it will be checked
+    again next loop"""
 
-    robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+    _, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
-    # pylint: disable=R0801 duplicate-code
     robot_response, robot_response_json = robot_requests_robot(
         token_base91, robot_url, robot_dic
     )
@@ -681,14 +684,27 @@ def robot_claim_rewards_argv(argv):
         return False
 
     earned_rewards = robot_response_json.get("earned_rewards", 0)
-    if earned_rewards is False or earned_rewards is None or earned_rewards == 0:
+    if earned_rewards is not False and earned_rewards is not None and earned_rewards > 0:
+        if not robot_claim_reward(robot_dic, earned_rewards):
+            return False
+
+    return earned_rewards
+
+
+def robot_claim_reward_argv(argv):
+    robot_dic, argv = robot_input_from_argv(argv)
+    if robot_dic is False:
+        return False
+
+    robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+
+    earned_rewards = robot_check_and_claim_reward(robot_dic)
+    if earned_rewards is False:
+        return False
+    elif earned_rewards == 0:
         print_err(f"{robot_name} does not have claimable rewards")
         return False
 
-    if robot_claim_reward(robot_dic, earned_rewards) is False:
-        return False
-
-    # pylint: disable=R0801 duplicate-code
     robot_response, robot_response_json = robot_requests_robot(
         token_base91, robot_url, robot_dic
     )

@@ -110,12 +110,27 @@ def peer_nick_from_response(order_response_json):
     return peer_nick
 
 
+def order_bad_request_is_cancelled(bad_request):
+    # may be changed in the future
+    # https://github.com/RoboSats/robosats/issues/1245
+
+    if not isinstance(bad_request, str):
+        return False
+
+    return bad_request in (
+        "This order has been cancelled by the maker",
+        "This order has been cancelled collaborativelly"
+    )
+
+
 def order_requests_order_dic(
     robot_dic, order_id, order_function=None, take_amount=None
 ):
     """get the order_dic making a request to the coordinator
     order_function can be set to requests_api_order_take
     when taking an order
+    will return False, or the string of bad_requests so it
+    should be checked that the return value is not a string
 
     the order_dic is composed by 4 dictionaries:
     order_data:  can be derived from order_user, and is the data
@@ -141,24 +156,25 @@ def order_requests_order_dic(
             token_base91, order_id, robot_url, robot_name, take_amount=take_amount
         )
 
-    # error 500 when the old order is purged from the server
-    # maybe create last order from local if available
-    if \
-        order_response_all is False or \
-        (hasattr(order_response_all, "status_code") and \
-        order_response_all.status_code in (400, 500)):
-        print_err(f"{robot_name} {order_id} not available")
-        return None
     if response_is_error(order_response_all):
         print_err(f"{robot_name} {order_id} not found")
         return False
-
     order_response = order_response_all.text
     order_response_json = json_loads(order_response)
     if order_response_json is False:
         print_err(order_response, end="", error=False, date=False)
         print_err("getting order info for " + robot_name + " " + order_id)
         return False
+
+    bad_request = order_response_json.get("bad_request", False)
+    if bad_request is not False:
+        print_err(bad_request, error=False, date=False)
+        print_err(f"{robot_name} {order_id} not available")
+        if not isinstance(bad_request, str):
+            print_err("bad_request is not a string")
+            return False
+        else:
+            return bad_request
 
     coordinator = roboauto_get_coordinator_from_url(robot_url)
 
@@ -263,7 +279,7 @@ def robot_cancel_order(robot_dic):
         return False
 
     order_dic = order_requests_order_dic(robot_dic, order_id=False)
-    if order_dic is False or order_dic is None:
+    if order_dic is False or isinstance(order_dic, str):
         return False
 
     order_info = order_dic["order_info"]
@@ -343,7 +359,7 @@ def bond_order(robot_dic, order_id, taker=False, take_amount=None):
     order_dic = order_requests_order_dic(
         robot_dic, order_id, order_function=order_function, take_amount=take_amount
     )
-    if order_dic is False or order_dic is None:
+    if order_dic is False or isinstance(order_dic, str):
         return False
 
     # pylint: disable=R0801 duplicate-code

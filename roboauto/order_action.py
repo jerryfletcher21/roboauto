@@ -79,7 +79,7 @@ def order_buyer_update_data(
     robot_name, _, robot_dir, token, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     order_dic = order_requests_order_dic(robot_dic, order_id=False)
-    if order_dic is False or order_dic is None:
+    if order_dic is False or isinstance(order_dic, str):
         return False
 
     order_user = order_dic["order_user"]
@@ -219,7 +219,7 @@ def order_seller_bond_escrow(robot_dic):
     robot_name = robot_dic["name"]
 
     order_dic = order_requests_order_dic(robot_dic, order_id=False)
-    if order_dic is False or order_dic is None:
+    if order_dic is False or isinstance(order_dic, str):
         return False
 
     # pylint: disable=R0801 duplicate-code
@@ -292,7 +292,7 @@ def order_post_action_simple(
     robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     order_dic = order_requests_order_dic(robot_dic, order_id=False)
-    if order_dic is False or order_dic is None:
+    if order_dic is False or isinstance(order_dic, str):
         return False
 
     order_info = order_dic["order_info"]
@@ -453,6 +453,7 @@ def order_rate_coordinator(robot_dic, extra_arg):
 
 
 def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
+    # pylint: disable=R0801 duplicate-code
     robot_dic, argv = robot_input_from_argv(argv)
     if robot_dic is False:
         return False

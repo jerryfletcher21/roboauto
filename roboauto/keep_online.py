@@ -13,10 +13,10 @@ import filelock
 from roboauto.logger import print_out, print_err, logger_flush
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import \
-    robot_list_dir, robot_load_from_name, robot_requests_robot, \
-    waiting_queue_get, robot_change_dir, robot_requests_get_order_id, \
-    robot_get_dir_dic, robot_var_from_dic, robot_wait, robot_unwait, \
-    robot_claim_reward
+    robot_list_dir, robot_load_from_name, waiting_queue_get, \
+    robot_change_dir, robot_requests_get_order_id, \
+    robot_get_dir_dic, robot_var_from_dic, robot_wait, \
+    robot_unwait, robot_check_and_claim_reward
 from roboauto.order_data import  \
     order_is_public, order_is_paused, order_is_finished, \
     order_is_pending, order_is_waiting_maker_bond, \
@@ -27,7 +27,8 @@ from roboauto.order_data import  \
 from roboauto.order_local import \
     robot_handle_taken, order_get_order_dic
 from roboauto.order import \
-    order_requests_order_dic, bond_order, make_order
+    order_requests_order_dic, bond_order, make_order, \
+    order_bad_request_is_cancelled
 from roboauto.order_action import \
     order_seller_bond_escrow, order_buyer_update_invoice
 from roboauto.book import \
@@ -51,8 +52,17 @@ def robot_check_expired(robot_dic, robot_this_hour):
         return False
 
     order_dic = order_requests_order_dic(robot_dic, order_id)
-    if order_dic is False or order_dic is None:
+    if order_dic is False:
         return False
+    elif order_bad_request_is_cancelled(order_dic):
+        earned_rewards = robot_check_and_claim_reward(robot_dic)
+        if earned_rewards is False:
+            return False
+        elif earned_rewards > 0:
+            return 0
+        else:
+            print_out(f"{robot_name} {order_id} active is cancelled, moving to inactive")
+            return robot_change_dir(robot_name, "inactive")
 
     order_info = order_dic["order_info"]
 
@@ -252,7 +262,7 @@ def pending_robot_should_act(expires_timestamp, escrow_duration):
 
 
 def robot_handle_pending(robot_dic):
-    robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+    robot_name, _, robot_dir, _, _, _, _ = robot_var_from_dic(robot_dic)
 
     old_order_dic = order_get_order_dic(robot_dir, error_print=False)
     if old_order_dic is not False:
@@ -264,8 +274,17 @@ def robot_handle_pending(robot_dic):
             return False
 
     order_dic = order_requests_order_dic(robot_dic, order_id)
-    if order_dic is False or order_dic is None:
+    if order_dic is False:
         return False
+    elif order_bad_request_is_cancelled(order_dic):
+        earned_rewards = robot_check_and_claim_reward(robot_dic)
+        if earned_rewards is False:
+            return False
+        elif earned_rewards > 0:
+            return True
+        else:
+            print_out(f"{robot_name} {order_id} pending is cancelled, moving to inactive")
+            return robot_change_dir(robot_name, "inactive")
 
     order_response_json = order_dic["order_response_json"]
     order_info = order_dic["order_info"]
@@ -320,16 +339,12 @@ def robot_handle_pending(robot_dic):
         status_string = order_info["status_string"]
         print_out(f"{robot_name} {order_id} {status_string}")
 
-        robot_response, robot_response_json = robot_requests_robot(
-            token_base91, robot_url, robot_dic
-        )
-        if robot_response is False:
+        earned_rewards = robot_check_and_claim_reward(robot_dic)
+        if earned_rewards is False:
             return False
-
-        earned_rewards = robot_response_json.get("earned_rewards", 0)
-        if earned_rewards is not False and earned_rewards is not None and earned_rewards > 0:
+        elif earned_rewards > 0:
             # while there are rewards to be claimed it is not moving from pending
-            return robot_claim_reward(robot_dic, earned_rewards)
+            return True
 
         if \
             order_is_finished(status_id) or \

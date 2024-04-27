@@ -13,7 +13,7 @@ from roboauto.utils import \
 from roboauto.robot import \
     robot_import, robot_print_token, robot_print_coordinator, robot_print_dir_argv, \
     waiting_queue_print, robot_change_dir_from_argv, robot_generate, \
-    robot_claim_rewards_argv, robot_update_stealth_invoice_option_argv
+    robot_claim_reward_argv, robot_update_stealth_invoice_option_argv
 from roboauto.order_local import order_info_dir
 from roboauto.order import \
     create_order, cancel_order, recreate_order, list_order_fields, \
@@ -361,7 +361,7 @@ def main(argv):
         elif action == "robot-info":
             return_status = robot_info_argv(argv)
         elif action == "claim-reward":
-            return_status = robot_claim_rewards_argv(argv)
+            return_status = robot_claim_reward_argv(argv)
         elif action == "stealth-option":
             return_status = robot_update_stealth_invoice_option_argv(argv)
         elif action == "order-info":
