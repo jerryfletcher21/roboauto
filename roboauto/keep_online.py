@@ -84,7 +84,7 @@ def robot_check_expired(robot_dic, robot_this_hour):
         return 1
     elif order_is_waiting_maker_bond(status_id):
         if robot_this_hour < roboauto_options["order_maximum"]:
-            if not bond_order(robot_dic, order_id):
+            if bond_order(robot_dic, order_id) is False:
                 return False
             return 1
         else:
@@ -92,11 +92,11 @@ def robot_check_expired(robot_dic, robot_this_hour):
                 return False
     elif order_is_expired(status_id):
         if robot_this_hour < roboauto_options["order_maximum"]:
-            if not make_order(
+            if make_order(
                 robot_dic, order_id,
                 order_dic["order_data"],
                 check_change=True
-            ):
+            ) is False:
                 return False
             return 1
         else:

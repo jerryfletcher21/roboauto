@@ -42,7 +42,7 @@ def requests_tor_response(url, user, timeout, headers, data, error_print=True):
                 lock_file_name_get(user),
                 timeout=filelock_timeout
             ):
-                if data == "":
+                if data is None:
                     return requests.get(
                         url, proxies=proxies, timeout=timeout,
                         headers=headers
@@ -64,7 +64,7 @@ def requests_tor_response(url, user, timeout, headers, data, error_print=True):
         return False
 
 
-def requests_tor(url, user, headers, data="", until_true=True, error_print=True):
+def requests_tor(url, user, headers, data=None, until_true=True, error_print=True):
     timeout = roboauto_state["requests_timeout"]
     max_retries = roboauto_state["requests_max_retries"]
 

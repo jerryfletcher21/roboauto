@@ -146,6 +146,9 @@ YourRobotName order-id invoice sent successfully
 # or pay the escrow if you are the seller
 # roboauto escrow-pay YourRobotName
 
+# or pay the bond and pay the escrow/send the invoice automatically
+# $ roboauto take-order --fully YourRobotName order-id 200
+
 # see what your peer is saying
 $ roboauto chat-print YourRobotName
 1933/04/05 00:00:00 E PeerRobotName

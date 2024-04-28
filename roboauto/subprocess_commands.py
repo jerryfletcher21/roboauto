@@ -108,16 +108,16 @@ def subprocess_pay_invoice_and_check(
             if is_paid_function(order_status):
                 if not failure_function(order_status):
                     print_out(robot_name + " " + string_paid)
-                    return_status = True
+                    return_output = order_dic
                 else:
                     print_err(robot_name + " " + string_not_paid)
-                    return_status = False
+                    return_output = False
                 try:
                     os.killpg(os.getpgid(pay_subprocess.pid), signal.SIGTERM)
                 except ProcessLookupError:
                     pass
 
-                return return_status
+                return return_output
 
             retries += 1
             time.sleep(roboauto_options["pay_interval"])

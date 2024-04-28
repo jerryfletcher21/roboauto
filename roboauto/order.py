@@ -658,11 +658,11 @@ def recreate_order(argv):
     if order_data is False:
         return False
 
-    if not make_order(
+    if make_order(
         robot_dic,
         order_id, order_data,
         should_bond=should_bond
-    ):
+    ) is False:
         return False
 
     if should_cancel is False:

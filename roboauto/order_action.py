@@ -38,6 +38,15 @@ from roboauto.subprocess_commands import \
 
 
 def order_take_argv(argv):
+    if len(argv) < 1:
+        print_err("insert options")
+        return False
+
+    fully = False
+    if argv[0] == "--fully":
+        argv = argv[1:]
+        fully = True
+
     robot_dic, argv = robot_input_from_argv(argv)
     if robot_dic is False:
         return False
@@ -62,10 +71,21 @@ def order_take_argv(argv):
     else:
         take_amount = None
 
-    if bond_order(robot_dic, order_id, taker=True, take_amount=take_amount) is False:
+    order_dic = bond_order(
+        robot_dic, order_id, taker=True, take_amount=take_amount
+    )
+    if order_dic is False:
         return False
 
     print_out(f"{robot_name} {order_id} taken successfully")
+
+    if fully is True:
+        if order_dic["order_response_json"].get("is_seller", False) is True:
+            if order_seller_bond_escrow(robot_dic) is False:
+                return False
+        else:
+            if order_buyer_update_invoice(robot_dic, None) is False:
+                return False
 
     if not robot_change_dir(robot_name, "pending"):
         return False

@@ -69,7 +69,7 @@ create-order [--no-bond] [--no-active] robot-name [key=value...]
 cancel-order robot-name
 recreate-order [--no-cancel] [--no-bond] robot-name key=value...
 change-order-expire [--print, --remove] robot-name [key=value...]
-take-order robot-name order-id [take-amount]
+take-order [--fully] robot-name order-id [take-amount]
 pause-toggle robot-name
 escrow-pay robot-name
 invoice-send robot-name [budget-ppm]
@@ -223,10 +223,10 @@ change-order-expire [--print, --remove] robot-name [key=value...]
     if --print prints the current changes if present
     if --remove removes the current changes if present and prints it
 
-take-order robot-name order-id [take-amount]
-    take the order-id order with
+take-order [--fully] robot-name order-id [take-amount]
     make sure the order-id is of the same coordinator as your robot
     if the order has a range specify take-amount
+    if --fully, also pay the escrow/send the invoice
 
 pause-toggle robot-name
     toggle pause order in robosats
