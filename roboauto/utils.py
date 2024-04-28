@@ -213,8 +213,24 @@ def update_roboauto_options(print_info=False):
         parser.read(roboauto_state["config_file"])
 
         general_section = "general"
+        federation_section = "federation"
+
+        for section in list(parser):
+            if section not in (
+                "DEFAULT", general_section, federation_section
+            ):
+                print_err(f"section {section} not recognized")
+                return False
 
         if parser.has_section(general_section):
+            for option in parser.options(general_section):
+                if option not in roboauto_options:
+                    print_err(f"option {option} not recognied")
+                    return False
+                elif isinstance(roboauto_options[option], dict):
+                    print_err(f"{option} is a section not an option")
+                    return False
+
             for option in (
                 "user_agent", "date_format"
             ):
@@ -265,8 +281,6 @@ def update_roboauto_options(print_info=False):
                         return False
 
                     update_single_option(option, new_value, print_info=print_info)
-
-        federation_section = "federation"
 
         if parser.has_section(federation_section):
             for key in parser.options(federation_section):
