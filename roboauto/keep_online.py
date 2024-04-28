@@ -23,7 +23,7 @@ from roboauto.order_data import  \
     order_is_waiting_seller, order_is_waiting_buyer, \
     order_is_failed_routing
 from roboauto.order_local import \
-    robot_handle_taken, order_get_order_dic, \
+    robot_handle_taken, order_dic_from_robot_dir, \
     order_robot_get_last_order_id, order_save_order_file
 from roboauto.order import \
     order_requests_order_dic, bond_order, make_order, \
@@ -54,7 +54,8 @@ def robot_handle_single_active(robot_dic, robot_this_hour):
     # order_id may be false
     # save to file just when order is not public below
     order_dic = order_requests_order_dic(
-        robot_dic, order_id, save_to_file=False, until_true=False
+        robot_dic, order_id, save_to_file=False,
+        until_true=False, timeout=roboauto_options["orders_timeout"]
     )
     if order_dic is False:
         return False
@@ -156,14 +157,15 @@ def count_active_orders_this_hour(
         if robot_name in nicks_waiting:
             continue
 
-        order = order_get_order_dic(
-            roboauto_state["active_home"] + "/" + robot_name, error_print=False
+        order_dic = order_dic_from_robot_dir(
+            roboauto_state["active_home"] + "/" + robot_name,
+            order_id=None, error_print=False
         )
-        if order is False:
+        if order_dic is False or order_dic is None:
             continue
 
         if order_is_this_hour(
-            order,
+            order_dic,
             current_timestamp
         ):
             robot_this_hour += 1
@@ -175,9 +177,9 @@ def robot_handle_active(robot_dic, current_timestamp, robot_this_hour):
     robot_name = robot_dic["name"]
     robot_dir = roboauto_state["active_home"] + "/" + robot_name
 
-    order = order_get_order_dic(robot_dir, error_print=False)
-    if order is not False and order_is_this_hour(
-        order, current_timestamp,
+    order_dic = order_dic_from_robot_dir(robot_dir, order_id=None, error_print=False)
+    if order_dic is not False and order_dic is not None and order_is_this_hour(
+        order_dic, current_timestamp,
         coordinator=False
     ):
         robot_this_hour -= 1
@@ -191,9 +193,9 @@ def robot_handle_active(robot_dic, current_timestamp, robot_this_hour):
     if robot_online is False or robot_online == 0:
         return robot_this_hour
 
-    order = order_get_order_dic(robot_dir, error_print=False)
-    if order is not False and order_is_this_hour(
-        order, current_timestamp,
+    order_dic = order_dic_from_robot_dir(robot_dir, order_id=None, error_print=False)
+    if order_dic is not False and order_dic is not None and order_is_this_hour(
+        order_dic, current_timestamp,
         coordinator=False
     ):
         robot_this_hour += robot_online
@@ -243,7 +245,8 @@ def robot_handle_pending(robot_dic):
     # order_id can be false
     # save to file just when order is not pending below
     order_dic = order_requests_order_dic(
-        robot_dic, order_id, save_to_file=False, until_true=False
+        robot_dic, order_id, save_to_file=False,
+        until_true=False, timeout=roboauto_options["orders_timeout"]
     )
     if order_dic is False:
         return False

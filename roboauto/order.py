@@ -16,7 +16,7 @@ from roboauto.order_data import \
     get_all_currencies, get_fiat_payment_methods, get_swap_payment_methods, \
     order_is_waiting_taker_bond, order_is_expired
 from roboauto.order_local import \
-    order_data_from_order_user, get_order_data, order_get_order_dic, \
+    order_data_from_order_user, get_order_data, order_dic_from_robot_dir, \
     order_save_order_file, get_order_user
 from roboauto.robot import \
     robot_input_from_argv, robot_change_dir, \
@@ -125,7 +125,7 @@ def order_bad_request_is_cancelled(bad_request):
 
 def order_requests_order_dic(
     robot_dic, order_id, order_function=None, take_amount=None,
-    save_to_file=True, until_true=True
+    save_to_file=True, until_true=True, timeout=None
 ):
     """get the order_dic making a request to the coordinator
     order_function can be set to requests_api_order_take
@@ -148,15 +148,22 @@ def order_requests_order_dic(
         if order_id is False or order_id is None:
             return False
 
+    requests_options = {
+        "until_true": until_true
+    }
+    if timeout is not None and timeout is not False:
+        requests_options.update({
+            "timeout": timeout
+        })
     if order_function is None:
         order_response_all = requests_api_order(
             token_base91, order_id, robot_url, robot_name,
-            until_true=until_true
+            options=requests_options
         )
     else:
         order_response_all = order_function(
-            token_base91, order_id, robot_url, robot_name,
-            until_true=until_true, take_amount=take_amount
+            token_base91, order_id, robot_url, robot_name, take_amount=take_amount,
+            options=requests_options
         )
 
     if response_is_error(order_response_all):
@@ -646,8 +653,8 @@ def recreate_order(argv):
         if not robot_cancel_order(robot_dic):
             return False
 
-    order_dic = order_get_order_dic(robot_dir)
-    if order_dic is False:
+    order_dic = order_dic_from_robot_dir(robot_dir, order_id=None)
+    if order_dic is False or order_dic is None:
         return False
 
     order_info = order_dic["order_info"]

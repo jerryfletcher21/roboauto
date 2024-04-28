@@ -13,7 +13,7 @@ from roboauto.robot import \
     robot_input_from_argv, robot_requests_robot, \
     robot_var_from_dic, robot_requests_get_order_id
 from roboauto.order_local import \
-    order_robot_get_last_order_id, order_dic_from_robot_dic, \
+    order_robot_get_last_order_id, order_dic_from_robot_dir, \
     order_dic_print
 from roboauto.order import order_requests_order_dic
 from roboauto.chat import \
@@ -212,7 +212,7 @@ def order_info_argv(argv):
     if robot_dic is False:
         return False
 
-    robot_name, _, _, _, coordinator, _, _ = robot_var_from_dic(robot_dic)
+    robot_name, _, robot_dir, _, coordinator, _, _ = robot_var_from_dic(robot_dic)
 
     if local_mode is False:
         order_id = order_robot_get_last_order_id(robot_dic, error_print=False)
@@ -234,7 +234,9 @@ def order_info_argv(argv):
         else:
             order_id = False
 
-        order_dic = order_dic_from_robot_dic(robot_dic, order_id)
+        order_dic = order_dic_from_robot_dir(
+            robot_dir, order_id=order_id, error_print=False
+        )
         if order_dic is None:
             print_err(json_dumps({"error": "no order dir"}))
             return False

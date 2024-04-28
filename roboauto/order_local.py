@@ -20,7 +20,7 @@ from roboauto.order_data import \
     get_currency_string, order_is_pending, get_type_string
 from roboauto.robot import \
     robot_list_dir, robot_get_dir_dic, \
-    robot_load_from_name, robot_var_from_dic
+    robot_load_from_name
 
 
 def get_order_data(
@@ -142,23 +142,43 @@ def offer_dic_print(offer_dic):
     ))
 
 
-def order_dic_from_robot_dic(robot_dic, order_id):
-    robot_name = robot_dic["name"]
-    robot_dir = robot_dic["dir"]
-
+def last_order_id_from_robot_dir(robot_dir, error_print=True):
     orders_dir = robot_dir + "/orders"
     if not os.path.isdir(orders_dir):
+        if error_print:
+            print_err(f"{orders_dir} is not a dir")
+        return None
+
+    order_id_int = directory_get_last_number_file(orders_dir)
+    if order_id_int == 0:
+        if error_print:
+            print_err(f"orders dir {orders_dir} is empty")
+        return False
+    elif order_id_int is False:
+        return False
+
+    return str(order_id_int)
+
+
+def order_robot_get_last_order_id(robot_dic, error_print=True):
+    return last_order_id_from_robot_dir(robot_dic["dir"], error_print=error_print)
+
+
+def order_dic_from_robot_dir(robot_dir, order_id=None, error_print=True):
+    orders_dir = robot_dir + "/orders"
+    if not os.path.isdir(orders_dir):
+        if error_print:
+            print_err(f"{orders_dir} is not a dir")
         return None
 
     if order_id is False or order_id is None:
-        order_file = directory_get_last_number_file(orders_dir)
-        if order_file is False:
-            return False
-    else:
-        order_file = orders_dir + "/" + order_id
-        if not os.path.isfile(order_file):
-            print_err("%s does not have order %s" % (robot_name, order_id))
-            return False
+        order_id = last_order_id_from_robot_dir(robot_dir, error_print=error_print)
+
+    order_file = orders_dir + "/" + order_id
+    if not os.path.isfile(order_file):
+        if error_print:
+            print_err(f"orders dir {orders_dir} does not have order {order_id}")
+        return False
 
     order_dic = file_json_read(order_file)
     if order_dic is False:
@@ -228,7 +248,9 @@ def order_info_local_print_ordered_list(robot_list):
         if robot_dic is False:
             continue
 
-        order_dic = order_dic_from_robot_dic(robot_dic, False)
+        order_dic = order_dic_from_robot_dir(
+            robot_dic["dir"], order_id=None, error_print=False
+        )
         if order_dic is None:
             robot_list_no_dir.append(robot_dic)
         elif order_dic is not False:
@@ -307,50 +329,6 @@ def order_save_order_file(robot_dir, order_id, order_dic):
         return False
 
     return True
-
-
-def order_get_order_dic(robot_dir, error_print=True):
-    orders_dir = robot_dir + "/orders"
-    if not os.path.isdir(orders_dir):
-        if error_print:
-            print_err("%s is not a dir" % orders_dir)
-        return False
-
-    order_file = directory_get_last_number_file(orders_dir, error_print=error_print)
-    if order_file == 0:
-        if error_print:
-            print_err("orders dir is empty")
-        return False
-    elif order_file is False:
-        return False
-
-    order_dic = file_json_read(order_file)
-    if order_dic is False:
-        return False
-
-    return order_dic
-
-
-def order_robot_get_last_order_id(robot_dic, error_print=True):
-    robot_name, _, robot_dir, _, _, _, _ = robot_var_from_dic(robot_dic)
-
-    order_dic = order_get_order_dic(robot_dir, error_print=error_print)
-    if order_dic is False:
-        return False
-
-    order_info = order_dic.get("order_info", False)
-    if order_info is False:
-        if error_print:
-            print_err(f"{robot_name} order_info not present")
-        return False
-
-    order_id = order_info.get("order_id", False)
-    if order_id is False:
-        if error_print:
-            print_err(f"{robot_name} order_id not present")
-        return False
-
-    return order_id
 
 
 def robot_handle_taken(robot_name, status_id, order_id, other):

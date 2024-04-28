@@ -509,8 +509,7 @@ def robot_generate(argv):
         token_base91,
         string_to_multiline_format(public_key),
         string_to_multiline_format(private_key),
-        coordinator_url, coordinator,
-        until_true=True
+        coordinator_url, coordinator
     )
     if response_is_error(generate_response_all):
         return False

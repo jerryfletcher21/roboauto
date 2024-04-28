@@ -15,13 +15,13 @@ from roboauto.global_state import roboauto_options, roboauto_state
 
 
 def response_is_error(response):
-    if response is False:
+    if response is False or response is None:
         return True
 
     if not hasattr(response, "ok") or not hasattr(response, "status_code"):
         return True
 
-    if not response.ok and response.status_code not in (400, 403, 404, 409):
+    if not response.ok and int(response.status_code / 100) != 4:
         return True
 
     return False
@@ -58,15 +58,37 @@ def requests_tor_response(url, user, timeout, headers, data, error_print=True):
 
             return False
     except requests.exceptions.RequestException as e:
+        error_string = str(e)
+
         if error_print is not False and error_print is not None:
-            print_err(e, date=False, error=False, level=error_print)
+            print_err(error_string, date=False, error=False, level=error_print)
 
-        return False
+        if "0x04: Host unreachable" in error_string:
+            return None
+        else:
+            return False
 
 
-def requests_tor(url, user, headers, data=None, until_true=True, error_print=True):
-    timeout = roboauto_state["requests_timeout"]
-    max_retries = roboauto_state["requests_max_retries"]
+def requests_tor(url, user, headers, data=None, options=None):
+    requests_options = {
+        "until_true": True,
+        "error_print": True,
+        "timeout": roboauto_options["requests_timeout"],
+        "max_retries": roboauto_state["requests_max_retries"]
+    }
+
+    if options is not None and options is not False:
+        for option in options:
+            if option not in requests_options:
+                print_err(f"requests option {option} not recognied")
+                return False
+            else:
+                requests_options[option] = options[option]
+
+    until_true = requests_options["until_true"]
+    error_print = requests_options["error_print"]
+    timeout = requests_options["timeout"]
+    max_retries = requests_options["max_retries"]
 
     if until_true:
         error_happened = False
@@ -103,12 +125,17 @@ def requests_tor(url, user, headers, data=None, until_true=True, error_print=Tru
                 print_err("requests success " + url, error=False, level=error_print)
         return response
     else:
-        return requests_tor_response(
+        response = requests_tor_response(
             url, user, timeout, headers, data, error_print=error_print
         )
+        if response_is_error(response):
+            if error_print is not False and error_print is not None:
+                if hasattr(response, "text"):
+                    print_err(response.text, date=False, error=False, level=error_print)
+        return response
 
 
-def requests_api_base(base_url, user, url_path, until_true=True, error_print=True):
+def requests_api_base(base_url, user, url_path, options=None):
     headers = {
         "User-Agent": roboauto_options["user_agent"],
         "Accept": "*/*",
@@ -123,57 +150,57 @@ def requests_api_base(base_url, user, url_path, until_true=True, error_print=Tru
     }
 
     return requests_tor(
-        base_url + url_path, user, headers, until_true=until_true, error_print=error_print
+        base_url + url_path, user, headers, options=options
     )
 
 
-def requests_api_info(base_url, user, until_true=True, error_print=True):
+def requests_api_info(base_url, user, options=None):
     return requests_api_base(
         base_url, user, "/api/info/",
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
-def requests_api_book(base_url, user, until_true=True, error_print=True):
+def requests_api_book(base_url, user, options=None):
     return requests_api_base(
         base_url, user, "/api/book/?currency=0&type=2",
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
-def requests_api_historical(base_url, user, until_true=True, error_print=True):
+def requests_api_historical(base_url, user, options=None):
     return requests_api_base(
         base_url, user, "/api/historical/",
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
-def requests_api_limits(base_url, user, until_true=True, error_print=True):
+def requests_api_limits(base_url, user, options=None):
     return requests_api_base(
         base_url, user, "/api/limits/",
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
-def requests_api_price(base_url, user, until_true=True, error_print=True):
+def requests_api_price(base_url, user, options=None):
     return requests_api_base(
         base_url, user, "/api/price/",
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_ticks(
-    base_url, user, start_date, end_date, until_true=True, error_print=True
+    base_url, user, start_date, end_date, options=None
 ):
     return requests_api_base(
         base_url, user, f"/api/ticks/?end={end_date}&start={start_date}",
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_robot_generate(
     token_base91, public_key, private_key, base_url, user,
-    until_true=True, error_print=True
+    options=None
 ):
     headers = {
         "User-Agent": roboauto_options["user_agent"],
@@ -194,13 +221,13 @@ def requests_api_robot_generate(
 
     return requests_tor(
         base_url + "/api/robot/", user, headers,
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_token(
     token_base91, base_url, user, referer_path, url_path,
-    until_true=True, error_print=True
+    options=None
 ):
     headers = {
         "User-Agent": roboauto_options["user_agent"],
@@ -218,44 +245,44 @@ def requests_api_token(
 
     return requests_tor(
         base_url + url_path, user, headers,
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
-def requests_api_robot(token_base91, base_url, user, until_true=True, error_print=True):
+def requests_api_robot(token_base91, base_url, user, options=None):
     return requests_api_token(
         token_base91, base_url, user,
         "/robot/",
         "/api/robot/",
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_order(
-    token_base91, order_id, base_url, user, until_true=True, error_print=True
+    token_base91, order_id, base_url, user, options=None
 ):
     return requests_api_token(
         token_base91, base_url, user,
         "/order/" + order_id,
         "/api/order/?order_id=" + order_id,
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_chat(
-    token_base91, order_id, base_url, user, offset=0, until_true=True, error_print=True
+    token_base91, order_id, base_url, user, offset=0, options=None
 ):
     return requests_api_token(
         token_base91, base_url, user,
         "/order/" + order_id,
         "/api/chat/?order_id=" + order_id + "&offset=" + str(offset),
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_post(
     token_base91, base_url, user, referer_path, url_path, data,
-    until_true=True, error_print=True
+    options=None
 ):
     headers = {
         "User-Agent": roboauto_options["user_agent"],
@@ -274,13 +301,13 @@ def requests_api_post(
 
     return requests_tor(
         base_url + url_path, user, headers, data=data,
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_make(
     token_base91, order_id, base_url, user, make_data,
-    until_true=True, error_print=True
+    options=None
 ):
     if order_id:
         referer_path = "/order/" + order_id
@@ -291,13 +318,13 @@ def requests_api_make(
         base_url, user, referer_path,
         "/api/make/",
         make_data,
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_chat_post(
     token_base91, order_id, base_url, user, message, offset=None,
-    until_true=True, error_print=True
+    options=None
 ):
     data_json = {
         "PGP_message": message,
@@ -313,13 +340,13 @@ def requests_api_chat_post(
         "/order/" + order_id,
         "/api/chat/",
         json_dumps(data_json),
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_reward(
     token_base91, base_url, user, signed_invoice,
-    until_true=True, error_print=True
+    options=None
 ):
     return requests_api_post(
         token_base91, base_url, user,
@@ -328,13 +355,13 @@ def requests_api_reward(
         json_dumps({
             "invoice": signed_invoice
         }),
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_stealth(
     token_base91, base_url, user, wants_stealth,
-    until_true=True, error_print=True
+    options=None
 ):
     return requests_api_post(
         token_base91, base_url, user,
@@ -343,26 +370,26 @@ def requests_api_stealth(
         json_dumps({
             "wantsStealth": wants_stealth
         }),
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_order_post(
     token_base91, order_id, base_url, user, order_action,
-    until_true=True, error_print=True
+    options=None
 ):
     return requests_api_post(
         token_base91, base_url, user,
         "/order/" + order_id,
         "/api/order/?order_id=" + order_id,
         order_action,
-        until_true=until_true, error_print=error_print
+        options=options
 )
 
 
 def requests_api_order_invoice(
     token_base91, order_id, base_url, user, signed_invoice, budget_ppm,
-    until_true=True, error_print=True
+    options=None
 ):
     return requests_api_order_post(
         token_base91, order_id, base_url, user,
@@ -371,13 +398,13 @@ def requests_api_order_invoice(
             "invoice": signed_invoice,
             "routing_budget_ppm": budget_ppm
         }),
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_order_address(
     token_base91, order_id, base_url, user, signed_address, sat_per_vb,
-    until_true=True, error_print=True
+    options=None
 ):
     return requests_api_order_post(
         token_base91, order_id, base_url, user,
@@ -386,13 +413,13 @@ def requests_api_order_address(
             "address": signed_address,
             "mining_fee_rate": sat_per_vb
         }),
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_order_rate(
     token_base91, order_id, base_url, user, rating,
-    until_true=True, error_print=True
+    options=None
 ):
     return requests_api_order_post(
         token_base91, order_id, base_url, user,
@@ -400,12 +427,12 @@ def requests_api_order_rate(
             "action": "rate_platform",
             "rating": rating
         }),
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_order_submit_statement(
-    token_base91, order_id, base_url, user, statement, until_true=True, error_print=True
+    token_base91, order_id, base_url, user, statement, options=None
 ):
     return requests_api_order_post(
         token_base91, order_id, base_url, user,
@@ -413,13 +440,13 @@ def requests_api_order_submit_statement(
             "action": "submit_statement",
             "statement": statement
         }),
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_order_take(
     token_base91, order_id, base_url, user, take_amount=None,
-    until_true=True, error_print=True
+    options=None
 ):
     data_json = {
         "action": "take"
@@ -432,65 +459,65 @@ def requests_api_order_take(
     return requests_api_order_post(
         token_base91, order_id, base_url, user,
         json_dumps(data_json),
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_order_pause(
-    token_base91, order_id, base_url, user, until_true=True, error_print=True
+    token_base91, order_id, base_url, user, options=None
 ):
     return requests_api_order_post(
         token_base91, order_id, base_url, user,
         json_dumps({
             "action": "pause"
         }),
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_order_cancel(
-    token_base91, order_id, base_url, user, until_true=True, error_print=True
+    token_base91, order_id, base_url, user, options=None
 ):
     return requests_api_order_post(
         token_base91, order_id, base_url, user,
         json_dumps({
             "action": "cancel"
         }),
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_order_confirm(
-    token_base91, order_id, base_url, user, until_true=True, error_print=True
+    token_base91, order_id, base_url, user, options=None
 ):
     return requests_api_order_post(
         token_base91, order_id, base_url, user,
         json_dumps({
             "action": "confirm"
         }),
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_order_undo_confirm(
-    token_base91, order_id, base_url, user, until_true=True, error_print=True
+    token_base91, order_id, base_url, user, options=None
 ):
     return requests_api_order_post(
         token_base91, order_id, base_url, user,
         json_dumps({
             "action": "undo_confirm"
         }),
-        until_true=until_true, error_print=error_print
+        options=options
     )
 
 
 def requests_api_order_dispute(
-    token_base91, order_id, base_url, user, until_true=True, error_print=True
+    token_base91, order_id, base_url, user, options=None
 ):
     return requests_api_order_post(
         token_base91, order_id, base_url, user,
         json_dumps({
             "action": "dispute"
         }),
-        until_true=until_true, error_print=error_print
+        options=options
     )

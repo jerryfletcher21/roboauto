@@ -9,7 +9,7 @@ from roboauto.global_state import roboauto_state
 from roboauto.robot import robot_list_dir, waiting_queue_get
 from roboauto.order_data import get_currency_string
 from roboauto.order_local import \
-    get_offer_dic, offer_dic_print, order_get_order_dic
+    get_offer_dic, offer_dic_print, order_dic_from_robot_dir
 from roboauto.requests_api import response_is_error, requests_api_book
 from roboauto.date_utils import \
     get_hour_offer, get_current_timestamp
@@ -33,8 +33,10 @@ def get_offers_per_hour(relative):
 
         robot_dir = roboauto_state["active_home"] + "/" + robot_name
 
-        order_dic = order_get_order_dic(robot_dir, error_print=False)
-        if order_dic is False:
+        order_dic = order_dic_from_robot_dir(
+            robot_dir, order_id=None, error_print=False
+        )
+        if order_dic is False or order_dic is None:
             continue
 
         expires_at = order_dic["order_response_json"]["expires_at"]
@@ -95,7 +97,10 @@ def get_book_response_json(coordinator, until_true=False):
     # in keep-online print to the terminal the errors of book requests
     # just when the verbosity is at least 1, but still print in the logs
     book_response_all = requests_api_book(
-        base_url, coordinator, until_true=until_true, error_print=level_print
+        base_url, coordinator, options={
+            "until_true": until_true,
+            "error_print": level_print
+        }
     )
     if response_is_error(book_response_all):
         print_err(f"{coordinator} book response", level=level_print)

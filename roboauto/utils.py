@@ -240,8 +240,9 @@ def update_roboauto_options(print_info=False):
                     update_single_option(option, new_value, print_info=print_info)
 
             for option in (
+                "seconds_pending_order", "order_maximum", "tab_size",
+                "routing_budget_ppm", "requests_timeout", "orders_timeout",
                 "active_interval", "pending_interval", "pay_interval", "error_interval",
-                "tab_size", "order_maximum", "seconds_pending_order", "routing_budget_ppm",
                 "default_duration", "default_escrow"
             ):
                 if parser.has_option(general_section, option):
@@ -584,10 +585,12 @@ def directory_get_last_number_file(dir_number, error_print=True):
             list_number.append(order_number)
     if len(list_number) < 1:
         return 0
-    file_number = dir_number + "/" + str(sorted(list_number)[-1])
-    if not os.path.isfile(file_number):
+
+    file_number = sorted(list_number)[-1]
+    file_path = dir_number + "/" + str(file_number)
+    if not os.path.isfile(file_path):
         if error_print:
-            print_err("%s is not a file" % file_number)
+            print_err(f"{file_path} is not a file")
         return False
 
     return file_number

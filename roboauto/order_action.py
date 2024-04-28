@@ -289,7 +289,7 @@ def order_seller_bond_escrow(robot_dic):
         robot_name + "-" + str(peer_nick) + "-" + order_id + "-" + \
         order_user["type"] + "-" + order_user["currency"] + "-" + \
         amount_correct + "-" + premium_string_get(order_user["premium"])
-    return subprocess_pay_invoice_and_check(
+    if subprocess_pay_invoice_and_check(
         robot_dic, order_id,
         escrow_invoice, str(escrow_satoshis), pay_label,
         lambda order_status : \
@@ -300,7 +300,10 @@ def order_seller_bond_escrow(robot_dic):
         "escrow not paid in time",
         order_requests_order_dic, order_is_expired,
         maximum_retries=100
-    )
+    ) is False:
+        return False
+
+    return True
 
 
 def order_post_action_simple(
