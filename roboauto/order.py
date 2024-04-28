@@ -124,7 +124,8 @@ def order_bad_request_is_cancelled(bad_request):
 
 
 def order_requests_order_dic(
-    robot_dic, order_id, order_function=None, take_amount=None, save_to_file=True
+    robot_dic, order_id, order_function=None, take_amount=None,
+    save_to_file=True, until_true=True
 ):
     """get the order_dic making a request to the coordinator
     order_function can be set to requests_api_order_take
@@ -149,11 +150,13 @@ def order_requests_order_dic(
 
     if order_function is None:
         order_response_all = requests_api_order(
-            token_base91, order_id, robot_url, robot_name
+            token_base91, order_id, robot_url, robot_name,
+            until_true=until_true
         )
     else:
         order_response_all = order_function(
-            token_base91, order_id, robot_url, robot_name, take_amount=take_amount
+            token_base91, order_id, robot_url, robot_name,
+            until_true=until_true, take_amount=take_amount
         )
 
     if response_is_error(order_response_all):

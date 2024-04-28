@@ -6,7 +6,6 @@
 
 import re
 import time
-import random
 
 import filelock
 
@@ -37,7 +36,8 @@ from roboauto.date_utils import \
     get_current_minutes_from_timestamp, timestamp_from_date_string, \
     date_convert_time_zone_and_format_string
 from roboauto.utils import \
-    update_roboauto_options, lock_file_name_get, get_uint
+    update_roboauto_options, lock_file_name_get, \
+    get_uint, random_interval
 
 
 def robot_handle_single_active(robot_dic, robot_this_hour):
@@ -53,7 +53,9 @@ def robot_handle_single_active(robot_dic, robot_this_hour):
 
     # order_id may be false
     # save to file just when order is not public below
-    order_dic = order_requests_order_dic(robot_dic, order_id, save_to_file=False)
+    order_dic = order_requests_order_dic(
+        robot_dic, order_id, save_to_file=False, until_true=False
+    )
     if order_dic is False:
         return False
     elif order_bad_request_is_cancelled(order_dic):
@@ -240,7 +242,9 @@ def robot_handle_pending(robot_dic):
 
     # order_id can be false
     # save to file just when order is not pending below
-    order_dic = order_requests_order_dic(robot_dic, order_id, save_to_file=False)
+    order_dic = order_requests_order_dic(
+        robot_dic, order_id, save_to_file=False, until_true=False
+    )
     if order_dic is False:
         return False
     elif order_bad_request_is_cancelled(order_dic):
@@ -346,10 +350,6 @@ def should_check_robot_by_time(last_time, current_time, modulo_time, max_time):
         return True
 
     return False
-
-
-def random_interval(max_value):
-    return random.randint(1, max_value) - 1
 
 
 def robot_active_dic_update(active_dic, robot_this_hour):
@@ -465,7 +465,7 @@ def keep_online_no_lock():
             )
 
             for robot_name, robot_time in active_dic.items():
-                if should_check_robot_by_time(
+                if robot_name not in nicks_waiting and should_check_robot_by_time(
                     last_time, current_time, robot_time,
                     roboauto_options["active_interval"]
                 ):

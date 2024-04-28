@@ -10,6 +10,7 @@ import re
 import getpass
 import json
 import configparser
+import random
 import secrets
 import hashlib
 import struct
@@ -612,3 +613,7 @@ def lock_file_name_get(name):
 
 def invoice_get_correct_amount(amount, budget_ppm):
     return int(amount * (1 - budget_ppm / 1000000))
+
+
+def random_interval(max_value):
+    return random.randint(1, max_value) - 1
