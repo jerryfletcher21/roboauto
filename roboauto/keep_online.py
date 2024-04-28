@@ -14,8 +14,7 @@ from roboauto.logger import print_out, print_err, logger_flush
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import \
     robot_list_dir, robot_load_from_name, waiting_queue_get, \
-    robot_change_dir, robot_requests_get_order_id, \
-    robot_get_dir_dic, robot_var_from_dic, robot_wait, \
+    robot_change_dir, robot_get_dir_dic, robot_wait, \
     robot_unwait, robot_check_and_claim_reward
 from roboauto.order_data import  \
     order_is_public, order_is_paused, order_is_finished, \
@@ -25,14 +24,14 @@ from roboauto.order_data import  \
     order_is_waiting_seller, order_is_waiting_buyer, \
     order_is_failed_routing
 from roboauto.order_local import \
-    robot_handle_taken, order_get_order_dic
+    robot_handle_taken, order_get_order_dic, \
+    order_robot_get_last_order_id, order_save_order_file
 from roboauto.order import \
     order_requests_order_dic, bond_order, make_order, \
     order_bad_request_is_cancelled
 from roboauto.order_action import \
     order_seller_bond_escrow, order_buyer_update_invoice
-from roboauto.book import \
-    get_book_response_json, get_hour_offer
+from roboauto.book import get_hour_offer
 from roboauto.date_utils import \
     get_current_timestamp, get_current_hour_from_timestamp, \
     get_current_minutes_from_timestamp, timestamp_from_date_string, \
@@ -41,17 +40,20 @@ from roboauto.utils import \
     update_roboauto_options, lock_file_name_get, get_uint
 
 
-def robot_check_expired(robot_dic, robot_this_hour):
-    """check what happened to a robot that is no longer active
-    return 1 if the robot is back online, 0 if not, false if something wrong"""
+def robot_handle_single_active(robot_dic, robot_this_hour):
+    """return 1 if the robot after the function is online,
+    0 if not, false if something went wrong"""
 
     robot_name = robot_dic["name"]
+    robot_dir = robot_dic["dir"]
 
-    order_id = robot_requests_get_order_id(robot_dic)
+    order_id = order_robot_get_last_order_id(robot_dic)
     if order_id is False:
-        return False
+        print_err(f"{robot_name} active does not have orders saved, making request")
 
-    order_dic = order_requests_order_dic(robot_dic, order_id)
+    # order_id may be false
+    # save to file just when order is not public below
+    order_dic = order_requests_order_dic(robot_dic, order_id, save_to_file=False)
     if order_dic is False:
         return False
     elif order_bad_request_is_cancelled(order_dic):
@@ -66,14 +68,18 @@ def robot_check_expired(robot_dic, robot_this_hour):
 
     order_info = order_dic["order_info"]
 
-    print_out(robot_name + " " + order_id + " " + order_info["status_string"])
-
     status_id = order_info["status"]
 
     if order_is_public(status_id):
-        print_err(robot_name + " " + order_id + " checked but was online")
         return 1
-    elif order_is_paused(status_id):
+
+    status_string = order_info["status_string"]
+    print_out(f"{robot_name} {order_id} {status_string}")
+
+    if not order_save_order_file(robot_dir, order_id, order_dic):
+        return False
+
+    if order_is_paused(status_id):
         print_out(robot_name + " " + order_id + " " + order_info["order_description"])
         print_out(robot_name + " " + order_id + " moving to paused")
         if not robot_change_dir(robot_name, "paused"):
@@ -140,11 +146,11 @@ def order_is_this_hour(order, current_timestamp, coordinator=False):
 
 
 def count_active_orders_this_hour(
-    current_timestamp, nicks_waiting, robot_set
+    current_timestamp, nicks_waiting, robot_list_dic
 ):
     robot_this_hour = 0
 
-    for robot_name in robot_set:
+    for robot_name in robot_list_dic:
         if robot_name in nicks_waiting:
             continue
 
@@ -163,7 +169,7 @@ def count_active_orders_this_hour(
     return robot_this_hour
 
 
-def robot_check_expired_handle(robot_dic, current_timestamp, robot_this_hour):
+def robot_handle_active(robot_dic, current_timestamp, robot_this_hour):
     robot_name = robot_dic["name"]
     robot_dir = roboauto_state["active_home"] + "/" + robot_name
 
@@ -177,7 +183,7 @@ def robot_check_expired_handle(robot_dic, current_timestamp, robot_this_hour):
             print_err("negative robot this hour")
             robot_this_hour = 0
 
-    robot_online = robot_check_expired(
+    robot_online = robot_handle_single_active(
         robot_dic, robot_this_hour
     )
     if robot_online is False or robot_online == 0:
@@ -189,43 +195,6 @@ def robot_check_expired_handle(robot_dic, current_timestamp, robot_this_hour):
         coordinator=False
     ):
         robot_this_hour += robot_online
-
-    return robot_this_hour
-
-
-def list_orders_single_book(
-    coordinator, robot_list, nicks_waiting, robot_this_hour, current_timestamp
-):
-    book_response_json = get_book_response_json(coordinator, until_true=False)
-    if book_response_json is False:
-        return robot_this_hour
-
-    nicks = []
-    for offer in book_response_json:
-        robot_name = offer["maker_nick"]
-        nicks.append(robot_name)
-
-    for robot_name in robot_list:
-        robot_dic = robot_load_from_name(robot_name)
-        if robot_dic is False:
-            return robot_this_hour
-
-        if robot_name not in nicks:
-            if robot_name not in nicks_waiting:
-                robot_this_hour = robot_check_expired_handle(
-                    robot_dic, current_timestamp, robot_this_hour
-                )
-        elif robot_name in nicks_waiting:
-            print_out(f"{robot_name} was in waiting queue but is active")
-            if robot_unwait(robot_name):
-                order = order_get_order_dic(
-                    roboauto_state["active_home"] + "/" + robot_name, error_print=False
-                )
-                if order is not False and order_is_this_hour(
-                    order, current_timestamp,
-                    coordinator=False
-                ):
-                    robot_this_hour += 1
 
     return robot_this_hour
 
@@ -262,18 +231,16 @@ def pending_robot_should_act(expires_timestamp, escrow_duration):
 
 
 def robot_handle_pending(robot_dic):
-    robot_name, _, robot_dir, _, _, _, _ = robot_var_from_dic(robot_dic)
+    robot_name = robot_dic["name"]
+    robot_dir = robot_dic["dir"]
 
-    old_order_dic = order_get_order_dic(robot_dir, error_print=False)
-    if old_order_dic is not False:
-        order_id = old_order_dic["order_info"]["order_id"]
-    else:
-        print_err("robot does not have orders saved, making request")
-        order_id = robot_requests_get_order_id(robot_dic)
-        if order_id is False:
-            return False
+    order_id = order_robot_get_last_order_id(robot_dic, error_print=False)
+    if order_id is False:
+        print_err(f"{robot_name} pending does not have orders saved, making request")
 
-    order_dic = order_requests_order_dic(robot_dic, order_id)
+    # order_id can be false
+    # save to file just when order is not pending below
+    order_dic = order_requests_order_dic(robot_dic, order_id, save_to_file=False)
     if order_dic is False:
         return False
     elif order_bad_request_is_cancelled(order_dic):
@@ -339,6 +306,9 @@ def robot_handle_pending(robot_dic):
         status_string = order_info["status_string"]
         print_out(f"{robot_name} {order_id} {status_string}")
 
+        if not order_save_order_file(robot_dir, order_id, order_dic):
+            return False
+
         earned_rewards = robot_check_and_claim_reward(robot_dic)
         if earned_rewards is False:
             return False
@@ -363,24 +333,14 @@ def robot_handle_pending(robot_dic):
     return True
 
 
-def should_check_book(current_time, last_checked):
-    if current_time >= last_checked + roboauto_options["book_interval"]:
-        return True
-
-    return False
-
-
-def should_check_robot_pending(last_time, current_time, modulo_time):
-    if modulo_time is None:
-        return True
-
-    if modulo_time > last_time % roboauto_options["pending_interval"]:
+def should_check_robot_by_time(last_time, current_time, modulo_time, max_time):
+    if modulo_time > last_time % max_time:
         correct_modulo_time = modulo_time
     else:
-        correct_modulo_time = modulo_time + roboauto_options["pending_interval"]
+        correct_modulo_time = modulo_time + max_time
 
     if \
-        last_time % roboauto_options["pending_interval"] + \
+        last_time % max_time + \
         (current_time - last_time) > \
         correct_modulo_time:
         return True
@@ -388,53 +348,63 @@ def should_check_robot_pending(last_time, current_time, modulo_time):
     return False
 
 
-def robot_active_set_update(old_robot_set, current_timestamp):
-    """update robot active_set, may send added robot to the waiting list"""
-    new_robot_set = robot_list_dir(robot_get_dir_dic()["active"], get_set=True)
+def random_interval(max_value):
+    return random.randint(1, max_value) - 1
 
-    something_changed = False
-    if new_robot_set != old_robot_set:
-        robots_removed = old_robot_set - new_robot_set
-        if len(robots_removed) > 0:
-            for robot_removed in robots_removed:
-                print_out(f"{robot_removed} removed from active directory")
 
-        robots_added = new_robot_set - old_robot_set
-        if len(robots_added) > 0:
-            robot_this_hour = count_active_orders_this_hour(
-                current_timestamp, waiting_queue_get(), old_robot_set
-            )
-            for robot_added in robots_added:
-                print_out(f"{robot_added} added to active directory")
-                robot_this_hour += 1
-                if robot_this_hour > roboauto_options["order_maximum"]:
-                    robot_wait(robot_added)
+def robot_active_dic_update(active_dic, robot_this_hour):
+    active_set = robot_list_dir(robot_get_dir_dic()["active"], get_set=True)
 
-        something_changed = True
+    robots_removed = [
+        robot_name for robot_name in active_dic if robot_name not in active_set
+    ]
+    for robot_name in robots_removed:
+        active_dic.pop(robot_name)
+        print_out(f"{robot_name} removed from active directory")
 
-    return new_robot_set, something_changed
+    robots_added = [
+        robot_name for robot_name in active_set if robot_name not in active_dic
+    ]
+    for robot_name in robots_added:
+        active_dic[robot_name] = random_interval(
+            roboauto_options["active_interval"]
+        )
+        print_out(f"{robot_name} added to active directory")
+        if robot_this_hour >= roboauto_options["order_maximum"]:
+            robot_wait(robot_name)
+        else:
+            robot_this_hour += 1
+
+    return robot_this_hour
 
 
 def robot_pending_dic_update(pending_dic):
     pending_set = robot_list_dir(robot_get_dir_dic()["pending"], get_set=True)
 
-    for robot_name in set(pending_dic.keys()):
-        if robot_name not in pending_set:
-            pending_dic.pop(robot_name)
-            print_out(f"{robot_name} removed from pending directory")
+    robots_removed = [
+        robot_name for robot_name in pending_dic if robot_name not in pending_set
+    ]
+    for robot_name in robots_removed:
+        pending_dic.pop(robot_name)
+        print_out(f"{robot_name} removed from pending directory")
 
-    for robot_name in pending_set:
-        if robot_name not in pending_dic:
-            pending_dic[robot_name] = None
-            print_out(f"{robot_name} added to pending directory")
+    robots_added = [
+        robot_name for robot_name in pending_set if robot_name not in pending_dic
+    ]
+    for robot_name in robots_added:
+        pending_dic[robot_name] = random_interval(
+            roboauto_options["pending_interval"]
+        )
+        print_out(f"{robot_name} added to pending directory")
 
     return True
 
 
-# active_set is the set of current active robots
+# active_dic is the set of current active robots
+# with an associated time % roboauto_options["active_interval"]
 # pending_dic is the set of current pending robots
 # with an associated time % roboauto_options["pending_interval"]
-# this way pending robots are not checked all together,
+# this way robots are not checked all together,
 # but every one is checked at a different time
 def keep_online_no_lock():
     active_list = robot_list_dir(roboauto_state["active_home"])
@@ -460,14 +430,19 @@ def keep_online_no_lock():
         print_out("there are currently no pending robots", date=False)
     print_out("\n", end="", date=False)
 
-    active_set = set(active_list)
+    active_dic = {}
+    for active_robot in active_list:
+        active_dic[active_robot] = random_interval(
+            roboauto_options["active_interval"]
+        )
+
     pending_dic = {}
     for pending_robot in pending_list:
-        # maybe randomize also here
-        pending_dic[pending_robot] = None
+        pending_dic[pending_robot] = random_interval(
+            roboauto_options["pending_interval"]
+        )
 
     current_time = 0
-    book_last_checked = 0
 
     logger_flush()
 
@@ -480,73 +455,56 @@ def keep_online_no_lock():
 
         current_timestamp = get_current_timestamp()
 
-        # should also check individual robots to keep them online
-        if \
-            len(active_set) >= 1 and \
-            should_check_book(current_time, book_last_checked):
-            book_last_checked = current_time
+        robot_this_hour = 0
 
-            coordinator_robot_list = {}
-
+        if len(active_dic) > 0:
             nicks_waiting = waiting_queue_get()
 
-            for robot_name in active_set:
-                robot_dic = robot_load_from_name(robot_name)
-                if robot_dic is False:
-                    print_err(f"skipping robot {robot_name}")
-                    continue
-
-                coordinator = robot_dic["coordinator"]
-                if coordinator_robot_list.get(coordinator, False) is False:
-                    coordinator_robot_list.update({coordinator: []})
-                coordinator_robot_list[coordinator].append(robot_name)
-
             robot_this_hour = count_active_orders_this_hour(
-                current_timestamp, nicks_waiting, active_set
+                current_timestamp, nicks_waiting, active_dic
             )
 
-            for coordinator, robot_list in coordinator_robot_list.items():
-                single_book_response = list_orders_single_book(
-                    coordinator, robot_list, nicks_waiting,
-                    robot_this_hour, current_timestamp
-                )
-                if single_book_response is not False:
-                    robot_this_hour = single_book_response
+            for robot_name, robot_time in active_dic.items():
+                if should_check_robot_by_time(
+                    last_time, current_time, robot_time,
+                    roboauto_options["active_interval"]
+                ):
+                    robot_dic = robot_load_from_name(robot_name)
+                    if robot_dic is False:
+                        print_err(f"{robot_name} skipping active robot")
+                        continue
+
+                    robot_this_hour = robot_handle_active(
+                        robot_dic, current_timestamp, robot_this_hour
+                    )
 
             if should_remove_from_waiting_queue(
                 robot_this_hour, nicks_waiting, current_timestamp
             ):
-                robot_unwait()
+                if robot_unwait():
+                    robot_this_hour += 1
 
-        if len(pending_dic) >= 1:
+        if len(pending_dic) > 0:
             for robot_name, robot_time in pending_dic.items():
-                if should_check_robot_pending(
-                    last_time, current_time, robot_time
+                if should_check_robot_by_time(
+                    last_time, current_time, robot_time,
+                    roboauto_options["pending_interval"]
                 ):
                     robot_dic = robot_load_from_name(robot_name)
                     if robot_dic is False:
-                        print_err(f"skipping robot {robot_name}")
+                        print_err(f"{robot_name} skipping pending robot")
                         continue
 
                     robot_handle_pending(robot_dic)
 
-                    if robot_time is None:
-                        pending_dic[robot_name] = \
-                            random.randint(1, roboauto_options["pending_interval"]) - 1
-
-        active_set, something_changed_active = robot_active_set_update(
-            active_set, current_timestamp
-        )
+        robot_this_hour = robot_active_dic_update(active_dic, robot_this_hour)
         robot_pending_dic_update(pending_dic)
-        if something_changed_active:
-            # check next loop
-            book_last_checked = 0
 
         # allow to adjust configs while roboauto is running
         if update_roboauto_options(True) is False:
             print_err("reading the config file")
 
-        if len(active_set) < 1 and len(pending_dic) < 1:
+        if len(active_dic) < 1 and len(pending_dic) < 1:
             print_out("there are no active or pending robots", date=False)
             return True
 

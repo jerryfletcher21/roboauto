@@ -19,7 +19,8 @@ from roboauto.subprocess_commands import message_notification_send
 from roboauto.order_data import \
     get_currency_string, order_is_pending, get_type_string
 from roboauto.robot import \
-    robot_list_dir, robot_get_dir_dic, robot_load_from_name
+    robot_list_dir, robot_get_dir_dic, \
+    robot_load_from_name, robot_var_from_dic
 
 
 def get_order_data(
@@ -328,6 +329,28 @@ def order_get_order_dic(robot_dir, error_print=True):
         return False
 
     return order_dic
+
+
+def order_robot_get_last_order_id(robot_dic, error_print=True):
+    robot_name, _, robot_dir, _, _, _, _ = robot_var_from_dic(robot_dic)
+
+    order_dic = order_get_order_dic(robot_dir, error_print=error_print)
+    if order_dic is False:
+        return False
+
+    order_info = order_dic.get("order_info", False)
+    if order_info is False:
+        if error_print:
+            print_err(f"{robot_name} order_info not present")
+        return False
+
+    order_id = order_info.get("order_id", False)
+    if order_id is False:
+        if error_print:
+            print_err(f"{robot_name} order_id not present")
+        return False
+
+    return order_id
 
 
 def robot_handle_taken(robot_name, status_id, order_id, other):

@@ -124,7 +124,7 @@ def order_bad_request_is_cancelled(bad_request):
 
 
 def order_requests_order_dic(
-    robot_dic, order_id, order_function=None, take_amount=None
+    robot_dic, order_id, order_function=None, take_amount=None, save_to_file=True
 ):
     """get the order_dic making a request to the coordinator
     order_function can be set to requests_api_order_take
@@ -262,8 +262,9 @@ def order_requests_order_dic(
         "order_response_json":      order_response_json
     }
 
-    if not order_save_order_file(robot_dir, order_id, order_dic):
-        return False
+    if save_to_file is True:
+        if not order_save_order_file(robot_dir, order_id, order_dic):
+            return False
 
     return order_dic
 

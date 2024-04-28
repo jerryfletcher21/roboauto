@@ -13,7 +13,7 @@ from roboauto.robot import \
     robot_input_from_argv, robot_requests_robot, \
     robot_var_from_dic, robot_requests_get_order_id
 from roboauto.order_local import \
-    order_get_order_dic, order_dic_from_robot_dic, \
+    order_robot_get_last_order_id, order_dic_from_robot_dic, \
     order_dic_print
 from roboauto.order import order_requests_order_dic
 from roboauto.chat import \
@@ -212,19 +212,11 @@ def order_info_argv(argv):
     if robot_dic is False:
         return False
 
-    robot_name, _, robot_dir, _, coordinator, _, _ = robot_var_from_dic(robot_dic)
+    robot_name, _, _, _, coordinator, _, _ = robot_var_from_dic(robot_dic)
 
     if local_mode is False:
-        order_dic = order_get_order_dic(robot_dir, error_print=False)
-        if order_dic is not False:
-            order_info = order_dic.get("order_info", False)
-            if order_info is False:
-                return False
-
-            order_id = order_info.get("order_id", False)
-            if order_id is False:
-                return False
-        else:
+        order_id = order_robot_get_last_order_id(robot_dic, error_print=False)
+        if order_id is False:
             print_out("robot does not have orders saved, searching it")
 
             order_id = robot_requests_get_order_id(robot_dic, error_print=False)

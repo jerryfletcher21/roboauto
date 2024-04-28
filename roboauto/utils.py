@@ -239,7 +239,7 @@ def update_roboauto_options(print_info=False):
                     update_single_option(option, new_value, print_info=print_info)
 
             for option in (
-                "book_interval", "pending_interval", "pay_interval", "error_interval",
+                "active_interval", "pending_interval", "pay_interval", "error_interval",
                 "tab_size", "order_maximum", "seconds_pending_order", "routing_budget_ppm",
                 "default_duration", "default_escrow"
             ):

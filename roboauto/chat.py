@@ -11,7 +11,7 @@ from roboauto.date_utils import date_convert_time_zone_and_format_string
 from roboauto.utils import \
     json_loads, string_from_multiline_format, string_to_multiline_format, \
     input_ask, file_json_write
-from roboauto.order_local import order_get_order_dic
+from roboauto.order_local import order_robot_get_last_order_id
 from roboauto.requests_api import \
     response_is_error, requests_api_chat_post, requests_api_chat
 from roboauto.robot import \
@@ -26,16 +26,7 @@ def robot_requests_chat(robot_dic):
 
     robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
-    order_dic = order_get_order_dic(robot_dir, error_print=False)
-    if order_dic is False:
-        print_err("robot does not have orders saved")
-        return multi_false
-
-    order_info = order_dic.get("order_info", False)
-    if order_info is False:
-        return multi_false
-
-    order_id = order_info.get("order_id", False)
+    order_id = order_robot_get_last_order_id(robot_dic)
     if order_id is False:
         return multi_false
 
@@ -169,19 +160,8 @@ def chat_print_encrypted_messages(chat_response_json, robot_dir, token):
 def robot_send_chat_message(robot_dic, message):
     robot_name, _, robot_dir, token, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
-    order_dic = order_get_order_dic(robot_dir)
-    if order_dic is False:
-        print_err(f"{robot_name} getting order dictionary")
-        return False
-
-    order_info = order_dic.get("order_info", False)
-    if order_info is False:
-        print_err(f"{robot_name} getting order info")
-        return False
-
-    order_id = order_info.get("order_id", False)
+    order_id = order_robot_get_last_order_id(robot_dic)
     if order_id is False:
-        print_err(f"{robot_name} getting order id")
         return False
 
     if re.match('^#', message) is not None:
