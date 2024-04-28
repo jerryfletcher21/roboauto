@@ -87,34 +87,42 @@ def get_book_response_json(coordinator, until_true=False):
     if base_url is False:
         return False
 
-    # print to the terminal the errors of book requests just when
-    # the verbosity is at least 1, but still print in the logs
+    if roboauto_state["current_command_type"] == "keep-online":
+        level_print = 1
+    else:
+        level_print = 0
+
+    # in keep-online print to the terminal the errors of book requests
+    # just when the verbosity is at least 1, but still print in the logs
     book_response_all = requests_api_book(
-        base_url, coordinator, until_true=until_true, error_print=1
+        base_url, coordinator, until_true=until_true, error_print=level_print
     )
     if response_is_error(book_response_all):
-        print_err(f"connecting to coordinator {coordinator}", level=1)
+        print_err(f"{coordinator} book response", level=level_print)
         return False
     book_response = book_response_all.text
 
     book_response_json = json_loads(book_response)
     if book_response_json is False:
-        print_err(book_response, error=False, date=False)
-        print_err("getting book")
+        print_err(book_response, error=False, date=False, level=level_print)
+        print_err(f"{coordinator} getting book", level=level_print)
         return False
 
     if not isinstance(book_response_json, list):
         if book_response_json == {"not_found": "No orders found, be the first to make one"}:
             return []
 
-        print_err(book_response, error=False, date=False)
-        print_err("book response is not a list")
+        print_err(book_response, error=False, date=False, level=level_print)
+        print_err(f"{coordinator} book response is not a list", level=level_print)
         return False
 
     for offer in book_response_json:
         if not isinstance(offer, dict):
-            print_err(book_response, error=False, date=False)
-            print_err("an element of book response is not a dict")
+            print_err(book_response, error=False, date=False, level=level_print)
+            print_err(
+                f"{coordinator} an element of book response is not a dict",
+                level=level_print
+            )
             return False
 
     return book_response_json
@@ -179,9 +187,7 @@ def get_multi_book_response_json(coordinators):
 
     for coordinator in coordinators:
         book_response_json = get_book_response_json(coordinator, until_true=False)
-
         if book_response_json is False:
-            print_err(f"getting book coordinator {coordinator}")
             continue
 
         multi_book_response_json.append({
