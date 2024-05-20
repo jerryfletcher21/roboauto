@@ -21,7 +21,7 @@ Inactive are old robots that have a completed offer.
 Main command of roboauto is `keep-online`. After you have generated
 robots from different coordinators, and created make offers, `roboauto
 keep-online` will automatically recreate offers when they expire, and
-notify the user when an order is taken, by running the message-notification
+notify the user when an order is taken, by running the `message-notification`
 script. Optionally it will also automatically pay escrow/send invoice of
 taken orders.
 
@@ -49,19 +49,19 @@ $ pip install --break-system-packages .
 
 ## Configuration
 
-Copy config/config.ini to ~/.config/roboauto/config.ini and edit it.
+Copy `config/config.ini` to `~/.config/roboauto/config.ini` and edit it.
 
-Create scripts lightning-node and message-notification in
-~/.config/roboauto/, some examples are in data/
+Create scripts `lightning-node` and `message-notification` in
+`~/.config/roboauto/`, some examples are in `data/`
 
-lightning-node should support 3 actions:
+`lightning-node` should support 3 actions:
 * check: takes an invoice and an amount and exits with an error status
   if the invoice is not for the correct amount
 * pay: takes an invoice and a label and pays the invoice
 * invoice: takes an amount and a label, create the invoice and prints it
   to stdout
 
-message-notification takes an event and a message, and should send a
+`message-notification` takes an event and a message, and should send a
 message notification.
 
 If you use core lightning and simplex for notifications:
@@ -70,7 +70,7 @@ cp data/lightning-node-core-lightning ~/.config/roboauto/lightning-node
 cp data/message-notification-simplex ~/.config/roboauto/message-notification
 ```
 
-Source completions/roboauto.bash-completion in ~/.bashrc
+Source completions/roboauto.bash-completion in `~/.bashrc`
 
 If the bash completion package is installed there are better completions in
 `create-order`, `recreate-order` and `change-order-expire`

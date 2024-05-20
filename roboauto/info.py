@@ -214,26 +214,27 @@ def order_info_argv(argv):
 
     robot_name, _, robot_dir, _, coordinator, _, _ = robot_var_from_dic(robot_dic)
 
-    if local_mode is False:
-        order_id = order_robot_get_last_order_id(robot_dic, error_print=False)
-        if order_id is False:
-            print_out("robot does not have orders saved, searching it")
+    if len(argv) >= 1:
+        order_id = argv[0]
+        argv = argv[1:]
+    else:
+        order_id = False
 
-            order_id = robot_requests_get_order_id(robot_dic, error_print=False)
+    if local_mode is False:
+        if order_id is False:
+            order_id = order_robot_get_last_order_id(robot_dic, error_print=False)
             if order_id is False:
-                print_err(f"{robot_name} does not have active or last orders")
-                return False
+                print_out("robot does not have orders saved, searching it")
+
+                order_id = robot_requests_get_order_id(robot_dic, error_print=False)
+                if order_id is False:
+                    print_err(f"{robot_name} does not have active or last orders")
+                    return False
 
         order_dic = order_requests_order_dic(robot_dic, order_id)
         if order_dic is False or isinstance(order_dic, str):
             return False
     else:
-        if len(argv) >= 1:
-            order_id = argv[0]
-            argv = argv[1:]
-        else:
-            order_id = False
-
         order_dic = order_dic_from_robot_dir(
             robot_dir, order_id=order_id, error_print=False
         )

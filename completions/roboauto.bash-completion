@@ -5,6 +5,10 @@
 # in roboauto create-order, recreate-order and change-order-expire
 
 __roboauto_completion() {
+    if ! command -v roboauto >/dev/null 2>&1; then
+        return 0
+    fi
+
     local ifs_original="$IFS"
     local ifs_newline='
 '

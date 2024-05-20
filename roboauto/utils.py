@@ -620,3 +620,27 @@ def invoice_get_correct_amount(amount, budget_ppm):
 
 def random_interval(max_value):
     return random.randint(1, max_value) - 1
+
+
+def bad_request_is_cancelled(bad_request):
+    # may be changed in the future
+    # https://github.com/RoboSats/robosats/issues/1245
+
+    if not isinstance(bad_request, str):
+        return False
+
+    return bad_request in (
+        "This order has been cancelled by the maker",
+        "This order has been cancelled collaborativelly"
+    )
+
+
+def bad_request_is_wrong_robot(bad_request):
+    if not isinstance(bad_request, str):
+        return False
+
+    # pylint: disable=C0301 line-too-long
+    return bad_request in (
+        "Robot token SHA256 was provided in the header. However it is not a valid 39 or 40 characters Base91 string."
+        "On the first request to a RoboSats coordinator, you must provide as well a valid public and encrypted private PGP keys"
+    )

@@ -110,19 +110,6 @@ def peer_nick_from_response(order_response_json):
     return peer_nick
 
 
-def order_bad_request_is_cancelled(bad_request):
-    # may be changed in the future
-    # https://github.com/RoboSats/robosats/issues/1245
-
-    if not isinstance(bad_request, str):
-        return False
-
-    return bad_request in (
-        "This order has been cancelled by the maker",
-        "This order has been cancelled collaborativelly"
-    )
-
-
 def order_requests_order_dic(
     robot_dic, order_id, order_function=None, take_amount=None,
     save_to_file=True, until_true=True, timeout=None
@@ -480,7 +467,7 @@ def make_order(
             print_err(bad_request, error=False, date=False)
             print_err("making order")
             if "Your order maximum amount is too big" in bad_request:
-                if not robot_change_dir(robot_name, "paused"):
+                if not robot_change_dir(robot_name, "paused", error_is_already=False):
                     return False
         else:
             print_err(make_response, end="", error=False, date=False)

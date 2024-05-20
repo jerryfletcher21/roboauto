@@ -14,7 +14,8 @@ from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.robot import \
     robot_list_dir, robot_load_from_name, waiting_queue_get, \
     robot_change_dir, robot_get_dir_dic, robot_wait, \
-    robot_unwait, robot_check_and_claim_reward
+    robot_unwait, robot_check_and_claim_reward, \
+    robot_requests_get_order_id
 from roboauto.order_data import  \
     order_is_public, order_is_paused, order_is_finished, \
     order_is_pending, order_is_waiting_maker_bond, \
@@ -26,8 +27,7 @@ from roboauto.order_local import \
     robot_handle_taken, order_dic_from_robot_dir, \
     order_robot_get_last_order_id, order_save_order_file
 from roboauto.order import \
-    order_requests_order_dic, bond_order, make_order, \
-    order_bad_request_is_cancelled
+    order_requests_order_dic, bond_order, make_order
 from roboauto.order_action import \
     order_seller_bond_escrow, order_buyer_update_invoice
 from roboauto.book import get_hour_offer
@@ -37,7 +37,8 @@ from roboauto.date_utils import \
     date_convert_time_zone_and_format_string
 from roboauto.utils import \
     update_roboauto_options, lock_file_name_get, \
-    get_uint, random_interval
+    get_uint, random_interval, \
+    bad_request_is_cancelled, bad_request_is_wrong_robot
 
 
 def robot_handle_single_active(robot_dic, robot_this_hour):
@@ -47,9 +48,12 @@ def robot_handle_single_active(robot_dic, robot_this_hour):
     robot_name = robot_dic["name"]
     robot_dir = robot_dic["dir"]
 
-    order_id = order_robot_get_last_order_id(robot_dic)
-    if order_id is False:
+    order_id = order_robot_get_last_order_id(robot_dic, error_print=False)
+    if order_id is False or order_id is None:
         print_err(f"{robot_name} active does not have orders saved, making request")
+        order_id = robot_requests_get_order_id(robot_dic)
+        if order_id is False or order_id is None:
+            return False
 
     # order_id may be false
     # save to file just when order is not public below
@@ -59,7 +63,10 @@ def robot_handle_single_active(robot_dic, robot_this_hour):
     )
     if order_dic is False:
         return False
-    elif order_bad_request_is_cancelled(order_dic):
+    elif bad_request_is_wrong_robot(order_dic):
+        print_out(f"{robot_name} {order_id} wrong robot, moving to paused")
+        return robot_change_dir(robot_name, "paused")
+    elif bad_request_is_cancelled(order_dic):
         earned_rewards = robot_check_and_claim_reward(robot_dic)
         if earned_rewards is False:
             return False
@@ -68,6 +75,8 @@ def robot_handle_single_active(robot_dic, robot_this_hour):
         else:
             print_out(f"{robot_name} {order_id} active is cancelled, moving to inactive")
             return robot_change_dir(robot_name, "inactive")
+    elif isinstance(order_dic, str):
+        return False
 
     order_info = order_dic["order_info"]
 
@@ -239,8 +248,11 @@ def robot_handle_pending(robot_dic):
     robot_dir = robot_dic["dir"]
 
     order_id = order_robot_get_last_order_id(robot_dic, error_print=False)
-    if order_id is False:
+    if order_id is False or order_id is None:
         print_err(f"{robot_name} pending does not have orders saved, making request")
+        order_id = robot_requests_get_order_id(robot_dic)
+        if order_id is False or order_id is None:
+            return False
 
     # order_id can be false
     # save to file just when order is not pending below
@@ -250,7 +262,10 @@ def robot_handle_pending(robot_dic):
     )
     if order_dic is False:
         return False
-    elif order_bad_request_is_cancelled(order_dic):
+    elif bad_request_is_wrong_robot(order_dic):
+        print_out(f"{robot_name} {order_id} wrong robot, moving to paused")
+        return robot_change_dir(robot_name, "paused")
+    elif bad_request_is_cancelled(order_dic):
         earned_rewards = robot_check_and_claim_reward(robot_dic)
         if earned_rewards is False:
             return False
@@ -259,6 +274,8 @@ def robot_handle_pending(robot_dic):
         else:
             print_out(f"{robot_name} {order_id} pending is cancelled, moving to inactive")
             return robot_change_dir(robot_name, "inactive")
+    elif isinstance(order_dic, str):
+        return False
 
     order_response_json = order_dic["order_response_json"]
     order_info = order_dic["order_info"]
@@ -267,7 +284,9 @@ def robot_handle_pending(robot_dic):
 
     is_seller = order_response_json.get("is_seller", False)
 
-    if order_is_pending(status_id):
+    if \
+        order_is_pending(status_id) and \
+        not (is_seller and order_is_finished_for_seller(status_id)):
         if not is_seller and order_is_failed_routing(status_id):
             print_out(
                 f"{robot_name} {order_id} old invoice failed, sending a new one"

@@ -15,7 +15,7 @@ from roboauto.requests_api import \
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.date_utils import date_get_current
 from roboauto.utils import \
-    file_read, file_write, json_loads, \
+    file_read, file_write, json_loads, json_dumps, \
     file_json_read, file_json_write, \
     input_ask_robot, password_ask_token, \
     generate_random_token_base62, \
@@ -282,7 +282,7 @@ def robot_print_dir_argv(robot_state, argv):
     return True
 
 
-def robot_change_dir(robot_name, destination_state):
+def robot_change_dir(robot_name, destination_state, error_is_already=True):
     if destination_state not in robot_get_dir_dic():
         print_err(f"{destination_state} is not an available destination directory")
         return False
@@ -296,13 +296,15 @@ def robot_change_dir(robot_name, destination_state):
         robot_state = robot_dic["state"]
         robot_dir = robot_dic["dir"]
         if robot_state == destination_state:
-            print_err(f"{robot_name} is already {destination_state}")
-            return False
-        try:
-            shutil.move(robot_dir, destination_dir)
-        except OSError:
-            print_err(f"moving {robot_name} to {destination_state}")
-            return False
+            if error_is_already:
+                print_err(f"{robot_name} is already {destination_state}")
+                return False
+        else:
+            try:
+                shutil.move(robot_dir, destination_dir)
+            except OSError:
+                print_err(f"moving {robot_name} to {destination_state}")
+                return False
     else:
         if destination_dir == roboauto_state["active_home"]:
             print_err("you can not set all robots active for privacy concerns")
@@ -349,6 +351,10 @@ def robot_requests_robot(token_base91, robot_url, robot_dic):
     if robot_response_json is False:
         print_err(robot_response, end="", error=False, date=False)
         print_err("getting robot response")
+        return multi_false
+
+    if "bad_request" in robot_response_json:
+        print_err(json_dumps(robot_response_json), error=False, date=False)
         return multi_false
 
     nickname = robot_response_json.get("nickname", "robot")

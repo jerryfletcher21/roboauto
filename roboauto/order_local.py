@@ -173,6 +173,8 @@ def order_dic_from_robot_dir(robot_dir, order_id=None, error_print=True):
 
     if order_id is False or order_id is None:
         order_id = last_order_id_from_robot_dir(robot_dir, error_print=error_print)
+        if order_id is False or order_id is None:
+            return False
 
     order_file = orders_dir + "/" + order_id
     if not os.path.isfile(order_file):
