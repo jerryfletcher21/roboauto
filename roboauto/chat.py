@@ -133,6 +133,9 @@ def chat_print_encrypted_messages(chat_response_json, robot_dir, token):
             else:
                 status_char = "X"
                 message_print = "error decrypting message"
+        else:
+            print_err("token is False")
+            return False
 
         if first_message:
             first_message = False
@@ -213,7 +216,7 @@ def robot_send_chat_message(robot_dic, message):
     return True
 
 
-def robot_send_chat_message_argv(argv):
+def robot_send_chat_message_argv(argv: list):
     robot_dic, argv = robot_input_from_argv(argv)
     if robot_dic is False:
         return False

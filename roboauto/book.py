@@ -207,7 +207,7 @@ def get_multi_book_response_json(coordinators):
     return multi_book_response_json
 
 
-def list_offers_argv(argv):
+def list_offers_argv(argv: list):
     coordinators, argv = roboauto_get_multi_coordinators_from_argv(argv)
     if coordinators is False:
         return False
@@ -226,7 +226,7 @@ def list_offers_argv(argv):
         argv = argv[1:]
     else:
         currency = "all"
-    if get_currency_string(currency, reverse=True) < 0:
+    if int(get_currency_string(currency, reverse=True)) < 0:
         print_err(f"currency {currency} is not valid")
         return False
 

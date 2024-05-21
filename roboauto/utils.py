@@ -53,6 +53,7 @@ def get_coordinator_from_param(param):
         )
         return multi_false
     coordinator_found = False
+    coordinator = ""
     for name in roboauto_options["federation"]:
         if name[:3] == coordinator_value[:3]:
             coordinator = name
@@ -65,7 +66,7 @@ def get_coordinator_from_param(param):
     return coordinator, roboauto_options["federation"][coordinator]
 
 
-def roboauto_get_coordinator_from_argv(argv):
+def roboauto_get_coordinator_from_argv(argv) -> tuple:
     """get a single coordinator from argv"""
     multi_false = False, False, False
     coordinator = False
@@ -88,7 +89,7 @@ def roboauto_get_coordinator_from_argv(argv):
     return coordinator, coordinator_url, argv
 
 
-def roboauto_get_multi_coordinators_from_argv(argv):
+def roboauto_get_multi_coordinators_from_argv(argv) -> tuple:
     """get multiple coordinators from argv, with also --all"""
     multi_false = False, False
     coordinators = []
@@ -294,16 +295,21 @@ def update_roboauto_options(print_info=False):
 
 
 def global_setup():
+    home = os.getenv("HOME")
+    if home is None:
+        print_err("HOME not set")
+        return False
+
     data_home = os.getenv("XDG_DATA_HOME")
     if data_home is None:
         local_home = os.getenv("XDG_LOCAL_HOME")
         if local_home is None:
-            local_home = os.getenv("HOME") + "/.local"
+            local_home = home + "/.local"
         data_home = local_home + "/share"
 
     config_home = os.getenv("XDG_CONFIG_HOME")
     if config_home is None:
-        config_home = os.getenv("HOME") + "/.config"
+        config_home = home + "/.config"
 
     roboauto_home = data_home + "/roboauto"
     roboauto_config = config_home + "/roboauto"
@@ -384,7 +390,7 @@ def get_uint(string_number):
     return number
 
 
-def is_float(float_string, additional_check=False):
+def is_float(float_string, additional_check : str | bool = False):
     try:
         float_float = float(float_string)
         if additional_check == "positive":

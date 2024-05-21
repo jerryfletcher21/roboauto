@@ -27,7 +27,9 @@ def response_is_error(response):
     return False
 
 
-def requests_tor_response(url, user, timeout, headers, data, error_print=True):
+def requests_tor_response(
+    url, user, timeout, headers, data, error_print=True
+) -> requests.Response | bool | None:
     tor_socks = user + ":" + user + "@" + "127.0.0.1:9050"
     proxies = {
         "http": "socks5h://" + tor_socks,
@@ -99,12 +101,13 @@ def requests_tor(url, user, headers, data=None, options=None):
         while response_is_error(response):
             error_happened = True
             if error_print is not False and error_print is not None:
-                if hasattr(response, "text"):
-                    print_err(response.text, date=False, error=False, level=error_print)
-                if hasattr(response, "status_code"):
-                    status_code = str(response.status_code)
-                else:
-                    status_code = "error"
+                status_code = "error"
+                if not isinstance(response, bool) and response is not None:
+                    if hasattr(response, "text"):
+                        print_err(response.text, date=False, error=False, level=error_print)
+                    if hasattr(response, "status_code"):
+                        status_code = str(response.status_code)
+
                 print_err(
                     "requests retrying " + url + " status code " + status_code,
                     error=False, level=error_print
@@ -130,7 +133,10 @@ def requests_tor(url, user, headers, data=None, options=None):
         )
         if response_is_error(response):
             if error_print is not False and error_print is not None:
-                if hasattr(response, "text"):
+                if \
+                    not isinstance(response, bool) and \
+                    response is not None and \
+                    hasattr(response, "text"):
                     print_err(response.text, date=False, error=False, level=error_print)
         return response
 

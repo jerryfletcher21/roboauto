@@ -199,9 +199,9 @@ def order_requests_order_dic(
 
     status_string = get_order_string(status_id)
 
-    type_string = get_type_string(type_id)
+    type_string = str(get_type_string(type_id))
 
-    currency_string = get_currency_string(currency_id).lower()
+    currency_string = str(get_currency_string(currency_id)).lower()
     is_fiat = currency_string != "btc"
 
     amount_single = None
@@ -230,7 +230,7 @@ def order_requests_order_dic(
             amount_string = min_amount_string + "-" + max_amount_string
 
     order_description = \
-        type_string + " " + currency_string + " " + amount_string + " " + \
+        type_string + " " + currency_string + " " + str(amount_string) + " " + \
         premium + " " + payment_method + " " + status_string
 
     order_dic = {
@@ -322,9 +322,9 @@ def amount_correct_from_response(order_response_json):
     if amount_correct is False or amount_correct is None:
         return False
 
-    is_fiat = get_currency_string(
+    is_fiat = str(get_currency_string(
         order_response_json.get("currency", "fiat")
-    ).lower() != "btc"
+    )).lower() != "btc"
 
     return amount_correct_format(amount_correct, is_fiat)
 

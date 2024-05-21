@@ -1,5 +1,33 @@
 #!/bin/sh
 
+command_exist() {
+    if command -v "$1" >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+## check python scripts
+
+python_scripts="$(find roboauto -mindepth 1 -maxdepth 1 -type f)
+bin/roboauto
+setup.py"
+
+pyright_bin="pyright"
+if ! command_exist "$pyright_bin"; then
+    pyright_bin="$HOME/.local/share/nvim/mason/bin/pyright"
+    if ! command_exist "$pyright_bin"; then
+        echo "error: pyright not found" >&2
+        exit 1
+    fi
+fi
+
+# shellcheck disable=SC2086
+"$pyright_bin" \
+    --level warning \
+    $python_scripts
+
 # R0911 too-many-return-statements
 # R0912 too-many-branches
 # R0913 too-many-arguments
@@ -7,11 +35,17 @@
 # R0915 too-many-statements
 # R1705 no-else-return
 
-# check python scripts
+# shellcheck disable=SC2086
 pylint \
     -s n \
     -d R0911,R0912,R0913,R0914,R0915,R1705 \
-    roboauto/* bin/roboauto setup.py
+    $python_scripts
 
-# check sh scripts
-shellcheck data/* scripts/* completions/roboauto.bash-completion
+## check sh scripts
+
+sh_scripts="completions/roboauto.bash-completion
+$(find data -mindepth 1 -maxdepth 1)
+$(find scripts -mindepth 1 -maxdepth 1)"
+
+# shellcheck disable=SC2086
+shellcheck $sh_scripts

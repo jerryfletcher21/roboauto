@@ -211,7 +211,10 @@ def order_buyer_update_data(
         not order_is_waiting_fiat_sent(new_status_id) and \
         not order_is_sending_to_buyer(new_status_id):
         print_err(json_dumps(order_data_response_json), date=False, error=False)
-        print_err(f"{data_string} not send, current status: " + get_order_string(new_status_id))
+        print_err(
+            f"{data_string} not send, current status: " +
+            str(get_order_string(new_status_id))
+        )
         return False
 
     print_out(f"{robot_name} {order_id} {data_string} sent successfully")
@@ -480,6 +483,8 @@ def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
     robot_dic, argv = robot_input_from_argv(argv)
     if robot_dic is False:
         return False
+
+    extra_arg = None
 
     if extra_type == "update_invoice":
         budget_ppm, argv = budget_ppm_from_argv(argv)

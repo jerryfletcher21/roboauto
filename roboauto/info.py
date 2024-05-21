@@ -92,7 +92,7 @@ def list_price(argv):
     return True
 
 
-def list_ticks(argv):
+def list_ticks(argv: list):
     coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
     if coordinator_url is False:
         return False

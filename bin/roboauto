@@ -283,23 +283,19 @@ def main(argv):
         print_err("insert parameters")
         return False
 
-    while len(argv) > 0:
-        option = argv[0]
-        if option in ("-h", "--help"):
-            print_out(INFO, end="")
-            return True
-        elif option == "--verbose-help":
-            print_out(INFO_VERBOSE, end="")
-            return True
-        elif option in ("-v", "--version"):
-            print_out(VERSION)
-            return True
-        elif re.match('^-', option) is not None:
-            print_err("option " + option + " not recognized")
-            return False
-        else:
-            break
-        argv = argv[1:]
+    option = argv[0]
+    if option in ("-h", "--help"):
+        print_out(INFO, end="")
+        return True
+    elif option == "--verbose-help":
+        print_out(INFO_VERBOSE, end="")
+        return True
+    elif option in ("-v", "--version"):
+        print_out(VERSION)
+        return True
+    elif re.match('^-', option) is not None:
+        print_err("option " + option + " not recognized")
+        return False
 
     if len(argv) < 1:
         print_err("insert action")

@@ -73,6 +73,8 @@ def robot_var_from_dic(robot_dic):
 def robot_load_from_name(robot_name, error_print=True):
     possible_state_base_dir = robot_get_dir_dic()
     found = False
+    robot_dir = ""
+    robot_state = None
     for possible_state, possible_base_dir in possible_state_base_dir.items():
         possible_dir = possible_base_dir + "/" + robot_name
         if os.path.isdir(possible_dir):
@@ -132,7 +134,7 @@ def robot_save_to_disk_and_get_dic(robot_name, robot_state, robot_dir, token, co
     return robot_get_dic(robot_name, robot_state, robot_dir, token, coordinator)
 
 
-def robot_input_from_argv(argv, just_name=False, error_print=True):
+def robot_input_from_argv(argv, just_name=False, error_print=True) -> tuple:
     multi_false = False, False
     if len(argv) >= 1:
         robot_name = argv[0]
@@ -387,7 +389,7 @@ def robot_requests_get_order_id(robot_dic, error_print=True):
     robot_response, robot_response_json = robot_requests_robot(
         token_base91, robot_url, robot_dic
     )
-    if robot_response is False:
+    if robot_response is False or robot_response_json is False:
         return False
 
     order_id_number = robot_response_json.get("active_order_id", False)
@@ -685,7 +687,7 @@ def robot_check_and_claim_reward(robot_dic):
     robot_response, robot_response_json = robot_requests_robot(
         token_base91, robot_url, robot_dic
     )
-    if robot_response is False:
+    if robot_response is False or robot_response_json is False:
         return False
 
     earned_rewards = robot_response_json.get("earned_rewards", 0)
@@ -713,7 +715,7 @@ def robot_claim_reward_argv(argv):
     robot_response, robot_response_json = robot_requests_robot(
         token_base91, robot_url, robot_dic
     )
-    if robot_response is False:
+    if robot_response is False or robot_response_json is False:
         return False
 
     earned_rewards = robot_response_json.get("earned_rewards", 0)

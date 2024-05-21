@@ -82,13 +82,15 @@ def get_offer_dic(offer, coordinator):
         order_type = "sell"
     elif order_type_bool == 2:
         order_type = "all"
+    else:
+        order_type = "???"
 
     date_end = date_convert_time_zone_and_format_string(
         expires_at,
         output_format="%H:%M:%S"
     )
 
-    currency = get_currency_string(currency_id).lower()
+    currency = str(get_currency_string(currency_id)).lower()
 
     if not has_range:
         min_amount = amount
@@ -416,12 +418,12 @@ def order_data_from_order_user(order_user):
         print_err("bond_size not present")
         return False
 
-    type_id = get_type_string(type_string, reverse=True)
+    type_id = int(get_type_string(type_string, reverse=True))
     if type_id < 0:
         print_err("type %s is not valid" % type_string)
         return False
 
-    currency_id = get_currency_string(currency_string, reverse=True)
+    currency_id = int(get_currency_string(currency_string, reverse=True))
     if currency_id < 0:
         print_err("currency %s is not valid" % currency_string)
         return False

@@ -15,7 +15,7 @@ def logger_flush():
         roboauto_state["logger"].flush()
 
 
-def print_and_log(arg, end="\n", file_stream=None, level=True):
+def print_and_log(arg, end="\n", file_stream=None, level: int | bool = True):
     """level is for writing to stdout/stderr, everything is always
     saved to the log file.
     level goes from 0 (True) -> always log also to the terminal
@@ -53,7 +53,7 @@ def print_and_log(arg, end="\n", file_stream=None, level=True):
     return True
 
 
-def print_out(arg, end="\n", date=True, level=True):
+def print_out(arg, end="\n", date=True, level: int | bool = True):
     string_print = arg
 
     if roboauto_state["current_command_type"] == "keep-online" and date:
@@ -63,7 +63,10 @@ def print_out(arg, end="\n", date=True, level=True):
     print_and_log(string_print, end=end, level=level)
 
 
-def print_stderr(error_string, arg, end="\n", date=True, error=True, level=True):
+def print_stderr(
+    error_string, arg, end="\n",
+    date=True, error=True, level: int | bool = True
+):
     string_print = arg
 
     if error:
@@ -76,9 +79,9 @@ def print_stderr(error_string, arg, end="\n", date=True, error=True, level=True)
     print_and_log(string_print, end=end, file_stream=sys.stderr, level=level)
 
 
-def print_war(arg, end="\n", date=True, error=True, level=True):
+def print_war(arg, end="\n", date=True, error=True, level: int | bool = True):
     print_stderr("warning: ", arg, end=end, date=date, error=error, level=level)
 
 
-def print_err(arg, end="\n", date=True, error=True, level=True):
+def print_err(arg, end="\n", date=True, error=True, level: int | bool = True):
     print_stderr("error: ", arg, end=end, date=date, error=error, level=level)

@@ -121,5 +121,3 @@ def subprocess_pay_invoice_and_check(
 
             retries += 1
             time.sleep(roboauto_options["pay_interval"])
-
-    return False

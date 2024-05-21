@@ -133,7 +133,7 @@ def order_is_this_hour(order, current_timestamp, coordinator=False):
     order_info = order.get("order_info", False)
     if order_info is False:
         return False
-    if coordinator is not False:
+    if not isinstance(coordinator, bool):
         order_coordinator = order_info.get("coordinator", False)
         if order_coordinator is False:
             return False
@@ -533,8 +533,6 @@ def keep_online_no_lock():
         logger_flush()
 
         time.sleep(roboauto_state["sleep_interval"])
-
-    return True
 
 
 def keep_online(argv):
