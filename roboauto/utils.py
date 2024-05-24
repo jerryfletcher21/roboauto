@@ -628,6 +628,21 @@ def random_interval(max_value):
     return random.randint(1, max_value) - 1
 
 
+def shuffle_array(ordered: list) -> list:
+    shuffled = ordered.copy()
+    random.shuffle(shuffled)
+    return shuffled
+
+
+def shuffle_dic(ordered: dict) -> dict:
+    keys = list(ordered.keys())
+    random.shuffle(keys)
+    shuffled = {}
+    for key in keys:
+        shuffled[key] = ordered[key]
+    return shuffled
+
+
 def bad_request_is_cancelled(bad_request):
     # may be changed in the future
     # https://github.com/RoboSats/robosats/issues/1245

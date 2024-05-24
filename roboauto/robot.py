@@ -593,9 +593,8 @@ def robot_wait(robot_name):
     return False
 
 
-def robot_unwait(robot_name=None):
+def robot_unwait(nicks_waiting, robot_name=None):
     """remove robot or first in the list from the waiting queue"""
-    nicks_waiting = waiting_queue_get()
 
     if robot_name is not None:
         try:
@@ -603,12 +602,8 @@ def robot_unwait(robot_name=None):
         except ValueError:
             print_err(f"{robot_name} is not in the waiting queue")
             return False
-
-        print_out(f"{robot_name} removed from waiting queue because it was active")
     else:
-        robot_activate = nicks_waiting.pop(0)
-
-        print_out(f"{robot_activate} removed from waiting queue")
+        robot_name = nicks_waiting.pop(0)
 
     if file_json_write(
         roboauto_state["waiting_queue_file"], nicks_waiting
@@ -616,7 +611,7 @@ def robot_unwait(robot_name=None):
         print_err("writing waiting queue")
         return False
 
-    return True
+    return robot_name
 
 
 def robot_claim_reward(robot_dic, reward_amount):

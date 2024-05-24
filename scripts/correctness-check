@@ -33,12 +33,13 @@ fi
 # R0913 too-many-arguments
 # R0914 too-many-locals
 # R0915 too-many-statements
+# R0916 too-many-boolean-expressions
 # R1705 no-else-return
 
 # shellcheck disable=SC2086
 pylint \
     -s n \
-    -d R0911,R0912,R0913,R0914,R0915,R1705 \
+    -d R0911,R0912,R0913,R0914,R0915,R0916,R1705 \
     $python_scripts
 
 ## check sh scripts

@@ -12,7 +12,7 @@ message="$2"
 shift 2
 
 contact="hal-finney"
-timeout="32"
+timeout="64"
 
 simplex-chat -x \
     -e "@${contact} $message" \

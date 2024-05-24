@@ -518,7 +518,8 @@ $(___roboauto_get_robots "$paused_home")"
         ;;
         keep-online)
             if [ "${cword}" -eq 2 ]; then
-                OPTS="--verbosity=1"
+                OPTS="--verbosity=1
+--verbosity=2"
             fi
         ;;
         esac

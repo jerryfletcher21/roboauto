@@ -269,8 +269,7 @@ keep-online [--verbosity=number]
     something other than expirations happens to an offer
     pending robots are moved to the pending directory
     when the order is complete it is moved to the inactive directory
-    if verbosity=1 print more logs to the terminal, print every time
-    there is a book connection error to one coordinator
+    --verbosity can be 1 or 2
 """
 
 
