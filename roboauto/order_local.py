@@ -10,7 +10,7 @@ import re
 import shutil
 
 from roboauto.logger import print_out, print_err
-from roboauto.global_state import roboauto_state
+from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.date_utils import date_convert_time_zone_and_format_string
 from roboauto.utils import \
     json_dumps, file_json_read, is_float, get_int, \
@@ -75,6 +75,7 @@ def get_offer_dic(offer, coordinator):
     escrow_duration_seconds = offer.get("escrow_duration", "")
     bond_size = offer.get("bond_size", "")
     maker_nick = offer.get("maker_nick", "")
+    maker_status = offer.get("maker_status", "")
 
     if order_type_bool == 0:
         order_type = "buy"
@@ -107,10 +108,14 @@ def get_offer_dic(offer, coordinator):
     else:
         ours = " - "
 
+    if maker_status == "Seen recently":
+        maker_status = "Recently"
+
     offer_dic = {
         "coordinator": str(coordinator),
         "offer_id": offer_id,
         "maker_nick": maker_nick,
+        "maker_status": maker_status,
         "order_type": order_type,
         "currency": currency,
         "duration": duration,
@@ -128,13 +133,15 @@ def get_offer_dic(offer, coordinator):
 
 
 def offer_dic_print(offer_dic):
+    # when changing change also robot_order_not_complete_print
     printf_string = \
-        "%-3s %-6s %-24s %-4s %-3s %3sh %5s %6.2f%% %3s " + \
+        "%-3s %-6s %-8s %-24s %-4s %-3s %3sh %5s %6.2f%% %3s " + \
         offer_dic["amount_format"] + " " + offer_dic["amount_format"] + \
         " %8s %s"
     print_out(printf_string % (
         offer_dic["coordinator"][:3],
-        offer_dic["offer_id"], offer_dic["maker_nick"],
+        offer_dic["offer_id"],
+        offer_dic["maker_status"], offer_dic["maker_nick"],
         offer_dic["order_type"], offer_dic["currency"],
         offer_dic["duration"], offer_dic["bond_size"], float(offer_dic["premium"]),
         offer_dic["ours"],
@@ -193,8 +200,8 @@ def order_dic_from_robot_dir(robot_dir, order_id=None, error_print=True):
 
 def robot_order_not_complete_print(robot_name, coordinator, error_string):
     print_out(
-        "%-3s %-6s %-24s %4s %3s %4s %5s %7s %3s %7s %7s %8s %s" % (
-            str(coordinator)[:3], "------", robot_name,
+        "%-3s %-6s %-8s %-24s %4s %3s %4s %5s %7s %3s %7s %7s %8s %s" % (
+            str(coordinator)[:3], "------", "--------", robot_name,
             "----", "---", "----", "-----", "-------",
             "---", "-------", "-------", "--------",
             error_string
@@ -319,6 +326,64 @@ def order_info_dir(argv):
     else:
         print_err(f"argument {first_arg} not recognized")
         return False
+
+    return True
+
+
+def order_summary(argv):
+    if len(argv) < 1:
+        print_err("insert arguments")
+        return False
+
+    first_arg = argv[0]
+    argv = argv[1:]
+
+    summary_dic = {
+        "buy": {},
+        "sell": {}
+    }
+    number_error = 0
+
+    if first_arg in ("--active", "--pending", "--paused", "--inactive"):
+        for robot_name in os.listdir(robot_get_dir_dic()[first_arg[2:]]):
+            robot_dic = robot_load_from_name(robot_name, error_print=False)
+            if robot_dic is False:
+                number_error += 1
+                continue
+
+            order_dic = order_dic_from_robot_dir(
+                robot_dic["dir"], order_id=None, error_print=False
+            )
+            if order_dic is None or order_dic is False:
+                number_error += 1
+                continue
+
+            order_info = order_dic.get("order_info", False)
+            order_user = order_dic.get("order_user", False)
+            if order_info is False or order_user is False:
+                number_error += 1
+                continue
+
+            coordinator = order_info["coordinator"]
+
+            type_string = order_user["type"]
+            currency_string = order_user["currency"]
+
+            if currency_string not in summary_dic[type_string]:
+                summary_dic[type_string][currency_string] = {}
+                for federation_coordinator in roboauto_options["federation"]:
+                    summary_dic[type_string][currency_string][federation_coordinator] = 0
+
+            if coordinator not in summary_dic[type_string][currency_string]:
+                summary_dic[type_string][currency_string][coordinator] = 0
+
+            summary_dic[type_string][currency_string][coordinator] += 1
+
+        summary_sorted = {}
+        for key, value in summary_dic.items():
+            summary_sorted[key] = dict(sorted(value.items()))
+
+        print_out(json_dumps(summary_sorted))
 
     return True
 

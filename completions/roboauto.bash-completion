@@ -36,6 +36,12 @@ __roboauto_completion() {
                             break
                         fi
                     ;;
+                    *)
+                        if [ "$item_compare" = "$item_full" ]; then
+                            should_add=false
+                            break
+                        fi
+                    ;;
                 esac
             done
 
@@ -227,6 +233,14 @@ $(___roboauto_get_robots "$active_home")"
                 default_completion=true
             fi
         ;;
+        order-summary)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="--active
+--pending
+--paused
+--inactive"
+            fi
+        ;;
         robosats-info|list-historical|list-limits|list-price|list-ticks)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$(___roboauto_get_coordinators)"
@@ -355,26 +369,44 @@ $(___roboauto_get_robots "$pending_home")"
             fi
         ;;
         list-offers)
-            local possible_coordinatos all_currencies
-            possible_coordinatos="
---all
-$(___roboauto_get_coordinators)"
-            all_currencies="
-all
-$(roboauto list-currencies)"
+            local coordinators_list currencies_list
+            coordinators_list="$(___roboauto_get_coordinators)"
+            currencies_list="$(roboauto list-currencies)"
+
             if [ "${cword}" -eq 2 ]; then
-                OPTS="$possible_coordinatos"
-            elif [ "${cword}" -eq 3 ]; then
-                OPTS="
---buy
+                OPTS="--until-success"
+            fi
+            if \
+                [ "${cword}" -eq 2 ] || {
+                    [ "${cword}" -eq 3 ] && [ "$prev" = "--until-success" ]
+            }; then
+                OPTS="$OPTS
+--all
+$coordinators_list"
+            else
+                if
+                    printf "%s\n" "$coordinators_list" |
+                    grep "^${prev}" >/dev/null 2>&1
+                then
+                    local coordinators_not_set
+                    coordinators_not_set="$(
+                        ___list_non_already_set_array \
+                            "$coordinators_list" "$cur" "${words[@]}"
+                    )"
+                    OPTS="$coordinators_not_set
+all
+$currencies_list
 --sell
-$all_currencies"
-            elif \
-                [ "${cword}" -eq 4 ] && {
-                    [ "$prev" = "--sell" ] || [ "$prev" = "--buy" ]
-                }
-            then
-                OPTS="$all_currencies"
+--buy"
+                elif [ "$prev" = "--all" ]; then
+                    OPTS="all
+$currencies_list
+--sell
+--buy"
+                elif [ "$prev" = "--buy" ] || [ "$prev" = "--sell" ]; then
+                    OPTS="all
+$currencies_list"
+                fi
             fi
         ;;
         create-order)
@@ -517,9 +549,31 @@ $(___roboauto_get_robots "$paused_home")"
             fi
         ;;
         keep-online)
-            if [ "${cword}" -eq 2 ]; then
-                OPTS="--verbosity=1
---verbosity=2"
+            if [ "$advanced_completion" = true ]; then
+                if [ "${cword}" -eq 2 ] || [ "${cword}" -eq 3 ]; then
+                    if [ "$prev" != "--no-sleep" ]; then
+                        OPTS="$OPTS
+--no-sleep"
+                    fi
+                    case "$prev" in
+                        --verbosity=*) ;;
+                        *)
+                            OPTS="$OPTS
+--verbosity="
+                    ;;
+                    esac
+                    case "$cur" in
+                    *=*)
+                        case "$cur" in
+                        --verbosity=*)
+                            cur="${cur#*=}"
+                            OPTS="1
+2"
+                        ;;
+                        esac
+                    ;;
+                    esac
+                fi
             fi
         ;;
         esac

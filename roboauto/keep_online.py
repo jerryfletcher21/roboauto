@@ -69,7 +69,9 @@ def robot_handle_active(robot_dic, all_dic):
         return robot_change_dir(robot_name, "paused")
     elif bad_request_is_cancelled(order_dic):
         earned_rewards = robot_check_and_claim_reward(robot_dic)
-        if earned_rewards is False or earned_rewards > 0:
+        if earned_rewards is False:
+            return False
+        elif earned_rewards > 0:
             return True
         else:
             print_out(f"{robot_name} {order_id} active is cancelled, moving to inactive")
@@ -366,8 +368,13 @@ def robot_handle_pending(robot_dic):
 
 
 def robot_dic_update(all_dic):
+    """return number of added and failed robots"""
+
     active_set = robot_list_dir(robot_get_dir_dic()["active"], get_set=True)
     pending_set = robot_list_dir(robot_get_dir_dic()["pending"], get_set=True)
+
+    added_robots = 0
+    failed_robots = 0
 
     for robot_name, robot_state in list(all_dic.items()):
         if robot_state == "active":
@@ -397,16 +404,41 @@ def robot_dic_update(all_dic):
     for robot_active in active_set:
         if robot_active not in all_dic:
             print_out(f"{robot_active} added to active directory")
+
             if count_active_orders_this_hour(all_dic) >= roboauto_options["order_maximum"]:
                 robot_wait(robot_active)
+
             all_dic[robot_active] = "active"
+
+            added_robots += 1
+
+            robot_dic = robot_load_from_name(robot_active)
+            if robot_dic is False:
+                print_err(f"{robot_active} getting active robot")
+                failed_robots += 1
+                continue
+
+            if robot_handle_active(robot_dic, all_dic) is False:
+                failed_robots += 1
 
     for robot_pending in pending_set:
         if robot_pending not in all_dic:
             print_out(f"{robot_pending} added to pending directory")
+
             all_dic[robot_pending] = "pending"
 
-    return True
+            added_robots += 1
+
+            robot_dic = robot_load_from_name(robot_pending)
+            if robot_dic is False:
+                print_err(f"{robot_pending} getting pending robot")
+                failed_robots +=1
+                continue
+
+            if robot_handle_pending(robot_dic) is False:
+                failed_robots += 1
+
+    return added_robots, failed_robots
 
 
 # active_dic is the set of current active robots
@@ -453,8 +485,11 @@ def keep_online_no_lock():
 
     while True:
         all_starting_time = time.time()
+        total_robots = len(all_dic)
+        failed_numbers = 0
         for robot_name, robot_state in list(all_dic.items()):
             if robot_name not in all_dic:
+                total_robots -= 1
                 continue
 
             starting_time = time.time()
@@ -462,14 +497,19 @@ def keep_online_no_lock():
             robot_dic = robot_load_from_name(robot_name)
             if robot_dic is False:
                 print_err(f"{robot_name} skipping {robot_state} robot")
+                failed_numbers += 1
                 continue
 
             if robot_state == "active":
-                robot_handle_active(robot_dic, all_dic)
+                if robot_handle_active(robot_dic, all_dic) is False:
+                    failed_numbers += 1
             elif robot_state == "pending":
-                robot_handle_pending(robot_dic)
+                if robot_handle_pending(robot_dic) is False:
+                    failed_numbers += 1
 
-            robot_dic_update(all_dic)
+            added_robots, additional_failed_robots = robot_dic_update(all_dic)
+            total_robots += added_robots
+            failed_numbers += additional_failed_robots
 
             # allow to adjust configs while roboauto is running
             if update_roboauto_options(True) is False:
@@ -487,9 +527,10 @@ def keep_online_no_lock():
             # 2 minutes Active
             # 10 minutes Seen recently
 
-            half_max_time = (120 / len(all_dic)) / 2
-            if elapsed_time < half_max_time:
-                time.sleep(half_max_time)
+            if roboauto_state["keep_online_sleep"] is True:
+                half_max_time = (120 / len(all_dic)) / 2
+                if elapsed_time < half_max_time:
+                    time.sleep(half_max_time)
 
         if should_remove_from_waiting_queue(all_dic):
             robot_unwaited = robot_unwait(waiting_queue_get())
@@ -497,33 +538,39 @@ def keep_online_no_lock():
                 print_out(f"{robot_unwaited} removed from waiting queue")
 
         all_elapsed_time = int(time.time() - all_starting_time)
-        print_out(f"all checked in {all_elapsed_time}", level=1)
+        print_out(
+            f"{total_robots} robots checked in {all_elapsed_time} seconds " +
+            f"{failed_numbers} failed",
+            level=1
+        )
 
 
 def keep_online(argv):
-    if len(argv) >= 1:
-        first_arg = argv[0]
+    while len(argv) >= 1:
+        current_arg = argv[0]
         argv = argv[1:]
 
-        if re.match('^--verbosity', first_arg) is None:
-            print_err(f"option {first_arg} not recognied", date=False, error=False)
-            return False
+        if current_arg == "--no-sleep":
+            roboauto_state["keep_online_sleep"] = False
+        elif re.match('^--verbosity', current_arg) is not None:
+            key_value = current_arg[2:].split("=", 1)
+            if len(key_value) != 2:
+                print_err("verbosity is not --verbosity=number", date=False, error=False)
+                return False
+            verbosity_string, verbosity_number_string = key_value
 
-        key_value = first_arg[2:].split("=", 1)
-        if len(key_value) != 2:
-            print_err("verbosity is not --verbosity=number", date=False, error=False)
-            return False
-        verbosity_string, verbosity_number_string = key_value
+            if verbosity_string != "verbosity":
+                print_err(f"key {verbosity_string} not recognied", date=False, error=False)
+                return False
 
-        if verbosity_string != "verbosity":
-            print_err(f"key {verbosity_string} not recognied", date=False, error=False)
-            return False
+            verbosity_number = get_uint(verbosity_number_string)
+            if verbosity_number is False:
+                return False
 
-        verbosity_number = get_uint(verbosity_number_string)
-        if verbosity_number is False:
+            roboauto_state["log_level"] = verbosity_number
+        else:
+            print_err(f"option {current_arg} not recognied", date=False, error=False)
             return False
-
-        roboauto_state["log_level"] = verbosity_number
 
     try:
         with filelock.FileLock(

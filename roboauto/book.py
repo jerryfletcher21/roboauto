@@ -187,11 +187,11 @@ def list_offers_general(
     return True
 
 
-def get_multi_book_response_json(coordinators):
+def get_multi_book_response_json(coordinators, until_true=False):
     multi_book_response_json = []
 
     for coordinator in coordinators:
-        book_response_json = get_book_response_json(coordinator, until_true=False)
+        book_response_json = get_book_response_json(coordinator, until_true=until_true)
         if book_response_json is False:
             continue
 
@@ -208,6 +208,11 @@ def get_multi_book_response_json(coordinators):
 
 
 def list_offers_argv(argv: list):
+    until_true = False
+    if len(argv) >= 1 and argv[0] == "--until-success":
+        argv = argv[1:]
+        until_true = True
+
     coordinators, argv = roboauto_get_multi_coordinators_from_argv(argv)
     if coordinators is False:
         return False
@@ -236,7 +241,9 @@ def list_offers_argv(argv: list):
     else:
         search_element = ""
 
-    multi_book_response_json = get_multi_book_response_json(coordinators)
+    multi_book_response_json = get_multi_book_response_json(
+        coordinators, until_true=until_true
+    )
     if multi_book_response_json is False:
         return False
 

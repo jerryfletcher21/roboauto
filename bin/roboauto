@@ -14,7 +14,7 @@ from roboauto.robot import \
     robot_import, robot_print_token, robot_print_coordinator, robot_print_dir_argv, \
     waiting_queue_print, robot_change_dir_from_argv, robot_generate, \
     robot_claim_reward_argv, robot_update_stealth_invoice_option_argv
-from roboauto.order_local import order_info_dir
+from roboauto.order_local import order_info_dir, order_summary
 from roboauto.order import \
     create_order, cancel_order, recreate_order, list_order_fields, \
     list_currencies, list_payment_methods, order_change_next_expire
@@ -50,6 +50,7 @@ set-active robot-name
 set-pending|set-inactive|set-paused robot-name|--all
 order-info-dir --active|--pending|--paused|--inactive
 order-info-dir --dir directory
+order-summary --active|--pending|--paused|--inactive
 robosats-info --{coordinator-name}
 generate-robot --{coordinator-name} [--active, --pending, --inactive]
 robot-info robot-name
@@ -64,7 +65,7 @@ list-limits --{coordinator-name}
 list-price --{coordinator-name}
 list-ticks --{coordinator-name} [start-date] [end-date]
 list-hours [--relative]
-list-offers --{coordinators}|--all [--sell|--buy] [currency] [search]
+list-offers [--until-success] --{coordinators}|--all [--sell|--buy] [currency] [search]
 create-order [--no-bond] [--no-active] robot-name [key=value...]
 cancel-order robot-name
 recreate-order [--no-cancel] [--no-bond] robot-name key=value...
@@ -137,6 +138,9 @@ order-info-dir --active|--pending|--paused|--inactive
 order-info-dir --dir directory
     print local info about all orders of a robot directory
 
+order-summary --active|--pending|--paused|--inactive
+    print local summary about all orders of a robot directory
+
 robosats-info --{coordinator-name}
     get info about robosats
 
@@ -189,10 +193,12 @@ list-hours [--relative]
     list orders per hours of the day
     if --relative is passed list orders per hours relative from current time
 
-list-offers --{coordinators}|--all [--sell|--buy] [currency] [search]
+list-offers [--until-success] --{coordinators}|--all [--sell|--buy] [currency] [search]
     list all [buy|sell] offers in the order book
     multiple coordinators can be specified or --all
     search is the string to be searched in the payment method
+    if --until-success retry coordinator book requests in case it fails,
+    otherwise offers from that book will not be shown
 
 create-order [--no-bond] [--no-active] robot-name [key=value...]
     create a new order
@@ -263,13 +269,15 @@ statement-submit robot-name [statement | --file file-statement]
 rate-coordinator robot-name rating
     rate a coordinator for a successful order
 
-keep-online [--verbosity=number]
+keep-online [--verbosity=number] [--no-sleep]
     keep the offers of the robots in the active directory online
     if message-notification program is present, send a message when
     something other than expirations happens to an offer
     pending robots are moved to the pending directory
     when the order is complete it is moved to the inactive directory
     --verbosity can be 1 or 2
+    if --no-sleep never sleep between robot requests
+    useful when running with many robots
 """
 
 
@@ -346,6 +354,8 @@ def main(argv):
             return_status = robot_change_dir_from_argv("paused", argv)
         elif action == "order-info-dir":
             return_status = order_info_dir(argv)
+        elif action == "order-summary":
+            return_status = order_summary(argv)
 
         state_set_command_type("action")
 

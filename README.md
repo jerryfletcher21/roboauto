@@ -127,7 +127,7 @@ $ roboauto keep-online
 ```
 # take a look at the books of all the coordinators
 $ roboauto list-offers --all usd "strike"
-exp ord-id PeerRobotName            sell usd   8h  3.00   4.00%  -      150     300 00:00:00 Strike
+exp ord-id Active   PeerRobotName            sell usd   8h  3.00   4.00%  -      150     300 00:00:00 Strike
 ...
 
 # lock the bond
