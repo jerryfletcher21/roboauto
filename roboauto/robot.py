@@ -663,7 +663,7 @@ def robot_claim_reward(robot_dic, reward_amount):
         print_err("withdrawing not successful")
         return False
 
-    print_out("invoice reward sent successfully")
+    print_out(f"{robot_name} invoice reward sent successfully")
 
     return True
 

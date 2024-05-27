@@ -19,7 +19,7 @@ from roboauto.order_local import \
     order_data_from_order_user, get_order_data, order_dic_from_robot_dir, \
     order_save_order_file, get_order_user
 from roboauto.robot import \
-    robot_input_from_argv, robot_change_dir, \
+    robot_input_from_argv, robot_change_dir, robot_load_from_name, \
     robot_var_from_dic, robot_requests_get_order_id
 from roboauto.requests_api import \
     requests_api_order, requests_api_order_cancel, \
@@ -497,26 +497,47 @@ def order_user_from_argv(argv, with_default=False, only_set=False):
     """get order_user's fields from argv"""
     order_user = order_user_empty_get(with_default)
 
-    while len(argv) > 0:
-        param = argv[0]
+    if len(argv) > 0 and argv[0] == "--from-robot":
         argv = argv[1:]
-        key_value = param.split("=", 1)
-        if len(key_value) != 2:
-            print_err("parameter %s is not key=value" % param)
+        if len(argv) < 1:
+            print_err("insert robot")
             return False
-        key, value = key_value
-        if key in order_user:
-            if order_user[key] is False:
-                order_user[key] = value
-            else:
-                if key != "payment_method":
-                    print_err(f"{key} can not be set multiple times")
-                    return False
+        robot_name = argv[0]
+        argv = argv[1:]
+
+        robot_dic = robot_load_from_name(robot_name)
+        if robot_dic is False:
+            return False
+
+        order_dic = order_dic_from_robot_dir(robot_dic["dir"])
+        if order_dic is False or order_dic is None:
+            return False
+
+        order_user = order_dic.get("order_user", False)
+        if order_user is False:
+            print_err(f"{robot_name} does not have order user")
+            return False
+    else:
+        while len(argv) > 0:
+            param = argv[0]
+            argv = argv[1:]
+            key_value = param.split("=", 1)
+            if len(key_value) != 2:
+                print_err("parameter %s is not key=value" % param)
+                return False
+            key, value = key_value
+            if key in order_user:
+                if order_user[key] is False:
+                    order_user[key] = value
                 else:
-                    order_user[key] += " " + value
-        else:
-            print_err("%s is not a valid key" % key)
-            return False
+                    if key != "payment_method":
+                        print_err(f"{key} can not be set multiple times")
+                        return False
+                    else:
+                        order_user[key] += " " + value
+            else:
+                print_err("%s is not a valid key" % key)
+                return False
 
     if only_set is False:
         return order_user

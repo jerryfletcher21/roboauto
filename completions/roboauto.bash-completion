@@ -60,13 +60,14 @@ __roboauto_completion() {
             case "$cur" in
             type=*)
                 cur="${cur#*=}"
-                OPTS="
+                OPTS="$OPTS
 buy
 sell"
             ;;
             currency=*)
                 cur="${cur#*=}"
-                OPTS="$(roboauto list-currencies)"
+                OPTS="$OPTS
+$(roboauto list-currencies)"
             ;;
             payment_method=*)
                 cur="${cur#*=}"
@@ -90,10 +91,11 @@ sell"
                 else
                     payment_methods="$(roboauto list-payment-methods --"${methods}")"
                 fi
-                OPTS="$(
-                    printf "%s\n" "$payment_methods" |
-                    awk 'NF { print "\""$0"\"" }'
-                )"
+                OPTS="$OPTS
+$(
+    printf "%s\n" "$payment_methods" |
+    awk 'NF { print "\""$0"\"" }'
+)"
             ;;
             esac
         ;;
@@ -107,11 +109,12 @@ $(
         "$order_keys" "$cur" "${words[@]}"
 )"
 
-            OPTS="$(
-                printf "%s\n" "$order_keys_correct" |
-                uniq |
-                sed 's/$/=/'
-            )"
+            OPTS="$OPTS
+$(
+    printf "%s\n" "$order_keys_correct" |
+    uniq |
+    sed 's/$/=/'
+)"
         ;;
         esac
     }
@@ -431,6 +434,18 @@ $currencies_list"
                 OPTS="$OPTS
 $(___roboauto_get_robots "$paused_home")"
             elif [ "$advanced_completion" = true ]; then
+                case "$prev" in
+                --from-robot)
+                    OPTS="$(
+                        ___roboauto_get_robots \
+                            "$active_home" "$pending_home" "$inactive_home" "$paused_home"
+                    )"
+                ;;
+                *=*) ;;
+                *)
+                    OPTS="--from-robot"
+                ;;
+                esac
                 ___roboauto_complete_order_fields
             fi
         ;;
@@ -476,6 +491,18 @@ $(___roboauto_get_robots "$paused_home")"
                 OPTS="$OPTS
 $robots"
             elif [ "$advanced_completion" = true ]; then
+                case "$prev" in
+                --from-robot)
+                    OPTS="$(
+                        ___roboauto_get_robots \
+                            "$active_home" "$pending_home" "$inactive_home" "$paused_home"
+                    )"
+                ;;
+                *=*) ;;
+                *)
+                    OPTS="--from-robot"
+                ;;
+                esac
                 ___roboauto_complete_order_fields
             fi
         ;;
@@ -504,6 +531,18 @@ $(___roboauto_get_robots "$active_home")"
                     esac
                 done
                 if [ "$should_complete" = true ]; then
+                    case "$prev" in
+                    --from-robot)
+                        OPTS="$(
+                            ___roboauto_get_robots \
+                                "$active_home" "$pending_home" "$inactive_home" "$paused_home"
+                        )"
+                    ;;
+                    *=*) ;;
+                    *)
+                        OPTS="--from-robot"
+                    ;;
+                    esac
                     ___roboauto_complete_order_fields
                 fi
             fi

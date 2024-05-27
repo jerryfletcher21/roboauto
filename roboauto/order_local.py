@@ -343,6 +343,9 @@ def order_summary(argv):
         "sell": {}
     }
     number_error = 0
+    coordinator_number = {}
+    for federation_coordinator in roboauto_options["federation"]:
+        coordinator_number[federation_coordinator] = 0
 
     if first_arg in ("--active", "--pending", "--paused", "--inactive"):
         for robot_name in os.listdir(robot_get_dir_dic()[first_arg[2:]]):
@@ -376,14 +379,27 @@ def order_summary(argv):
 
             if coordinator not in summary_dic[type_string][currency_string]:
                 summary_dic[type_string][currency_string][coordinator] = 0
+                coordinator_number[coordinator] = 0
 
             summary_dic[type_string][currency_string][coordinator] += 1
+            coordinator_number[coordinator] += 1
 
         summary_sorted = {}
         for key, value in summary_dic.items():
             summary_sorted[key] = dict(sorted(value.items()))
+            for currency in summary_sorted[key]:
+                total_currency = 0
+                for coordinator in summary_sorted[key][currency]:
+                    total_currency += summary_sorted[key][currency][coordinator]
+                summary_sorted[key][currency]["TOT"] = total_currency
+
+        coordinator_total = 0
+        for _, number in coordinator_number.items():
+            coordinator_total += number
+        coordinator_number["TOT"] = coordinator_total
 
         print_out(json_dumps(summary_sorted))
+        print_out(json_dumps(coordinator_number))
 
     return True
 

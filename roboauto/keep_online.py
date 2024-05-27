@@ -481,12 +481,29 @@ def keep_online_no_lock():
 
     all_dic = shuffle_dic(ordered_all_dic)
 
+    robot_check_current = 0
+
     logger_flush()
 
     while True:
         all_starting_time = time.time()
+
         total_robots = len(all_dic)
+        if robot_check_current >= total_robots:
+            robot_check_current = 0
+
+        # every loop make a robot requests to check for rewards
+        robot_name = list(all_dic.keys())[robot_check_current]
+        robot_dic = robot_load_from_name(robot_name)
+        if robot_dic is False:
+            print_err(f"{robot_name} skipping request robot")
+        else:
+            _ = robot_check_and_claim_reward(robot_dic)
+
+        robot_check_current += 1
+
         failed_numbers = 0
+
         for robot_name, robot_state in list(all_dic.items()):
             if robot_name not in all_dic:
                 total_robots -= 1

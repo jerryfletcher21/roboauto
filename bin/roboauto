@@ -66,10 +66,10 @@ list-price --{coordinator-name}
 list-ticks --{coordinator-name} [start-date] [end-date]
 list-hours [--relative]
 list-offers [--until-success] --{coordinators}|--all [--sell|--buy] [currency] [search]
-create-order [--no-bond] [--no-active] robot-name [key=value...]
+create-order [--no-bond] [--no-active] robot-name [key=value... | --from-robot robot-name]
 cancel-order robot-name
-recreate-order [--no-cancel] [--no-bond] robot-name key=value...
-change-order-expire [--print, --remove] robot-name [key=value...]
+recreate-order [--no-cancel] [--no-bond] robot-name [key=value... | --from-robot robot-name]
+change-order-expire [--print, --remove] robot-name [key=value... | --from-robot robot-name]
 take-order [--fully] robot-name order-id [take-amount]
 pause-toggle robot-name
 escrow-pay robot-name
@@ -200,7 +200,7 @@ list-offers [--until-success] --{coordinators}|--all [--sell|--buy] [currency] [
     if --until-success retry coordinator book requests in case it fails,
     otherwise offers from that book will not be shown
 
-create-order [--no-bond] [--no-active] robot-name [key=value...]
+create-order [--no-bond] [--no-active] robot-name [key=value... | --from-robot robot-name]
     create a new order
     if --no-bond create order but do not bond
     if --no-active do not set the robot to the active directory
@@ -209,23 +209,24 @@ create-order [--no-bond] [--no-active] robot-name [key=value...]
     payment_method can be provided multiple times
     if public_duration, escrow_duration and bond_size are not specified,
     default values from config.ini will be used
+    instead of key=value.. --from-robot robot-name can be provided
 
 cancel-order robot-name
     cancel robot order just if order is public or paused
 
-recreate-order [--no-cancel] [--no-bond] robot-name key=value...
+recreate-order [--no-cancel] [--no-bond] robot-name [key=value... | --from-robot robot-name]
     recreate robot order just if order is public or paused
     if --no-cancel do not cancel the order, recreate is from
     last saved order
     if --no-bond create order but do not bond
-    the list of key=value... is the same as for create-order
+    the list of key=value... and --from-robot are the same as for create-order
     and will overwrite the old order
     payment_method can be provided multiple times
 
-change-order-expire [--print, --remove] robot-name [key=value...]
+change-order-expire [--print, --remove] robot-name [key=value... | --from-robot robot-name]
     change an order next time it is recreated after if has expired
     while running keep-online
-    the list of key=value... is the same as for create-order
+    the list of key=value... and --from-robot are the same as for create-order
     if --print prints the current changes if present
     if --remove removes the current changes if present and prints it
 
