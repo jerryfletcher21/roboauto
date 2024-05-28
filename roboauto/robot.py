@@ -334,25 +334,36 @@ def robot_change_dir_from_argv(destination_dir, argv):
     return robot_change_dir(robot_name, destination_dir)
 
 
-def robot_requests_robot(token_base91, robot_url, robot_dic):
+def robot_requests_robot(
+    token_base91, robot_url, robot_dic, error_print_not_found_level=0
+):
     """run requests_api_robot, robot_dic can also be None"""
 
     multi_false = False, False
 
     if robot_dic is not None:
+        robot_name = robot_dic["name"]
         user = robot_dic["name"]
     else:
+        robot_name = "robot"
         # base91 have strange characters can not be used
         user = sha256_single(token_base91)
 
-    robot_response_all = requests_api_robot(token_base91, robot_url, user)
+    requests_options = {
+        "error_print": error_print_not_found_level
+    }
+    robot_response_all = requests_api_robot(
+        token_base91, robot_url, user,
+        options=requests_options
+    )
     if response_is_error(robot_response_all):
+        print_err(f"{robot_name} not found", level=error_print_not_found_level)
         return multi_false
     robot_response = robot_response_all.text
     robot_response_json = json_loads(robot_response)
     if robot_response_json is False:
         print_err(robot_response, end="", error=False, date=False)
-        print_err("getting robot response")
+        print_err(f"{robot_name} getting robot response")
         return multi_false
 
     if "bad_request" in robot_response_json:
@@ -366,7 +377,6 @@ def robot_requests_robot(token_base91, robot_url, robot_dic):
         print_out(f"{nickname} have {earned_rewards} earned rewards")
 
     if robot_dic is not None:
-        robot_name = robot_dic["name"]
         robot_dir = robot_dic["dir"]
 
         if robot_name != nickname:
@@ -383,11 +393,14 @@ def robot_requests_robot(token_base91, robot_url, robot_dic):
     return robot_response, robot_response_json
 
 
-def robot_requests_get_order_id(robot_dic, error_print=True):
+def robot_requests_get_order_id(
+    robot_dic, error_print=True, error_print_not_found_level=0
+):
     robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     robot_response, robot_response_json = robot_requests_robot(
-        token_base91, robot_url, robot_dic
+        token_base91, robot_url, robot_dic,
+        error_print_not_found_level=error_print_not_found_level
     )
     if robot_response is False or robot_response_json is False:
         return False
@@ -668,7 +681,7 @@ def robot_claim_reward(robot_dic, reward_amount):
     return True
 
 
-def robot_check_and_claim_reward(robot_dic):
+def robot_check_and_claim_reward(robot_dic, error_print_not_found_level=0):
     """will return False if something went wrong,
     earned_rewards (which could already be claimed) if there were rewards
     we could make a second robot request to check if the invoice
@@ -680,7 +693,8 @@ def robot_check_and_claim_reward(robot_dic):
     _, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     robot_response, robot_response_json = robot_requests_robot(
-        token_base91, robot_url, robot_dic
+        token_base91, robot_url, robot_dic,
+        error_print_not_found_level=error_print_not_found_level
     )
     if robot_response is False or robot_response_json is False:
         return False

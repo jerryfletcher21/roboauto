@@ -50,7 +50,7 @@ def robot_handle_active(robot_dic, all_dic):
     order_id = order_robot_get_last_order_id(robot_dic, error_print=False)
     if order_id is False or order_id is None:
         print_out(f"{robot_name} active does not have orders saved, making request")
-        order_id = robot_requests_get_order_id(robot_dic)
+        order_id = robot_requests_get_order_id(robot_dic, error_print_not_found_level=2)
         if order_id is False or order_id is None:
             return False
 
@@ -59,7 +59,7 @@ def robot_handle_active(robot_dic, all_dic):
     # save to file just when status id is different from previous
     order_dic = order_requests_order_dic(
         robot_dic, order_id, save_to_file=False,
-        until_true=False, error_print_not_found=False,
+        until_true=False, error_print_not_found_level=2,
         timeout=roboauto_options["orders_timeout"]
     )
     if order_dic is False:
@@ -253,7 +253,7 @@ def robot_handle_pending(robot_dic):
     order_id = order_robot_get_last_order_id(robot_dic, error_print=False)
     if order_id is False or order_id is None:
         print_out(f"{robot_name} pending does not have orders saved, making request")
-        order_id = robot_requests_get_order_id(robot_dic)
+        order_id = robot_requests_get_order_id(robot_dic, error_print_not_found_level=2)
         if order_id is False or order_id is None:
             return False
 
@@ -262,7 +262,7 @@ def robot_handle_pending(robot_dic):
     # save to file just when status id is different from previous
     order_dic = order_requests_order_dic(
         robot_dic, order_id, save_to_file=False,
-        until_true=False, error_print_not_found=False,
+        until_true=False, error_print_not_found_level=2,
         timeout=roboauto_options["orders_timeout"]
     )
     if order_dic is False:
@@ -498,7 +498,7 @@ def keep_online_no_lock():
         if robot_dic is False:
             print_err(f"{robot_name} skipping request robot")
         else:
-            _ = robot_check_and_claim_reward(robot_dic)
+            _ = robot_check_and_claim_reward(robot_dic, error_print_not_found_level=2)
 
         robot_check_current += 1
 

@@ -112,7 +112,7 @@ def peer_nick_from_response(order_response_json):
 
 def order_requests_order_dic(
     robot_dic, order_id, order_function=None, take_amount=None,
-    save_to_file=True, until_true=True, error_print_not_found=True, timeout=None
+    save_to_file=True, until_true=True, error_print_not_found_level=0, timeout=None
 ):
     """get the order_dic making a request to the coordinator
     order_function can be set to requests_api_order_take
@@ -135,13 +135,9 @@ def order_requests_order_dic(
         if order_id is False or order_id is None:
             return False
 
-    if error_print_not_found is True:
-        error_print_level = 0
-    else:
-        error_print_level = 2
     requests_options = {
         "until_true": until_true,
-        "error_print": error_print_level
+        "error_print": error_print_not_found_level
     }
     if timeout is not None and timeout is not False:
         requests_options.update({
@@ -159,7 +155,7 @@ def order_requests_order_dic(
         )
 
     if response_is_error(order_response_all):
-        print_err(f"{robot_name} {order_id} not found", level=error_print_level)
+        print_err(f"{robot_name} {order_id} not found", level=error_print_not_found_level)
         return False
     order_response = order_response_all.text
     order_response_json = json_loads(order_response)
