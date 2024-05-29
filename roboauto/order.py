@@ -17,7 +17,7 @@ from roboauto.order_data import \
     order_is_waiting_taker_bond, order_is_expired
 from roboauto.order_local import \
     order_data_from_order_user, get_order_data, order_dic_from_robot_dir, \
-    order_save_order_file, get_order_user
+    order_save_order_file, get_order_user, order_id_list_from_robot_dir
 from roboauto.robot import \
     robot_input_from_argv, robot_change_dir, robot_load_from_name, \
     robot_var_from_dic, robot_requests_get_order_id
@@ -427,9 +427,23 @@ def make_order(
 ):
     """make the request to the coordinator to create an order.
     if should_bond is true, also bond it.
-    if check_change is true, change the order from data saved on disk"""
+    if check_change is true, change the order from data saved on disk
+    return False if an error None if the requests was not made"""
 
     robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+
+    if roboauto_options["robot_maximum_orders"] > 0:
+        order_ids = order_id_list_from_robot_dir(robot_dir)
+        if order_ids is False or order_ids is None:
+            return False
+
+        max_orders = roboauto_options["robot_maximum_orders"]
+        if len(order_ids) >= max_orders:
+            print_out(f"{robot_name} maximum orders {max_orders} reached, moving to inactive")
+            if not robot_change_dir(robot_name, "inactive"):
+                print_err(f"{robot_name} moving to inactive")
+                return False
+            return None
 
     change_order_file = robot_dir + "/change-next-order"
 
@@ -583,11 +597,12 @@ def create_order(argv):
     if order_data is False:
         return False
 
-    if make_order(
+    make_order_result = make_order(
         robot_dic,
         False, order_data,
         should_bond=should_bond
-    ) is False:
+    )
+    if make_order_result is False or make_order_result is None:
         return False
 
     print_out(f"{robot_name} order created successfully")
@@ -678,11 +693,12 @@ def recreate_order(argv):
     if order_data is False:
         return False
 
-    if make_order(
+    make_order_result = make_order(
         robot_dic,
         order_id, order_data,
         should_bond=should_bond
-    ) is False:
+    )
+    if make_order_result is False or make_order_result is None:
         return False
 
     if should_cancel is False:

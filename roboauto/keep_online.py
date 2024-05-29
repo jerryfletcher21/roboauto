@@ -133,6 +133,8 @@ def robot_handle_active(robot_dic, all_dic):
                     return False
         elif order_is_expired(status_id):
             if count_active_orders_this_hour(all_dic) < roboauto_options["order_maximum"]:
+                # will return None when maxium robot orders is reached,
+                # it is ok to return True since the robot is checked correctly
                 if make_order(
                     robot_dic, order_id,
                     order_dic["order_data"],

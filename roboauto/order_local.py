@@ -14,7 +14,7 @@ from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.date_utils import date_convert_time_zone_and_format_string
 from roboauto.utils import \
     json_dumps, file_json_read, is_float, get_int, \
-    dir_make_sure_exists, file_json_write, directory_get_last_number_file
+    dir_make_sure_exists, file_json_write, directory_get_file_numbers
 from roboauto.subprocess_commands import message_notification_send
 from roboauto.order_data import \
     get_currency_string, order_is_pending, get_type_string
@@ -151,26 +151,34 @@ def offer_dic_print(offer_dic):
     ))
 
 
-def last_order_id_from_robot_dir(robot_dir, error_print=True):
+def order_id_list_from_robot_dir(robot_dir, error_print=True):
     orders_dir = robot_dir + "/orders"
     if not os.path.isdir(orders_dir):
         if error_print:
             print_err(f"{orders_dir} is not a dir")
         return None
 
-    order_id_int = directory_get_last_number_file(orders_dir)
-    if order_id_int == 0:
+    order_ids = directory_get_file_numbers(orders_dir)
+    if order_ids == 0:
         if error_print:
             print_err(f"orders dir {orders_dir} is empty")
         return False
-    elif order_id_int is False:
+    elif order_ids is False:
         return False
 
-    return str(order_id_int)
+    return order_ids
+
+
+def order_id_last_from_robot_dir(robot_dir, error_print=True):
+    order_ids = order_id_list_from_robot_dir(robot_dir, error_print=error_print)
+    if order_ids is False or order_ids is None:
+        return False
+
+    return str(order_ids[-1])
 
 
 def order_robot_get_last_order_id(robot_dic, error_print=True):
-    return last_order_id_from_robot_dir(robot_dic["dir"], error_print=error_print)
+    return order_id_last_from_robot_dir(robot_dic["dir"], error_print=error_print)
 
 
 def order_dic_from_robot_dir(robot_dir, order_id=None, error_print=True):
@@ -181,7 +189,7 @@ def order_dic_from_robot_dir(robot_dir, order_id=None, error_print=True):
         return None
 
     if order_id is False or order_id is None:
-        order_id = last_order_id_from_robot_dir(robot_dir, error_print=error_print)
+        order_id = order_id_last_from_robot_dir(robot_dir, error_print=error_print)
         if order_id is False or order_id is None:
             return False
 

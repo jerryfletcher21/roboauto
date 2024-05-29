@@ -241,8 +241,8 @@ def update_roboauto_options(print_info=False):
                     update_single_option(option, new_value, print_info=print_info)
 
             for option in (
-                "seconds_pending_order", "order_maximum", "tab_size",
-                "routing_budget_ppm", "requests_timeout", "orders_timeout",
+                "seconds_pending_order", "order_maximum", "robot_maximum_orders",
+                "tab_size", "routing_budget_ppm", "requests_timeout", "orders_timeout",
                 "active_interval", "pending_interval", "pay_interval", "error_interval",
                 "default_duration", "default_escrow"
             ):
@@ -583,7 +583,7 @@ def token_get_base91(token_string):
     return base91_encode(hashlib.sha256(token_string.encode("utf-8")).digest())
 
 
-def directory_get_last_number_file(dir_number, error_print=True):
+def directory_get_file_numbers(dir_number, error_print=True):
     list_number = []
     for file_number in os.listdir(dir_number):
         order_number = get_int(file_number)
@@ -592,14 +592,15 @@ def directory_get_last_number_file(dir_number, error_print=True):
     if len(list_number) < 1:
         return 0
 
-    file_number = sorted(list_number)[-1]
-    file_path = dir_number + "/" + str(file_number)
-    if not os.path.isfile(file_path):
-        if error_print:
-            print_err(f"{file_path} is not a file")
-        return False
+    file_numbers = sorted(list_number)
+    for file_number in file_numbers:
+        file_path = dir_number + "/" + str(file_number)
+        if not os.path.isfile(file_path):
+            if error_print:
+                print_err(f"{file_path} is not a file")
+            return False
 
-    return file_number
+    return file_numbers
 
 
 def string_from_multiline_format(string):

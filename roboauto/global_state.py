@@ -8,6 +8,7 @@ roboauto_options = {
     "date_format": "%Y/%m/%d %H:%M:%S",
     "seconds_pending_order": 0,
     "order_maximum": 2,
+    "robot_maximum_orders": 0,
     "tab_size": 4,
     "routing_budget_ppm": 1000,
     "requests_timeout": 120,
