@@ -75,10 +75,10 @@ pause-toggle robot-name
 escrow-pay robot-name
 invoice-send robot-name [budget-ppm]
 address-send robot-name address sat-per-vb
-collaborative-cancel robot-name
-confirm-send robot-name
+collaborative-cancel robot-name [--no-save-chat]
+confirm-send robot-name [--no-save-chat]
 confirm-undo robot-name
-dispute-start robot-name
+dispute-start robot-name [--no-save-chat]
 statement-submit robot-name [statement | --file file-statement]
 rate-coordinator robot-name rating
 keep-online [--verbosity=number]
@@ -248,21 +248,27 @@ invoice-send robot-name [budget-ppm]
 address-send robot-name address sat-per-vb
     send the address for on chain payout, specifying sat per vbyte
 
-collaborative-cancel robot-name
+collaborative-cancel robot-name [--no-save-chat]
     ask for a collaborative cancel or if the peer already asked for
     it accept a collaborative cancel
     can only be sent when waiting only for buyer invoice or
     sending fiat in the chat
+    by default chat is saved before the action
+    --no-save-chat will not save the chat
 
-confirm-send robot-name
+confirm-send robot-name [--no-save-chat]
     send confirmation of payment send if buyer or
     confirm payment arrived if seller
+    by default chat is saved before the action
+    --no-save-chat will not save the chat
 
 confirm-undo robot-name
     undo confirmation of payment sent if buyer
 
-dispute-start robot-name
+dispute-start robot-name [--no-save-chat]
     start a dispute
+    by default chat is saved before the action
+    --no-save-chat will not save the chat
 
 statement-submit robot-name [statement | --file file-statement]
     submit the dispute statement

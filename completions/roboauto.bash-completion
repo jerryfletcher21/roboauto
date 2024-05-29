@@ -565,10 +565,16 @@ $(___roboauto_get_robots "$paused_home")"
                 OPTS="$(___roboauto_get_robots "$active_home" "$paused_home")"
             fi
         ;;
-        escrow-pay|invoice-send|address-send|collaborative-cancel|\
-        confirm-send|confirm-undo|dispute-start)
+        escrow-pay|invoice-send|address-send|confirm-undo)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$(___roboauto_get_robots "$pending_home")"
+            fi
+        ;;
+        collaborative-cancel|confirm-send|dispute-start)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="$(___roboauto_get_robots "$pending_home")"
+            elif [ "${cword}" -eq 3 ]; then
+                OPTS="--no-save-chat"
             fi
         ;;
         statement-submit)

@@ -35,6 +35,7 @@ from roboauto.gpg_key import gpg_sign_message
 from roboauto.subprocess_commands import \
     subprocess_generate_invoice, \
     subprocess_pay_invoice_and_check
+from roboauto.chat import robot_requests_chat
 
 
 def order_take_argv(argv):
@@ -569,8 +570,18 @@ def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
             return False
 
         extra_arg = rating
+    elif extra_type == "save_chat":
+        save_chat = True
+        if len(argv) >= 1 and argv[0] == "--no-save-chat":
+            argv = argv[1:]
+            save_chat = False
 
-    if extra_type is None or extra_type is False:
+        if save_chat is True:
+            chat_response, chat_response_json = robot_requests_chat(robot_dic)
+            if chat_response is False or chat_response_json is False:
+                return False
+
+    if extra_arg is None:
         return order_post_function(robot_dic)
     else:
         return order_post_function(robot_dic, extra_arg)
@@ -600,6 +611,24 @@ def order_rate_coordinator_argv(argv):
     )
 
 
+def order_collaborative_cancel_argv(argv):
+    return robot_order_post_action_argv(
+        argv, order_collaborative_cancel, extra_type="save_chat"
+    )
+
+
+def order_send_confirm_argv(argv):
+    return robot_order_post_action_argv(
+        argv, order_send_confirm, extra_type="save_chat"
+    )
+
+
+def order_start_dispute_argv(argv):
+    return robot_order_post_action_argv(
+        argv, order_start_dispute, extra_type="save_chat"
+    )
+
+
 def order_seller_bond_escrow_argv(argv):
     return robot_order_post_action_argv(argv, order_seller_bond_escrow)
 
@@ -608,17 +637,5 @@ def order_pause_toggle_argv(argv):
     return robot_order_post_action_argv(argv, order_pause_toggle)
 
 
-def order_collaborative_cancel_argv(argv):
-    return robot_order_post_action_argv(argv, order_collaborative_cancel)
-
-
-def order_send_confirm_argv(argv):
-    return robot_order_post_action_argv(argv, order_send_confirm)
-
-
 def order_undo_confirm_argv(argv):
     return robot_order_post_action_argv(argv, order_undo_confirm)
-
-
-def order_start_dispute_argv(argv):
-    return robot_order_post_action_argv(argv, order_start_dispute)
