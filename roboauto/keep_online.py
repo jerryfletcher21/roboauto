@@ -46,6 +46,7 @@ def robot_handle_active(robot_dic, all_dic):
 
     robot_name = robot_dic["name"]
     robot_dir = robot_dic["dir"]
+    robot_coordinator = robot_dic["coordinator"]
 
     order_id = order_robot_get_last_order_id(robot_dic, error_print=False)
     if order_id is False or order_id is None:
@@ -83,9 +84,13 @@ def robot_handle_active(robot_dic, all_dic):
 
     status_id = order_info["status"]
 
+    # do not save when is waiting taken bond because it will change expires_at
+    # and the robot will not appear to be online
     if \
-        old_order_dic is False or old_order_dic is None or \
-        status_id != old_order_dic["order_info"]["status"]:
+        old_order_dic is False or old_order_dic is None or (
+            status_id != old_order_dic["order_info"]["status"] and
+            not order_is_waiting_taker_bond(status_id)
+        ):
         if not order_save_order_file(robot_dir, order_id, order_dic):
             return False
 
@@ -114,7 +119,7 @@ def robot_handle_active(robot_dic, all_dic):
             return True
 
         status_string = order_info["status_string"]
-        print_out(f"{robot_name} {order_id} {status_string}")
+        print_out(f"{robot_name} {robot_coordinator} {order_id} {status_string}")
 
         if order_is_paused(status_id):
             print_out(robot_name + " " + order_id + " " + order_info["order_description"])
@@ -251,6 +256,7 @@ def pending_robot_should_act(expires_timestamp, escrow_duration):
 def robot_handle_pending(robot_dic):
     robot_name = robot_dic["name"]
     robot_dir = robot_dic["dir"]
+    robot_coordinator = robot_dic["coordinator"]
 
     order_id = order_robot_get_last_order_id(robot_dic, error_print=False)
     if order_id is False or order_id is None:
@@ -343,7 +349,7 @@ def robot_handle_pending(robot_dic):
                     return order_buyer_update_invoice(robot_dic, None)
     else:
         status_string = order_info["status_string"]
-        print_out(f"{robot_name} {order_id} {status_string}")
+        print_out(f"{robot_name} {robot_coordinator} {order_id} {status_string}")
 
         earned_rewards = robot_check_and_claim_reward(robot_dic)
         if earned_rewards is False:
@@ -458,7 +464,7 @@ def keep_online_no_lock():
         return True
 
     if len(active_list) >= 1:
-        print_out("current active robots are:", date=False)
+        print_out(f"current {len(active_list)} active robots are:", date=False)
         for robot_name in active_list:
             print_out(robot_name, date=False)
     else:
@@ -466,7 +472,7 @@ def keep_online_no_lock():
     print_out("\n", end="", date=False)
 
     if len(pending_list) >= 1:
-        print_out("current pending robots are:", date=False)
+        print_out(f"current {len(pending_list)} pending robots are:", date=False)
         for robot_name in pending_list:
             print_out(robot_name, date=False)
     else:

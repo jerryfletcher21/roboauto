@@ -433,12 +433,11 @@ def make_order(
     robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
     if roboauto_options["robot_maximum_orders"] > 0:
-        order_ids = order_id_list_from_robot_dir(robot_dir)
-        if order_ids is False or order_ids is None:
-            return False
-
         max_orders = roboauto_options["robot_maximum_orders"]
-        if len(order_ids) >= max_orders:
+        order_ids = order_id_list_from_robot_dir(robot_dir, error_print=False)
+        if \
+            order_ids is not False and order_ids is not None and \
+            len(order_ids) >= max_orders:
             print_out(f"{robot_name} maximum orders {max_orders} reached, moving to inactive")
             if not robot_change_dir(robot_name, "inactive"):
                 print_err(f"{robot_name} moving to inactive")

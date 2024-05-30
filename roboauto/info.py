@@ -191,12 +191,16 @@ def robot_info_argv(argv):
 
 
 def order_info_argv(argv):
-    full_mode = True
     local_mode = False
+    search_mode = False
+    full_mode = True
     while len(argv) > 0:
         first_argv = argv[0]
         if first_argv == "--local":
             local_mode = True
+            argv = argv[1:]
+        elif first_argv == "--search":
+            search_mode = True
             argv = argv[1:]
         elif first_argv == "--simple":
             full_mode = False
@@ -215,6 +219,9 @@ def order_info_argv(argv):
     robot_name, _, robot_dir, _, coordinator, _, _ = robot_var_from_dic(robot_dic)
 
     if len(argv) >= 1:
+        if search_mode is True:
+            print_err("order_id should not be specified with --search")
+            return False
         order_id = argv[0]
         argv = argv[1:]
     else:
@@ -222,10 +229,12 @@ def order_info_argv(argv):
 
     if local_mode is False:
         if order_id is False:
-            order_id = order_robot_get_last_order_id(robot_dic, error_print=False)
-            if order_id is False:
-                print_out("robot does not have orders saved, searching it")
+            if search_mode is False:
+                order_id = order_robot_get_last_order_id(robot_dic, error_print=False)
+                if order_id is False:
+                    print_err("robot does not have orders saved, searching it", error=False)
 
+            if order_id is False:
                 order_id = robot_requests_get_order_id(robot_dic, error_print=False)
                 if order_id is False:
                     print_err(f"{robot_name} does not have active or last orders")

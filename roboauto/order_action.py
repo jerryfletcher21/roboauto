@@ -485,7 +485,7 @@ def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
     if robot_dic is False:
         return False
 
-    extra_arg = None
+    extra_arg = ()
 
     if extra_type == "update_invoice":
         budget_ppm, argv = budget_ppm_from_argv(argv)
@@ -580,8 +580,10 @@ def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
             chat_response, chat_response_json = robot_requests_chat(robot_dic)
             if chat_response is False or chat_response_json is False:
                 return False
+            robot_name = robot_dic["name"]
+            print_out(f"{robot_name} chat saved on disk")
 
-    if extra_arg is None:
+    if extra_arg == ():
         return order_post_function(robot_dic)
     else:
         return order_post_function(robot_dic, extra_arg)

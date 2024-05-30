@@ -57,7 +57,7 @@ robot-info robot-name
 robot-info --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
 claim-reward robot-name
 stealth-option robot-name true|false
-order-info [--local] [--simple] robot-name [order-id]
+order-info [--local|--search] [--simple] robot-name [order-id]
 chat-print [--local] robot-name
 message-send robot-name
 list-historical --{coordinator-name}
@@ -159,11 +159,13 @@ claim-reward robot-name
 stealth-option robot-name true|false
     set stealth invoice option for robot-name
 
-order-info [--local] [--simple] robot-name [order-id]
+order-info [--local|--search] [--simple] robot-name [order-id]
     get info about the order of a robot
     if --simple only print important data
-    if --local print the order saved on disk, order-id can be
-    specified for old orders
+    if --local print the order saved on disk
+    if --search make the robot request to get the last order-id
+    without getting it from disk
+    order-id can be specified for old orders
 
 chat-print [--local] robot-name
     print messages of robot-name

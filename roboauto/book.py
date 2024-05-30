@@ -7,7 +7,7 @@
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state
 from roboauto.robot import robot_list_dir, waiting_queue_get
-from roboauto.order_data import get_currency_string
+from roboauto.order_data import get_currency_string, order_is_public
 from roboauto.order_local import \
     get_offer_dic, offer_dic_print, order_dic_from_robot_dir
 from roboauto.requests_api import response_is_error, requests_api_book
@@ -19,13 +19,18 @@ from roboauto.utils import \
 
 
 def get_offers_per_hour(relative):
-    hours = [[] for _ in range(25)]
+    # 24 hours robots online
+    # NO robot [n]ot [o]nline
+    # WG robot in [w]aiting [q]ueue
+    hours_fields = 26
+
+    hours = [[] for _ in range(hours_fields)]
 
     current_timestamp = get_current_timestamp()
 
     nicks_waiting = waiting_queue_get()
 
-    hours[24] = nicks_waiting
+    hours[hours_fields - 1] = nicks_waiting
 
     for robot_name in robot_list_dir(roboauto_state["active_home"]):
         if robot_name in nicks_waiting:
@@ -39,13 +44,17 @@ def get_offers_per_hour(relative):
         if order_dic is False or order_dic is None:
             continue
 
-        expires_at = order_dic["order_response_json"]["expires_at"]
-        date_hour = get_hour_offer(expires_at, current_timestamp, relative)
-        if date_hour is False:
-            print_err(f"robot {robot_name} getting expire hour")
-            return False
+        status_id = order_dic["order_info"]["status"]
+        if order_is_public(status_id):
+            expires_at = order_dic["order_response_json"]["expires_at"]
+            date_hour = get_hour_offer(expires_at, current_timestamp, relative)
+            if date_hour is False:
+                print_err(f"robot {robot_name} getting expire hour")
+                return False
 
-        hours[date_hour].append(robot_name)
+            hours[date_hour].append(robot_name)
+        else:
+            hours[hours_fields - 2].append(robot_name)
 
     return hours
 
@@ -61,8 +70,11 @@ def list_offers_per_hour(relative):
         if i < 24:
             # pylint: disable=C0209 consider-using-f-string
             print_out("%d" % i, end="")
-        else:
+        elif i == 24:
+            print_out("NO", end="")
+        elif i == 25:
             print_out("WQ", end="")
+
         # pylint: disable=C0209 consider-using-f-string
         print_out(" %2s" % len(hour), end="")
         for nick in hour:

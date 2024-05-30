@@ -13,6 +13,115 @@ __roboauto_completion() {
     local ifs_newline='
 '
 
+    ___multiple_options_handle() {
+        # if it is the correct spot to include the options
+        # (they are not already inserted, or the last word is one of
+        # options) will print the possible options and return 0
+        # if instead it is not the correct position, so there are other
+        # arguments after the options, it will print the number of other
+        # arguments after the last option and return 1
+
+        # options is multiline
+        # in every line there are multiple options separated by spaces
+        # for the same option for example -h --help
+
+        local starting_position="$1"
+        shift 1
+        local options="$1"
+        shift 1
+        local words=("$@")
+
+        local multi_option found option i word
+
+        local opts=""
+
+        local number_arguments=0
+
+        if [ "${#words[@]}" -lt "$starting_position" ]; then
+            printf "%s\n" "$number_arguments"
+            return 1
+        fi
+
+        case "${words[${#words[@]}-1]}" in
+        *=)
+            printf "%s\n" "$number_arguments"
+            return 1
+        ;;
+        esac
+
+        for ((i = "${#words[@]}" - 2; i >= "$starting_position"; i--)); do
+            word="${words[i]}"
+
+            found=false
+
+            IFS="$ifs_newline"
+            for multi_option in $options; do
+                IFS="$ifs_original"
+
+                for option in $multi_option; do
+                    if [ "${word%%=*}" = "${option%=}" ]; then
+                        found=true
+                        break
+                    fi
+                done
+                if [ "$found" = true ]; then
+                    break
+                fi
+
+                IFS="$ifs_newline"
+            done
+            IFS="$ifs_original"
+
+            if [ "$found" = false ]; then
+                number_arguments="$(( number_arguments + 1 ))"
+            else
+                break
+            fi
+        done
+
+        # number_arguments == 0 when last word is an option
+        # number_arguments == #words - starting_position when there
+        # is a word in starting_position and is not an option
+        if
+            [ "$number_arguments" -gt 0 ] &&
+            [ "$(( number_arguments + starting_position ))" -lt "${#words[@]}" ]
+        then
+            printf "%s\n" "$number_arguments"
+            return 1
+        fi
+
+        IFS="$ifs_newline"
+        for multi_option in $options; do
+            IFS="$ifs_original"
+
+            found=false
+            for option in $multi_option; do
+                for ((i = "$starting_position"; i < "${#words[@]}" - 1; i++)); do
+                    word="${words[i]}"
+                    if [ "${word%%=*}" = "${option%=}" ]; then
+                        found=true
+                        break
+                    fi
+                done
+                if [ "$found" = true ]; then
+                    break
+                fi
+            done
+            if [ "$found" = false ]; then
+                for option in $multi_option; do
+                    opts="$opts
+$option"
+                done
+            fi
+
+            IFS="$ifs_newline"
+        done
+        IFS="$ifs_original"
+
+        printf "%s\n" "$opts"
+        return 0
+    }
+
     ___list_non_already_set_array() {
         local list_full="$1"
         local item_current="$2"
@@ -293,33 +402,29 @@ false"
             fi
         ;;
         order-info)
-            if [ "${cword}" -eq 2 ]; then
-                OPTS="
---local
---simple"
+            local words_after_options
+            words_after_options="0"
+            if new_options="$(
+                ___multiple_options_handle "2" \
+"--local --search
+--simple" \
+                    "${words[@]}"
+            )"; then
+                OPTS="$new_options"
+            else
+                words_after_options="$new_options"
             fi
-            if [ "${cword}" -eq 3 ]; then
-                if [ "$prev" = "--local" ]; then
-                    OPTS="--simple"
-                elif [ "$prev" = "--simple" ]; then
-                    OPTS="--local"
-                fi
-            fi
-            local is_local=false
-            for word in "${words[@]}"; do
-                case "$word" in
-                --local)
-                    is_local=true
-                    break
-                ;;
-                esac
-            done
-            if \
-                [ "${cword}" -eq 2 ] || {
-                    { [ "${cword}" -eq 3 ] || [ "${cword}" -eq 4 ]; } && \
-                    { [ "$prev" = "--local" ] || [ "$prev" = "--simple" ]; }
-                }
-            then
+
+            if [ "$words_after_options" -eq 0 ]; then
+                local is_local=false
+                for word in "${words[@]}"; do
+                    case "$word" in
+                    --local)
+                        is_local=true
+                        break
+                    ;;
+                    esac
+                done
                 local robots
                 if [ "$is_local" = false ]; then
                     robots="$(
@@ -334,20 +439,31 @@ false"
                 fi
                 OPTS="$OPTS
 $robots"
-            elif [ "$is_local" = true ]; then
+            elif [ "$words_after_options" -eq 1 ]; then
+                local is_search=false
+                for word in "${words[@]}"; do
+                    case "$word" in
+                    --search)
+                        is_search=true
+                        break
+                    ;;
+                    esac
+                done
                 local robot_dir orders
-                robot_dir="$(
-                    find "$roboauto_home" -type d -name "$prev" 2>/dev/null
-                )"
-                if [ -d "$robot_dir" ]; then
-                    orders="$(
-                        find "${robot_dir}/orders" -mindepth 1 -maxdepth 1 2>/dev/null |
-                        rev |
-                        cut -d "/" -f 1 |
-                        rev
+                if [ "$is_search" = false ]; then
+                    robot_dir="$(
+                        find "$roboauto_home" -type d -name "$prev" 2>/dev/null
                     )"
-                    if [ -n "$orders" ]; then
-                        OPTS="$orders"
+                    if [ -d "$robot_dir" ]; then
+                        orders="$(
+                            find "${robot_dir}/orders" -mindepth 1 -maxdepth 1 2>/dev/null |
+                            rev |
+                            cut -d "/" -f 1 |
+                            rev
+                        )"
+                        if [ -n "$orders" ]; then
+                            OPTS="$orders"
+                        fi
                     fi
                 fi
             fi
