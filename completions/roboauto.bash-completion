@@ -493,12 +493,15 @@ $(___roboauto_get_robots "$pending_home")"
             currencies_list="$(roboauto list-currencies)"
 
             if [ "${cword}" -eq 2 ]; then
-                OPTS="--until-success"
+                OPTS="--until-success
+--local"
             fi
             if \
                 [ "${cword}" -eq 2 ] || {
-                    [ "${cword}" -eq 3 ] && [ "$prev" = "--until-success" ]
-            }; then
+                    [ "${cword}" -eq 3 ] && \
+                    { [ "$prev" = "--until-success" ] || [ "$prev" = "--local" ]; }
+                }
+            then
                 OPTS="$OPTS
 --all
 $coordinators_list"

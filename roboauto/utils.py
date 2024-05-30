@@ -318,6 +318,7 @@ def global_setup():
     roboauto_state["pending_home"] = roboauto_home + "/pending"
     roboauto_state["inactive_home"] = roboauto_home + "/inactive"
     roboauto_state["paused_home"] = roboauto_home + "/paused"
+    roboauto_state["coordinators_home"] = roboauto_home + "/coordinators"
     roboauto_state["lock_home"] = roboauto_home + "/lock"
     roboauto_state["gnupg_home"] = roboauto_home + "/gnupg"
     roboauto_state["log_home"] = roboauto_home + "/logs"
@@ -333,6 +334,7 @@ def global_setup():
         roboauto_state["active_home"],
         roboauto_state["pending_home"],
         roboauto_state["inactive_home"],
+        roboauto_state["coordinators_home"],
         roboauto_state["paused_home"],
         roboauto_state["lock_home"],
         roboauto_state["gnupg_home"],

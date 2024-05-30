@@ -4,6 +4,8 @@
 
 # pylint: disable=C0116 missing-function-docstring
 
+import os
+
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state
 from roboauto.robot import robot_list_dir, waiting_queue_get
@@ -15,7 +17,7 @@ from roboauto.date_utils import \
     get_hour_offer, get_current_timestamp
 from roboauto.utils import \
     json_loads, roboauto_get_multi_coordinators_from_argv, \
-    roboauto_get_coordinator_url
+    roboauto_get_coordinator_url, file_json_write, file_json_read
 
 
 def get_offers_per_hour(relative):
@@ -126,12 +128,12 @@ def get_book_response_json(coordinator, until_true=False):
         return False
 
     if not isinstance(book_response_json, list):
-        if book_response_json == {"not_found": "No orders found, be the first to make one"}:
-            return []
-
-        print_err(book_response, error=False, date=False, level=level_print)
-        print_err(f"{coordinator} book response is not a list", level=level_print)
-        return False
+        if book_response_json != {"not_found": "No orders found, be the first to make one"}:
+            print_err(book_response, error=False, date=False, level=level_print)
+            print_err(f"{coordinator} book response is not a list", level=level_print)
+            return False
+        else:
+            book_response_json = []
 
     for offer in book_response_json:
         if not isinstance(offer, dict):
@@ -141,6 +143,11 @@ def get_book_response_json(coordinator, until_true=False):
                 level=level_print
             )
             return False
+
+    if not file_json_write(
+        roboauto_state["coordinators_home"] + "/" + coordinator, book_response_json
+    ):
+        return False
 
     return book_response_json
 
@@ -199,11 +206,21 @@ def list_offers_general(
     return True
 
 
-def get_multi_book_response_json(coordinators, until_true=False):
+def get_multi_book_response_json(coordinators, until_true=False, book_local=False):
     multi_book_response_json = []
 
     for coordinator in coordinators:
-        book_response_json = get_book_response_json(coordinator, until_true=until_true)
+        if book_local is False:
+            book_response_json = get_book_response_json(
+                coordinator, until_true=until_true
+            )
+        else:
+            book_response_file = roboauto_state["coordinators_home"] + "/" + coordinator
+            if os.path.isfile(book_response_file):
+                book_response_json = file_json_read(book_response_file)
+            else:
+                print_err(f"{coordinator} local book not present")
+                book_response_json = False
         if book_response_json is False:
             continue
 
@@ -221,9 +238,20 @@ def get_multi_book_response_json(coordinators, until_true=False):
 
 def list_offers_argv(argv: list):
     until_true = False
-    if len(argv) >= 1 and argv[0] == "--until-success":
-        argv = argv[1:]
-        until_true = True
+    book_local = False
+    while len(argv) >= 1:
+        if argv[0] == "--until-success":
+            argv = argv[1:]
+            until_true = True
+        elif argv[0] == "--local":
+            argv = argv[1:]
+            book_local = True
+        else:
+            break
+
+    if until_true is True and book_local is True:
+        print_err("--until-success and --local can not be both present")
+        return False
 
     coordinators, argv = roboauto_get_multi_coordinators_from_argv(argv)
     if coordinators is False:
@@ -254,7 +282,7 @@ def list_offers_argv(argv: list):
         search_element = ""
 
     multi_book_response_json = get_multi_book_response_json(
-        coordinators, until_true=until_true
+        coordinators, until_true=until_true, book_local=book_local
     )
     if multi_book_response_json is False:
         return False

@@ -65,7 +65,7 @@ list-limits --{coordinator-name}
 list-price --{coordinator-name}
 list-ticks --{coordinator-name} [start-date] [end-date]
 list-hours [--relative]
-list-offers [--until-success] --{coordinators}|--all [--sell|--buy] [currency] [search]
+list-offers [--until-success|--local] --{coordinators}|--all [--sell|--buy] [currency] [search]
 create-order [--no-bond] [--no-active] robot-name [key=value... | --from-robot robot-name]
 cancel-order robot-name
 recreate-order [--no-cancel] [--no-bond] robot-name [key=value... | --from-robot robot-name]
@@ -195,12 +195,13 @@ list-hours [--relative]
     list orders per hours of the day
     if --relative is passed list orders per hours relative from current time
 
-list-offers [--until-success] --{coordinators}|--all [--sell|--buy] [currency] [search]
+list-offers [--until-success|--local] --{coordinators}|--all [--sell|--buy] [currency] [search]
     list all [buy|sell] offers in the order book
     multiple coordinators can be specified or --all
     search is the string to be searched in the payment method
     if --until-success retry coordinator book requests in case it fails,
     otherwise offers from that book will not be shown
+    if --local get book responses from disk
 
 create-order [--no-bond] [--no-active] robot-name [key=value... | --from-robot robot-name]
     create a new order

@@ -48,6 +48,7 @@ roboauto_state = {
     "pending_home": "",
     "inactive_home": "",
     "paused_home": "",
+    "coordinators_home": "",
     "lock_home": "",
     "gnupg_home": "",
     "log_home": "",
