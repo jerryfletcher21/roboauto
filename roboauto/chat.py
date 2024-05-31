@@ -69,12 +69,13 @@ def robot_requests_chat(robot_dic):
     return chat_response, chat_response_json
 
 
-def message_get(message_date, message_nick, message_print, status_char):
+def message_get(message_date, message_nick, message_print, status_char, signature_error):
     return {
         "date": message_date,
         "nick": message_nick,
         "message": message_print,
-        "status": status_char
+        "status": status_char,
+        "signature_error": signature_error
     }
 
 
@@ -83,14 +84,20 @@ def chat_print_single_message(message_dic):
     message_nick = message_dic["nick"]
     message_print = message_dic["message"]
     status_char = message_dic["status"]
+    signature_error = message_dic["signature_error"]
 
-    print_out(f"{message_date} {status_char} {message_nick}")
+    print_out(f"{message_date} {status_char} {message_nick}", end="")
+    if signature_error is not None:
+        print_out(f" {signature_error}", end="")
+    print_out("\n", end="")
     print_out(message_print)
 
     return True
 
 
-def chat_print_encrypted_messages(chat_response_json, robot_dir, token):
+def chat_print_encrypted_messages(robot_dic, chat_response_json):
+    robot_name, _, robot_dir, token, _, _, _ = robot_var_from_dic(robot_dic)
+
     unsorted_messages = chat_response_json.get("messages", False)
     if unsorted_messages is False:
         print_err(chat_response_json, end="", error=False, date=False)
@@ -98,6 +105,16 @@ def chat_print_encrypted_messages(chat_response_json, robot_dir, token):
         return False
 
     messages = sorted(unsorted_messages, key=lambda mex: mex["time"])
+
+    current_fingerprint = robot_get_current_fingerprint(robot_dir)
+    if current_fingerprint is False:
+        print_err("current key fingerprint is not present")
+        return False
+
+    peer_fingerprint = robot_get_peer_fingerprint(robot_dir, error_print=False)
+    if peer_fingerprint is False:
+        print_err("peer key fingerprint is not present")
+        return False
 
     decrypted_messages = []
 
@@ -120,19 +137,26 @@ def chat_print_encrypted_messages(chat_response_json, robot_dir, token):
 
         message_date = date_convert_time_zone_and_format_string(message_time)
 
+        signature_error = None
         if re.match('^#', message_enc) is not None:
             status_char = "N"
             message_print = message_enc
         elif token is not False:
-            decrypted_message = gpg_decrypt_check_message(
-                message_enc, passphrase=token, error_print=False
+            if message_nick == robot_name:
+                signature_fingerprint = current_fingerprint
+            else:
+                signature_fingerprint = peer_fingerprint
+            decrypted_message, signature_error = gpg_decrypt_check_message(
+                message_enc, signature_fingerprint, passphrase=token, error_print=False
             )
             if decrypted_message is not False:
-                status_char = "E"
                 message_print = decrypted_message
             else:
-                status_char = "X"
                 message_print = "error decrypting message"
+            if signature_error is None:
+                status_char = "E"
+            else:
+                status_char = "X"
         else:
             print_err("token is False")
             return False
@@ -143,7 +167,7 @@ def chat_print_encrypted_messages(chat_response_json, robot_dir, token):
             print_out("\n", end="")
 
         message_dic = message_get(
-            message_date, message_nick, message_print, status_char
+            message_date, message_nick, message_print, status_char, signature_error
         )
         if message_dic is False:
             return False
@@ -210,7 +234,7 @@ def robot_send_chat_message(robot_dic, message):
 
     print_out("message sent correctly")
     chat_print_single_message(message_get(
-        "now", robot_name, message, status_char
+        "now", robot_name, message, status_char, None
     ))
 
     return True

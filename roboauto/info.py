@@ -271,14 +271,13 @@ def robot_chat(argv):
         return False
 
     robot_dir = robot_dic["dir"]
-    token = robot_dic["token"]
 
     if from_local is False:
         chat_response, chat_response_json = robot_requests_chat(robot_dic)
         if chat_response is False:
             return False
 
-        if not chat_print_encrypted_messages(chat_response_json, robot_dir, token):
+        if not chat_print_encrypted_messages(robot_dic, chat_response_json):
             return False
     else:
         decrypted_messages_file = robot_dir + "/messages-decrypted"
@@ -303,7 +302,7 @@ def robot_chat(argv):
             if chat_response_json is False:
                 return False
 
-            if not chat_print_encrypted_messages(chat_response_json, robot_dir, token):
+            if not chat_print_encrypted_messages(robot_dic, chat_response_json):
                 return False
         else:
             print_err("there are no local messages")
