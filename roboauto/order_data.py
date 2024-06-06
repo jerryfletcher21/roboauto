@@ -341,3 +341,29 @@ def order_is_finished(data):
 
 def order_is_finished_for_seller(data):
     return data in (13, 15)
+
+
+# robosats/api/models/order.py
+def get_order_expiry_reason_string(target, reverse=False):
+    expiry_reasons_dic = {
+        0: "Expired not taken",
+        1: "Maker bond not locked",
+        2: "Escrow not locked",
+        3: "Invoice not submitted",
+        4: "Neither escrow locked or invoice submitted"
+    }
+
+    if not reverse:
+        if target in expiry_reasons_dic:
+            return expiry_reasons_dic[target]
+        else:
+            return "other"
+    else:
+        for expiry_reason, expiry_message in expiry_reasons_dic.items():
+            if target == expiry_message:
+                return expiry_reason
+        return -1
+
+
+def order_expired_is_not_taken(data):
+    return data == 0

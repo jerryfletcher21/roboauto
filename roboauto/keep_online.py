@@ -22,7 +22,7 @@ from roboauto.order_data import  \
     order_is_waiting_taker_bond, order_is_expired, \
     order_is_finished_for_seller, order_is_waiting_seller_buyer, \
     order_is_waiting_seller, order_is_waiting_buyer, \
-    order_is_failed_routing
+    order_is_failed_routing, order_expired_is_not_taken
 from roboauto.order_local import \
     robot_handle_taken, order_dic_from_robot_dir, \
     order_robot_get_last_order_id, order_save_order_file
@@ -358,6 +358,8 @@ def robot_handle_pending(robot_dic):
             # while there are rewards to be claimed it is not moving from pending
             return True
 
+        expiry_reason = order_response_json.get("expiry_reason", -1)
+
         if \
             order_is_finished(status_id) or \
             (is_seller and order_is_finished_for_seller(status_id)):
@@ -365,7 +367,14 @@ def robot_handle_pending(robot_dic):
             return robot_change_dir(robot_name, "inactive")
         elif order_is_public(status_id):
             print_out(
-                f"{robot_name} {order_id} was pending and now is public, moving to active"
+                f"{robot_name} {order_id} was pending and now is public, " +
+                "moving to active"
+            )
+            return robot_change_dir(robot_name, "active")
+        elif order_is_expired(status_id) and order_expired_is_not_taken(expiry_reason):
+            print_out(
+                f"{robot_name} {order_id} was pending and now is expired not taken, " +
+                "moving to active"
             )
             return robot_change_dir(robot_name, "active")
         else:
