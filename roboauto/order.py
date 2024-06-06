@@ -9,7 +9,7 @@ import os
 import re
 
 from roboauto.logger import print_out, print_err
-from roboauto.global_state import roboauto_options
+from roboauto.global_state import roboauto_options, roboauto_state
 from roboauto.order_data import \
     get_order_string, get_type_string, get_currency_string, \
     order_is_public, order_is_paused, order_is_waiting_maker_bond, \
@@ -25,7 +25,7 @@ from roboauto.requests_api import \
     requests_api_order, requests_api_order_cancel, \
     requests_api_make, response_is_error, requests_api_order_take
 from roboauto.utils import \
-    json_dumps, string_is_false_none_null, \
+    json_dumps, string_is_false_none_null, file_is_executable, \
     json_loads, input_ask, roboauto_get_coordinator_from_url, \
     file_json_read, file_json_write, file_remove
 from roboauto.subprocess_commands import subprocess_pay_invoice_and_check
@@ -344,9 +344,10 @@ def order_string_status_print(robot_name, order_id, order_description, peer_nick
         print_out(f"{robot_name} {peer_nick} {order_id} {order_description}")
 
 
-def bond_order(robot_dic, order_id, taker=False, take_amount=None):
+def bond_order(robot_dic, order_id, taker=False, take_amount=None, use_node=True):
     """bond an order, after checking the invoice with lightning-node check
-    will run lightning-node check and lightning-node pay as subprocesses"""
+    will run lightning-node check and lightning-node pay as subprocesses
+    if use_node is True it will simply print out the invoice"""
 
     robot_name = robot_dic["name"]
 
@@ -408,6 +409,14 @@ def bond_order(robot_dic, order_id, taker=False, take_amount=None):
         )
         return False
 
+    if not use_node:
+        print_out(bond_invoice)
+        return True
+
+    if not file_is_executable(roboauto_state["lightning_node_command"]):
+        print_err("lightning node not set, to use without node pass --no-node")
+        return False
+
     pay_label = \
         "bond-" + name_pay_label + "-" + order_id + "-" + \
         order_user["type"] + "-" + order_user["currency"] + "-" + \
@@ -423,7 +432,7 @@ def bond_order(robot_dic, order_id, taker=False, take_amount=None):
 
 
 def make_order(
-    robot_dic, order_id, make_data, should_bond=True, check_change=False
+    robot_dic, order_id, make_data, should_bond=True, check_change=False, use_node=True
 ):
     """make the request to the coordinator to create an order.
     if should_bond is true, also bond it.
@@ -499,7 +508,7 @@ def make_order(
         print_out(f"{robot_name} order {order_id} will not be bonded")
         return True
 
-    return bond_order(robot_dic, order_id)
+    return bond_order(robot_dic, order_id, use_node=use_node)
 
 
 def order_user_from_argv(argv, with_default=False, only_set=False):
@@ -556,10 +565,14 @@ def order_user_from_argv(argv, with_default=False, only_set=False):
 
 def create_order(argv):
     should_bond = True
+    use_node = True
     should_set_active = True
     while len(argv) > 0:
         if argv[0] == "--no-bond":
             should_bond = False
+            argv = argv[1:]
+        elif argv[0] == "--no-node":
+            use_node = False
             argv = argv[1:]
         elif argv[0] == "--no-active":
             should_set_active = False
@@ -569,6 +582,10 @@ def create_order(argv):
             return False
         else:
             break
+
+    if not should_bond and not use_node:
+        print_err("--no-bond and --no-node should not both be present")
+        return False
 
     # pylint: disable=R0801 duplicate-code
     robot_dic, argv = robot_input_from_argv(argv)
@@ -599,12 +616,14 @@ def create_order(argv):
     make_order_result = make_order(
         robot_dic,
         False, order_data,
-        should_bond=should_bond
+        should_bond=should_bond,
+        use_node=use_node
     )
     if make_order_result is False or make_order_result is None:
         return False
 
-    print_out(f"{robot_name} order created successfully")
+    if use_node:
+        print_out(f"{robot_name} order created successfully")
 
     if should_set_active is True:
         if not robot_change_dir(robot_name, "active"):
@@ -637,19 +656,27 @@ def cancel_order(argv):
 
 def recreate_order(argv):
     should_cancel = True
+    use_node = True
     should_bond = True
     while len(argv) >= 1:
-        if argv[0] == "--no-cancel":
-            should_cancel = False
-            argv = argv[1:]
-        elif argv[0] == "--no-bond":
+        if argv[0] == "--no-bond":
             should_bond = False
+            argv = argv[1:]
+        if argv[0] == "--no-node":
+            use_node = False
+            argv = argv[1:]
+        elif argv[0] == "--no-cancel":
+            should_cancel = False
             argv = argv[1:]
         elif re.match('^-', argv[0]) is not None:
             print_err("option %s not recognized" % argv[0])
             return False
         else:
             break
+
+    if not should_bond and not use_node:
+        print_err("--no-bond and --no-node should not both be present")
+        return False
 
     # pylint: disable=R0801 duplicate-code
     robot_dic, argv = robot_input_from_argv(argv)
@@ -695,10 +722,14 @@ def recreate_order(argv):
     make_order_result = make_order(
         robot_dic,
         order_id, order_data,
-        should_bond=should_bond
+        should_bond=should_bond,
+        use_node=use_node
     )
     if make_order_result is False or make_order_result is None:
         return False
+
+    if use_node:
+        print_out(f"{robot_name} order recreated successfully")
 
     if should_cancel is False:
         if not robot_change_dir(robot_name, "active"):

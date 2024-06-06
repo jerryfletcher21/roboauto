@@ -55,7 +55,7 @@ robosats-info --{coordinator-name}
 generate-robot --{coordinator-name} [--active, --pending, --inactive]
 robot-info robot-name
 robot-info --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
-claim-reward robot-name
+claim-reward robot-name [invoice]
 stealth-option robot-name true|false
 order-info [--local|--search] [--simple] robot-name [order-id]
 chat-print [--local] robot-name
@@ -66,14 +66,17 @@ list-price --{coordinator-name}
 list-ticks --{coordinator-name} [start-date] [end-date]
 list-hours [--relative]
 list-offers [--until-success|--local] --{coordinators}|--all [--sell|--buy] [currency] [search]
-create-order [--no-bond] [--no-active] robot-name [key=value... | --from-robot robot-name]
+create-order [--no-bond|--no-node] [--no-active] robot-name key=value...
+create-order [--no-bond|--no-node] [--no-active] robot-name --from-robot robot-name
 cancel-order robot-name
-recreate-order [--no-cancel] [--no-bond] robot-name [key=value... | --from-robot robot-name]
-change-order-expire [--print, --remove] robot-name [key=value... | --from-robot robot-name]
-take-order [--fully] robot-name order-id [take-amount]
+recreate-order [--no-bond|--no-node] [--no-cancel] robot-name key=value...
+recreate-order [--no-bond|--no-node] [--no-cancel] robot-name --from-robot robot-name
+change-order-expire [--print, --remove] robot-name key=value...
+change-order-expire [--print, --remove] robot-name --from-robot robot-name
+take-order [--fully|--no-node] robot-name order-id [take-amount]
 pause-toggle robot-name
 escrow-pay robot-name
-invoice-send robot-name [budget-ppm]
+invoice-send robot-name [--budget-ppm=number] [invoice]
 address-send robot-name address sat-per-vb
 collaborative-cancel robot-name [--no-save-chat]
 confirm-send robot-name [--no-save-chat]
@@ -81,7 +84,7 @@ confirm-undo robot-name
 dispute-start robot-name [--no-save-chat]
 statement-submit robot-name [statement | --file file-statement]
 rate-coordinator robot-name rating
-keep-online [--verbosity=number]
+keep-online [--verbosity=number] [--no-sleep] [--no-initial-info]
 """
 
 INFO_VERBOSE = """\
@@ -153,8 +156,10 @@ robot-info --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
     if instead of robot-name --stdin or --stdin-base91 is passed
     token is taken from stdin and coordinator is also required
 
-claim-reward robot-name
+claim-reward robot-name [invoice]
     claim reward for robot name
+    if invoice is specified use it instead of generating it
+    if lightning node is not set invoice will have to be provided
 
 stealth-option robot-name true|false
     set stealth invoice option for robot-name
@@ -203,7 +208,8 @@ list-offers [--until-success|--local] --{coordinators}|--all [--sell|--buy] [cur
     otherwise offers from that book will not be shown
     if --local get book responses from disk
 
-create-order [--no-bond] [--no-active] robot-name [key=value... | --from-robot robot-name]
+create-order [--no-bond|--no-node] [--no-active] robot-name key=value...
+create-order [--no-bond|--no-node] [--no-active] robot-name --from-robot robot-name
     create a new order
     if --no-bond create order but do not bond
     if --no-active do not set the robot to the active directory
@@ -213,18 +219,23 @@ create-order [--no-bond] [--no-active] robot-name [key=value... | --from-robot r
     if public_duration, escrow_duration and bond_size are not specified,
     default values from config.ini will be used
     instead of key=value.. --from-robot robot-name can be provided
+    if --no-node print the invoice instead of paying it with the
+    lightning node
 
 cancel-order robot-name
     cancel robot order just if order is public or paused
 
-recreate-order [--no-cancel] [--no-bond] robot-name [key=value... | --from-robot robot-name]
+recreate-order [--no-bond|--no-node] [--no-cancel] robot-name key=value...
+recreate-order [--no-bond|--no-node] [--no-cancel] robot-name --from-robot robot-name
     recreate robot order just if order is public or paused
+    if --no-bond create order but do not bond
     if --no-cancel do not cancel the order, recreate is from
     last saved order
-    if --no-bond create order but do not bond
     the list of key=value... and --from-robot are the same as for create-order
     and will overwrite the old order
     payment_method can be provided multiple times
+    if --no-node print the invoice instead of paying it with the
+    lightning node
 
 change-order-expire [--print, --remove] robot-name [key=value... | --from-robot robot-name]
     change an order next time it is recreated after if has expired
@@ -233,20 +244,26 @@ change-order-expire [--print, --remove] robot-name [key=value... | --from-robot 
     if --print prints the current changes if present
     if --remove removes the current changes if present and prints it
 
-take-order [--fully] robot-name order-id [take-amount]
+take-order [--fully|--no-node] robot-name order-id [take-amount]
     make sure the order-id is of the same coordinator as your robot
     if the order has a range specify take-amount
     if --fully, also pay the escrow/send the invoice
+    if --no-node print the invoice instead of paying it with the
+    lightning node
 
 pause-toggle robot-name
     toggle pause order in robosats
 
-escrow-pay robot-name
+escrow-pay [--no-node] robot-name
     pay the escrow of a sell order
+    if --no-node print the invoice instead of paying it with the
+    lightning node
 
-invoice-send robot-name [budget-ppm]
-    generate and send invoice of a buy order
+invoice-send robot-name [--budget-ppm=number] [invoice]
+    send invoice of a buy order
     budget-ppm can be specified otherwise default is used
+    if invoice is specified use it instead of generating it
+    if lightning node is not set invoice will have to be provided
 
 address-send robot-name address sat-per-vb
     send the address for on chain payout, specifying sat per vbyte
@@ -279,7 +296,7 @@ statement-submit robot-name [statement | --file file-statement]
 rate-coordinator robot-name rating
     rate a coordinator for a successful order
 
-keep-online [--verbosity=number] [--no-sleep]
+keep-online [--verbosity=number] [--no-sleep] [--no-initial-info]
     keep the offers of the robots in the active directory online
     if message-notification program is present, send a message when
     something other than expirations happens to an offer
@@ -288,6 +305,8 @@ keep-online [--verbosity=number] [--no-sleep]
     --verbosity can be 1 or 2
     if --no-sleep never sleep between robot requests
     useful when running with many robots
+    if --no-initial-info do not print current active and pending
+    robots at the start
 """
 
 

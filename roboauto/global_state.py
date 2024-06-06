@@ -33,7 +33,6 @@ roboauto_options = {
 roboauto_state = {
     "current_command_type": "info",
     "keep_online_hour_relative": False,
-    "keep_online_sleep": True,
     "gpg": None,
     "logger": None,
     "log_level": 0,

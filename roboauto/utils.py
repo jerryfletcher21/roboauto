@@ -122,20 +122,6 @@ def roboauto_get_multi_coordinators_from_argv(argv) -> tuple:
     return coordinators, argv
 
 
-def budget_ppm_from_argv(argv):
-    multi_false = False, False
-
-    budget_ppm = None
-    if len(argv) >= 1:
-        budget_ppm = get_uint(argv[0])
-        if budget_ppm is False:
-            return multi_false
-
-        argv = argv[1:]
-
-    return budget_ppm, argv
-
-
 def dir_make_sure_exists(directory):
     if not os.path.exists(directory):
         if os.makedirs(directory) is not None:
@@ -342,10 +328,6 @@ def global_setup():
     ):
         if not dir_make_sure_exists(directory):
             return False
-
-    if not file_is_executable(roboauto_state["lightning_node_command"]):
-        print_err(roboauto_state["lightning_node_command"] + " is not an executable script")
-        return False
 
     all_permission = 0o777
     gnupg_home_desired_permission = 0o700

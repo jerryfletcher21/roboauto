@@ -1,11 +1,9 @@
 # Roboauto
 
-A [robosats](https://github.com/RoboSats/robosats) command-line interface
+A [robosats](https://github.com/RoboSats/robosats) command-line interface.
 
 Roboauto aims to be a full robosats client, and an alternative to the main
-web client. It is mainly intended for makers with multiple offers. To
-use it, it requires a lightning node, or a wallet that exposes apis for
-creating and paying invoices.
+web client.
 
 Robots are divided in 4 directories: active, pending, paused and inactive.
 
@@ -18,18 +16,22 @@ robots just generated, and robots that have a paused offer.
 
 Inactive are old robots that have a completed offer.
 
-Main command of roboauto is `keep-online`. After you have generated
-robots from different coordinators, and created make offers, `roboauto
-keep-online` will automatically recreate offers when they expire, and
-notify the user when an order is taken, by running the `message-notification`
-script. Optionally it will also automatically pay escrow/send invoice of
-taken orders.
+Main command of roboauto is `keep-online`, and it is mainly intended for
+makers with multiple offers. To run this action it requires a lightning
+node, or a wallet that exposes apis for creating and paying invoices.
+After you have generated robots from different coordinators, and created
+make offers, `roboauto keep-online` will automatically recreate offers
+when they expire, and notify the user when an order is taken, by running
+the `message-notification` script. Optionally it will also automatically
+pay escrow/send invoice of taken orders.
 
 Examples scripts for simplex and mutt are provided.
 
 To run `roboauto keep-online` in the background it is recommended to
 use tmux (or others terminal multiplexers), akin to joinmarket
 [yieldgenerator](https://github.com/JoinMarket-Org/joinmarket-clientserver/blob/master/docs/YIELDGENERATOR.md#how-to-run-yield-generator-in-background)
+
+Roboauto can also be used without a lightning node.
 
 ## Installation
 
@@ -51,8 +53,16 @@ $ pip install --break-system-packages .
 
 Copy `config/config.ini` to `~/.config/roboauto/config.ini` and edit it.
 
-Create scripts `lightning-node` and `message-notification` in
-`~/.config/roboauto/`, some examples are in `data/`
+Roboauto can work without a lightning node, but the main function
+`keep-online` requires one.
+
+If you have one, create the script `~/.config/roboauto/lightning-node`.
+
+If you want message notifications create the script
+`~/.config/roboauto/message-notification`.
+
+Some examples for `lightning-node` and `message-notification` are in
+`data/`.
 
 `lightning-node` should support 3 actions:
 * check: takes an invoice and an amount and exits with an error status
@@ -144,7 +154,7 @@ $ roboauto invoice-send YourRobotName
 YourRobotName order-id sell usd 200 4.00 Strike Waiting for trade collateral and buyer invoice
 YourRobotName order-id invoice sent successfully
 # or pay the escrow if you are the seller
-# roboauto escrow-pay YourRobotName
+# $ roboauto escrow-pay YourRobotName
 
 # or pay the bond and pay the escrow/send the invoice automatically
 # $ roboauto take-order --fully YourRobotName order-id 200
@@ -174,6 +184,24 @@ YourRobotName order-id sell usd 200 4.00 Strike Sucessful trade
 YourRobotName order-id robosats rated 5 stars
 ```
 
+#### without a lightning node
+```
+# take and order and print the bond invoice
+$ roboauto take-order --no-node YourRobotName order-id 0.01
+YourRobotName PeerRobotName order-id sell btc 0.01-0.03 0.40 On-Chain BTC Waiting for taker bond
+lnbc...
+
+# pay the invoice with an external wallet
+
+# pay the escrow if you are the seller
+$ roboauto escrow-pay --no-node YourRobotName
+YourRobotName PeerRobotName order-id sell btc 0.01 0.40 On-Chain BTC Waiting only for seller trade collateral
+lnbc...
+# or generate the invoice with an external wallet and submit it if you are the buyer
+$ roboauto invoice-send YourRobotName invoice
+
+```
+
 ## Features
 
 - [X] simple apis: info historical limits price ticks
@@ -201,10 +229,12 @@ YourRobotName order-id robosats rated 5 stars
 - [X] different tor circuit for each robot
 - [X] automatically pay escrow/send invoice
 - [X] handle expired/unpaid invoices
+- [X] use without a lightning node
 - [X] core lightning
 - [X] lnd
 - [ ] eclair, ldk, other nodes or wallets with apis
 - [ ] other message notification, ex telegram, nostr
+- [ ] action like keep-online to use without a lightning node
 - [ ] fast chat with websocket
 
 ## License

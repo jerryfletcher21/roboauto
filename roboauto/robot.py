@@ -17,9 +17,9 @@ from roboauto.date_utils import date_get_current
 from roboauto.utils import \
     file_read, file_write, json_loads, json_dumps, \
     file_json_read, file_json_write, \
-    input_ask_robot, password_ask_token, \
+    input_ask_robot, password_ask_token, input_ask, \
     generate_random_token_base62, \
-    roboauto_first_coordinator, \
+    roboauto_first_coordinator, file_is_executable, \
     roboauto_get_coordinator_url, \
     roboauto_get_coordinator_from_argv, \
     token_get_base91, sha256_single, \
@@ -627,19 +627,20 @@ def robot_unwait(nicks_waiting, robot_name=None):
     return robot_name
 
 
-def robot_claim_reward(robot_dic, reward_amount):
+def robot_claim_reward(robot_dic, reward_amount, invoice=None):
     robot_name, _, robot_dir, token, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
-    date_current = date_get_current(
-        roboauto_options["date_format"].replace(" ", "-").replace("/", "-").replace(":", "-")
-    )
+    if invoice is None or invoice is False:
+        date_current = date_get_current(
+            roboauto_options["date_format"].replace(" ", "-").replace("/", "-").replace(":", "-")
+        )
 
-    invoice = subprocess_generate_invoice(
-        str(reward_amount),
-        "reward-" + robot_name + "-" + date_current
-    )
-    if invoice is False:
-        return False
+        invoice = subprocess_generate_invoice(
+            str(reward_amount),
+            "reward-" + robot_name + "-" + date_current
+        )
+        if invoice is False:
+            return False
 
     fingerprint = robot_get_current_fingerprint(robot_dir)
     if fingerprint is False:
@@ -681,7 +682,7 @@ def robot_claim_reward(robot_dic, reward_amount):
     return True
 
 
-def robot_check_and_claim_reward(robot_dic, error_print_not_found_level=0):
+def robot_check_and_claim_reward(robot_dic, error_print_not_found_level=0, invoice=None):
     """will return False if something went wrong,
     earned_rewards (which could already be claimed) if there were rewards
     we could make a second robot request to check if the invoice
@@ -701,7 +702,7 @@ def robot_check_and_claim_reward(robot_dic, error_print_not_found_level=0):
 
     earned_rewards = robot_response_json.get("earned_rewards", 0)
     if earned_rewards is not False and earned_rewards is not None and earned_rewards > 0:
-        if not robot_claim_reward(robot_dic, earned_rewards):
+        if not robot_claim_reward(robot_dic, earned_rewards, invoice=invoice):
             return False
 
     return earned_rewards
@@ -714,7 +715,18 @@ def robot_claim_reward_argv(argv):
 
     robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
-    earned_rewards = robot_check_and_claim_reward(robot_dic)
+    invoice = None
+    if len(argv) >= 1:
+        invoice = argv[0]
+        argv = argv[1:]
+    if not file_is_executable(roboauto_state["lightning_node_command"]) and invoice is None:
+        invoice = input_ask("insert invoice: ")
+        if invoice is False:
+            return False
+    if invoice == "":
+        print_err("invoice not set")
+
+    earned_rewards = robot_check_and_claim_reward(robot_dic, invoice=invoice)
     if earned_rewards is False:
         return False
     elif earned_rewards == 0:

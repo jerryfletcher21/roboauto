@@ -5,12 +5,13 @@
 # pylint: disable=C0116 missing-function-docstring
 
 import os
+import re
 
-from roboauto.global_state import roboauto_options
+from roboauto.global_state import roboauto_options, roboauto_state
 from roboauto.utils import \
     print_out, print_err, get_uint, json_loads, json_dumps, \
-    budget_ppm_from_argv, input_ask, file_write, file_read, \
-    invoice_get_correct_amount, is_float
+    input_ask, file_write, file_read, \
+    invoice_get_correct_amount, is_float, file_is_executable
 from roboauto.robot import \
     robot_get_current_fingerprint, robot_var_from_dic, \
     robot_input_from_argv, robot_change_dir
@@ -44,15 +45,28 @@ def order_take_argv(argv):
         return False
 
     fully = False
-    if argv[0] == "--fully":
-        argv = argv[1:]
-        fully = True
+    use_node = True
+    while len(argv) >= 1:
+        if argv[0] == "--fully":
+            argv = argv[1:]
+            fully = True
+        elif argv[0] == "--no-node":
+            argv = argv[1:]
+            use_node = False
+        else:
+            break
+
+    if fully and not use_node:
+        print_err("--fully and --no-node should not both be present")
+        return False
+
+    if not file_is_executable(roboauto_state["lightning_node_command"]) and fully is True:
+        print_err("lightning node is not set --fully can not be used")
+        return False
 
     robot_dic, argv = robot_input_from_argv(argv)
     if robot_dic is False:
         return False
-
-    robot_name = robot_dic["name"]
 
     if len(argv) >= 1:
         order_id = argv[0]
@@ -73,20 +87,28 @@ def order_take_argv(argv):
         take_amount = None
 
     order_dic = bond_order(
-        robot_dic, order_id, taker=True, take_amount=take_amount
+        robot_dic, order_id, taker=True,
+        take_amount=take_amount,
+        use_node=use_node
     )
     if order_dic is False:
         return False
 
+    if use_node is False:
+        return True
+
+    robot_name = robot_dic["name"]
+
     print_out(f"{robot_name} {order_id} taken successfully")
 
     if fully is True:
-        if order_dic["order_response_json"].get("is_seller", False) is True:
-            if order_seller_bond_escrow(robot_dic) is False:
-                return False
-        else:
-            if order_buyer_update_invoice(robot_dic, None) is False:
-                return False
+        if isinstance(order_dic, dict):
+            if order_dic["order_response_json"].get("is_seller", False) is True:
+                if order_seller_bond_escrow(robot_dic, True) is False:
+                    return False
+            else:
+                if order_buyer_update_invoice(robot_dic, None) is False:
+                    return False
 
     if not robot_change_dir(robot_name, "pending"):
         return False
@@ -95,7 +117,7 @@ def order_take_argv(argv):
 
 
 def order_buyer_update_data(
-    robot_dic, data_string, extra_value
+    robot_dic, data_string, data_var, extra_value
 ):
     robot_name, _, robot_dir, token, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
@@ -136,39 +158,40 @@ def order_buyer_update_data(
     order_string_status_print(robot_name, order_id, order_description, peer_nick)
 
     if data_string == "invoice":
+        invoice = data_var
         budget_ppm = extra_value
 
-        if not order_is_failed_routing(status_id):
-            invoice_amount = order_response_json.get("invoice_amount", False)
-            if invoice_amount is False:
-                print_err("invoice amount is not present")
+        if invoice is None or invoice is False:
+            if not order_is_failed_routing(status_id):
+                invoice_amount = order_response_json.get("invoice_amount", False)
+                if invoice_amount is False:
+                    print_err("invoice amount is not present")
+                    return False
+            else:
+                invoice_amount = order_response_json.get("trade_satoshis", False)
+                if invoice_amount is False:
+                    print_err("trade satoshis is not present")
+                    return False
+
+            correct_invoice_amount = invoice_get_correct_amount(invoice_amount, budget_ppm)
+
+            amount_correct = amount_correct_from_response(order_response_json)
+            if amount_correct is False:
+                amount_correct = order_info["amount_string"]
+
+            invoice = subprocess_generate_invoice(
+                str(correct_invoice_amount),
+                robot_name + "-" + str(peer_nick) + "-" + order_id + "-" +
+                order_user["type"] + "-" + order_user["currency"] + "-" +
+                amount_correct + "-" + premium_string_get(order_user["premium"])
+            )
+            if invoice is False:
                 return False
-        else:
-            invoice_amount = order_response_json.get("trade_satoshis", False)
-            if invoice_amount is False:
-                print_err("trade satoshis is not present")
-                return False
-
-        correct_invoice_amount = invoice_get_correct_amount(invoice_amount, budget_ppm)
-
-        amount_correct = amount_correct_from_response(order_response_json)
-        if amount_correct is False:
-            amount_correct = order_info["amount_string"]
-
-        invoice = subprocess_generate_invoice(
-            str(correct_invoice_amount),
-            robot_name + "-" + str(peer_nick) + "-" + order_id + "-" +
-            order_user["type"] + "-" + order_user["currency"] + "-" +
-            amount_correct + "-" + premium_string_get(order_user["premium"])
-        )
-        if invoice is False:
-            return False
 
         message = invoice
         requests_api_order_function = requests_api_order_invoice
     elif data_string == "address":
-        address, _ = extra_value
-
+        address = data_var
         message = address
         requests_api_order_function = requests_api_order_address
     else:
@@ -224,22 +247,24 @@ def order_buyer_update_data(
 
 
 def order_buyer_update_invoice(robot_dic, extra_arg):
-    budget_ppm = extra_arg
+    budget_ppm, invoice = extra_arg
     if budget_ppm is None or budget_ppm is False:
         budget_ppm = roboauto_options["routing_budget_ppm"]
 
     return order_buyer_update_data(
-        robot_dic, "invoice", budget_ppm
+        robot_dic, "invoice", invoice, budget_ppm
     )
 
 
 def order_buyer_update_address(robot_dic, extra_arg):
+    address, sat_per_vb = extra_arg
+
     return order_buyer_update_data(
-        robot_dic, "address", extra_arg
+        robot_dic, "address", address, sat_per_vb
     )
 
 
-def order_seller_bond_escrow(robot_dic):
+def order_seller_bond_escrow(robot_dic, extra_arg):
     robot_name = robot_dic["name"]
 
     order_dic = order_requests_order_dic(robot_dic, order_id=False)
@@ -287,6 +312,15 @@ def order_seller_bond_escrow(robot_dic):
         print_err(
             f"{robot_name} {order_id} escrow_invoice not present, invoice can not be checked"
         )
+        return False
+
+    use_node = extra_arg
+    if not use_node:
+        print_out(escrow_invoice)
+        return True
+
+    if not file_is_executable(roboauto_state["lightning_node_command"]):
+        print_err("lightning node not set, to use without node pass --no-node")
         return False
 
     pay_label = \
@@ -488,11 +522,42 @@ def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
     extra_arg = ()
 
     if extra_type == "update_invoice":
-        budget_ppm, argv = budget_ppm_from_argv(argv)
-        if argv is False:
-            return False
+        budget_ppm = None
+        if len(argv) >= 1 and re.match('^--budget-ppm', argv[0]) is not None:
+            argv = argv[1:]
+            key_value = argv[0][2:].split("=", 1)
+            if len(key_value) != 2:
+                print_err("budget-ppm is not --budget-ppm=number")
+                return False
+            budget_ppm_string, budget_ppm_number_string = key_value
 
-        extra_arg = budget_ppm
+            if budget_ppm_string != "budget-ppm":
+                print_err(f"key {budget_ppm_string} not recognied")
+                return False
+
+            budget_ppm = get_uint(budget_ppm_number_string)
+            if budget_ppm is False:
+                return False
+
+        invoice = None
+        if len(argv) >= 1:
+            invoice = argv[0]
+            argv = argv[1:]
+        if not file_is_executable(roboauto_state["lightning_node_command"]) and invoice is None:
+            invoice = input_ask("insert invoice: ")
+            if invoice is False:
+                return False
+        if invoice == "":
+            print_err("invoice not set")
+
+        extra_arg = (budget_ppm, invoice)
+    if extra_type == "escrow_pay":
+        use_node = True
+        if len(argv) >= 1 and argv[0] == "--no-node":
+            use_node = False
+            argv = argv[1:]
+
+        extra_arg = use_node
     elif extra_type == "update_address":
         if len(argv) < 1:
             print_err("insert address")
@@ -597,7 +662,7 @@ def order_buyer_update_invoice_argv(argv):
 
 def order_buyer_update_address_argv(argv):
     return robot_order_post_action_argv(
-        argv, order_buyer_update_invoice, extra_type="update_address"
+        argv, order_buyer_update_address, extra_type="update_address"
     )
 
 
@@ -632,7 +697,9 @@ def order_start_dispute_argv(argv):
 
 
 def order_seller_bond_escrow_argv(argv):
-    return robot_order_post_action_argv(argv, order_seller_bond_escrow)
+    return robot_order_post_action_argv(
+        argv, order_seller_bond_escrow, extra_type="escrow_pay"
+    )
 
 
 def order_pause_toggle_argv(argv):

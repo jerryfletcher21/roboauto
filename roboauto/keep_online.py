@@ -37,7 +37,7 @@ from roboauto.date_utils import \
     date_convert_time_zone_and_format_string
 from roboauto.utils import \
     update_roboauto_options, lock_file_name_get, \
-    get_uint, shuffle_dic, \
+    get_uint, shuffle_dic, file_is_executable, \
     bad_request_is_cancelled, bad_request_is_wrong_robot
 
 
@@ -337,7 +337,7 @@ def robot_handle_pending(robot_dic):
                         f"{robot_name} {order_id} "
                         f"expires at {date_short_expire}, paying escrow"
                     )
-                    return order_seller_bond_escrow(robot_dic)
+                    return order_seller_bond_escrow(robot_dic, True)
             else:
                 if \
                     order_is_waiting_seller_buyer(status_id) or \
@@ -455,7 +455,7 @@ def robot_dic_update(all_dic):
 # with an associated time % roboauto_options["pending_interval"]
 # this way robots are not checked all together,
 # but every one is checked at a different time
-def keep_online_no_lock():
+def keep_online_no_lock(should_sleep, initial_info):
     active_list = robot_list_dir(roboauto_state["active_home"])
     pending_list = robot_list_dir(roboauto_state["pending_home"])
 
@@ -463,21 +463,22 @@ def keep_online_no_lock():
         print_out("there are no active or pending robots", date=False)
         return True
 
-    if len(active_list) >= 1:
-        print_out(f"current {len(active_list)} active robots are:", date=False)
-        for robot_name in active_list:
-            print_out(robot_name, date=False)
-    else:
-        print_out("there are currently no active robots", date=False)
-    print_out("\n", end="", date=False)
+    if initial_info:
+        if len(active_list) >= 1:
+            print_out(f"current {len(active_list)} active robots are:", date=False)
+            for robot_name in active_list:
+                print_out(robot_name, date=False)
+        else:
+            print_out("there are currently no active robots", date=False)
+        print_out("\n", end="", date=False)
 
-    if len(pending_list) >= 1:
-        print_out(f"current {len(pending_list)} pending robots are:", date=False)
-        for robot_name in pending_list:
-            print_out(robot_name, date=False)
-    else:
-        print_out("there are currently no pending robots", date=False)
-    print_out("\n", end="", date=False)
+        if len(pending_list) >= 1:
+            print_out(f"current {len(pending_list)} pending robots are:", date=False)
+            for robot_name in pending_list:
+                print_out(robot_name, date=False)
+        else:
+            print_out("there are currently no pending robots", date=False)
+        print_out("\n", end="", date=False)
 
     ordered_all_dic = {}
 
@@ -499,6 +500,10 @@ def keep_online_no_lock():
         total_robots = len(all_dic)
         if robot_check_current >= total_robots:
             robot_check_current = 0
+
+        if len(all_dic) < 1:
+            print_out("there are no active or pending robots", date=False)
+            return True
 
         # every loop make a robot requests to check for rewards
         robot_name = list(all_dic.keys())[robot_check_current]
@@ -552,7 +557,7 @@ def keep_online_no_lock():
             # 2 minutes Active
             # 10 minutes Seen recently
 
-            if roboauto_state["keep_online_sleep"] is True:
+            if should_sleep is True:
                 half_max_time = (120 / len(all_dic)) / 2
                 if elapsed_time < half_max_time:
                     time.sleep(half_max_time)
@@ -571,12 +576,16 @@ def keep_online_no_lock():
 
 
 def keep_online(argv):
+    should_sleep = True
+    initial_info = True
     while len(argv) >= 1:
         current_arg = argv[0]
         argv = argv[1:]
 
         if current_arg == "--no-sleep":
-            roboauto_state["keep_online_sleep"] = False
+            should_sleep = False
+        elif current_arg == "--no-initial-info":
+            initial_info = False
         elif re.match('^--verbosity', current_arg) is not None:
             key_value = current_arg[2:].split("=", 1)
             if len(key_value) != 2:
@@ -597,12 +606,16 @@ def keep_online(argv):
             print_err(f"option {current_arg} not recognied", date=False, error=False)
             return False
 
+    if not file_is_executable(roboauto_state["lightning_node_command"]):
+        print_err("lightning node not set, it is required for keep-online")
+        return False
+
     try:
         with filelock.FileLock(
             lock_file_name_get("keep-online"),
             timeout=0
         ):
-            return keep_online_no_lock()
+            return keep_online_no_lock(should_sleep, initial_info)
     except filelock.Timeout:
         print_err("keep online is already running", date=False, error=False)
 

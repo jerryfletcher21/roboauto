@@ -535,19 +535,24 @@ $currencies_list"
             if [ "${cword}" -eq 2 ]; then
                 OPTS="
 --no-bond
+--no-node
 --no-active"
             fi
             if [ "${cword}" -eq 3 ]; then
-                if [ "$prev" = "--no-bond" ]; then
+                if [ "$prev" = "--no-bond" ] || [ "$prev" = "--no-node" ]; then
                     OPTS="--no-active"
                 elif [ "$prev" = "--no-active" ]; then
-                    OPTS="--no-bond"
+                    OPTS="--no-bond
+--no-node"
                 fi
             fi
             if \
                 [ "${cword}" -eq 2 ] || {
-                    { [ "${cword}" -eq 3 ] || [ "${cword}" -eq 4 ]; } && \
-                    { [ "$prev" = "--no-bond" ] || [ "$prev" = "--no-active" ]; }
+                    { [ "${cword}" -eq 3 ] || [ "${cword}" -eq 4 ]; } && {
+                        [ "$prev" = "--no-bond" ] ||
+                        [ "$prev" = "--no-node" ] ||
+                        [ "$prev" = "--no-active" ]
+                    }
                 }
             then
                 OPTS="$OPTS
@@ -577,13 +582,15 @@ $(___roboauto_get_robots "$paused_home")"
             if [ "${cword}" -eq 2 ]; then
                 OPTS="
 --no-cancel
+--no-node
 --no-bond"
             fi
             if [ "${cword}" -eq 3 ]; then
-                if [ "$prev" = "--no-cancel" ]; then
-                    OPTS="--no-bond"
-                elif [ "$prev" = "--no-bond" ]; then
+                if [ "$prev" = "--no-bond" ] || [ "$prev" = "--no-node" ]; then
                     OPTS="--no-cancel"
+                elif [ "$prev" = "--no-cancel" ]; then
+                    OPTS="--no-bond
+--no-node"
                 fi
             fi
             local should_cancel=true
@@ -597,8 +604,11 @@ $(___roboauto_get_robots "$paused_home")"
             done
             if \
                 [ "${cword}" -eq 2 ] || {
-                    { [ "${cword}" -eq 3 ] || [ "${cword}" -eq 4 ]; } && \
-                    { [ "$prev" = "--no-cancel" ] || [ "$prev" = "--no-bond" ]; }
+                    { [ "${cword}" -eq 3 ] || [ "${cword}" -eq 4 ]; } && {
+                        [ "$prev" = "--no-bond" ] ||
+                        [ "$prev" = "--no-node" ] ||
+                        [ "$prev" = "--no-cancel" ]
+                    }
                 }
             then
                 local robots
@@ -668,11 +678,14 @@ $(___roboauto_get_robots "$active_home")"
         ;;
         take-order)
             if [ "${cword}" -eq 2 ]; then
-                OPTS="--fully"
+                OPTS="--fully
+--no-node"
             fi
             if \
                 [ "${cword}" -eq 2 ] || {
-                    [ "${cword}" -eq 3 ] && [ "$prev" = "--fully" ]
+                    [ "${cword}" -eq 3 ] && {
+                        [ "$prev" = "--fully" ] || [ "$prev" = "--no-node" ]
+                    }
                 }
             then
                 OPTS="$OPTS
@@ -684,7 +697,18 @@ $(___roboauto_get_robots "$paused_home")"
                 OPTS="$(___roboauto_get_robots "$active_home" "$paused_home")"
             fi
         ;;
-        escrow-pay|invoice-send|address-send|confirm-undo)
+        invoice-send)
+            if [ "${cword}" -eq 2 ]; then
+                OPTS="$(___roboauto_get_robots "$pending_home")"
+            elif [ "$cword" -eq 3 ]; then
+                if [ "$advanced_completion" = true ]; then
+                    if [ "$cur" != "--budget-ppm=" ]; then
+                        OPTS="--budget-ppm="
+                    fi
+                fi
+            fi
+        ;;
+        escrow-pay|address-send|confirm-undo)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$(___roboauto_get_robots "$pending_home")"
             fi
@@ -714,30 +738,28 @@ $(___roboauto_get_robots "$paused_home")"
         ;;
         keep-online)
             if [ "$advanced_completion" = true ]; then
-                if [ "${cword}" -eq 2 ] || [ "${cword}" -eq 3 ]; then
-                    if [ "$prev" != "--no-sleep" ]; then
-                        OPTS="$OPTS
---no-sleep"
-                    fi
-                    case "$prev" in
-                        --verbosity=*) ;;
-                        *)
-                            OPTS="$OPTS
---verbosity="
-                    ;;
-                    esac
+                case "$cur" in
+                *=*)
                     case "$cur" in
-                    *=*)
-                        case "$cur" in
-                        --verbosity=*)
-                            cur="${cur#*=}"
-                            OPTS="1
+                    --verbosity=*)
+                        cur="${cur#*=}"
+                        OPTS="1
 2"
-                        ;;
-                        esac
                     ;;
                     esac
-                fi
+                ;;
+                *)
+                    if new_options="$(
+                        ___multiple_options_handle "2" \
+"--verbosity=
+--no-sleep
+--no-initial-info" \
+                            "${words[@]}"
+                    )"; then
+                        OPTS="$new_options"
+                    fi
+                ;;
+                esac
             fi
         ;;
         esac
