@@ -26,7 +26,7 @@ from roboauto.order_local import \
     robot_handle_taken, order_dic_from_robot_dir, \
     order_robot_get_last_order_id, order_save_order_file
 from roboauto.order import \
-    order_requests_order_dic, bond_order, make_order
+    order_requests_order_dic, bond_order, make_order, peer_nick_from_response
 from roboauto.order_action import \
     order_seller_bond_escrow, order_buyer_update_invoice
 from roboauto.book import get_hour_offer
@@ -307,46 +307,59 @@ def robot_handle_pending(robot_dic):
         order_is_pending(status_id) and \
         not (is_seller and order_is_finished_for_seller(status_id)):
         if not is_seller and order_is_failed_routing(status_id):
-            print_out(
-                f"{robot_name} {order_id} old invoice failed, sending a new one"
-            )
-            return order_buyer_update_invoice(robot_dic, None)
-
-        expires_at = order_response_json.get("expires_at", False)
-        if expires_at is False:
-            print_err("no expires_at")
-            return False
-
-        escrow_duration = order_response_json.get("escrow_duration", False)
-        if escrow_duration is False:
-            print_err("no escrow_duration")
-            return False
-
-        if pending_robot_should_act(
-            timestamp_from_date_string(expires_at),
-            int(escrow_duration)
-        ):
-            date_short_expire = date_convert_time_zone_and_format_string(
-                expires_at, output_format="%H:%M:%S"
-            )
-            if is_seller:
-                if \
-                    order_is_waiting_seller_buyer(status_id) or \
-                    order_is_waiting_seller(status_id):
-                    print_out(
-                        f"{robot_name} {order_id} "
-                        f"expires at {date_short_expire}, paying escrow"
-                    )
-                    return order_seller_bond_escrow(robot_dic, True)
+            if "trade_satoshis" in order_response_json:
+                print_out(
+                    f"{robot_name} {order_id} old invoice failed, sending a new one"
+                )
+                return order_buyer_update_invoice(robot_dic, (None, None))
             else:
-                if \
-                    order_is_waiting_seller_buyer(status_id) or \
-                    order_is_waiting_buyer(status_id):
-                    print_out(
-                        f"{robot_name} {order_id} "
-                        f"expires at {date_short_expire}, sending invoice"
-                    )
-                    return order_buyer_update_invoice(robot_dic, None)
+                order_description = order_info["order_description"]
+                peer_nick = peer_nick_from_response(order_response_json)
+                print_out(f"{robot_name} {peer_nick} {order_id} {order_description}")
+                if "failure_reason" in order_response_json:
+                    failure_reason = order_response_json["failure_reason"]
+                    print_out(f"{robot_name} {peer_nick} {order_id} {failure_reason}")
+                return True
+
+        if \
+            order_is_waiting_seller_buyer(status_id) or \
+            order_is_waiting_seller(status_id) or \
+            order_is_waiting_buyer(status_id):
+            expires_at = order_response_json.get("expires_at", False)
+            if expires_at is False:
+                print_err("no expires_at")
+                return False
+
+            escrow_duration = order_response_json.get("escrow_duration", False)
+            if escrow_duration is False:
+                print_err("no escrow_duration")
+                return False
+
+            if pending_robot_should_act(
+                timestamp_from_date_string(expires_at),
+                int(escrow_duration)
+            ):
+                date_short_expire = date_convert_time_zone_and_format_string(
+                    expires_at, output_format="%H:%M:%S"
+                )
+                if is_seller:
+                    if \
+                        order_is_waiting_seller_buyer(status_id) or \
+                        order_is_waiting_seller(status_id):
+                        print_out(
+                            f"{robot_name} {order_id} "
+                            f"expires at {date_short_expire}, paying escrow"
+                        )
+                        return order_seller_bond_escrow(robot_dic, True)
+                else:
+                    if \
+                        order_is_waiting_seller_buyer(status_id) or \
+                        order_is_waiting_buyer(status_id):
+                        print_out(
+                            f"{robot_name} {order_id} "
+                            f"expires at {date_short_expire}, sending invoice"
+                        )
+                        return order_buyer_update_invoice(robot_dic, (None, None))
     else:
         status_string = order_info["status_string"]
         print_out(f"{robot_name} {robot_coordinator} {order_id} {status_string}")
