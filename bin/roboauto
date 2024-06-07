@@ -76,7 +76,7 @@ change-order-expire [--print, --remove] robot-name key=value...
 change-order-expire [--print, --remove] robot-name --from-robot robot-name
 take-order [--fully|--no-node] robot-name order-id [take-amount]
 pause-toggle robot-name
-escrow-pay robot-name
+escrow-pay [--no-node] robot-name
 invoice-send robot-name [--budget-ppm=number] [invoice]
 address-send robot-name address sat-per-vb
 collaborative-cancel robot-name [--no-save-chat]

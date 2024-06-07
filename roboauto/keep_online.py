@@ -204,7 +204,8 @@ def order_is_this_hour_and_online(order, coordinator=False):
 def count_active_orders_this_hour(all_dic):
     robot_this_hour = 0
 
-    for robot_name, robot_state in all_dic.items():
+    for robot_name, robot_info in all_dic.items():
+        robot_state = robot_info["state"]
         if robot_state != "active":
             continue
 
@@ -383,6 +384,32 @@ def robot_handle_pending(robot_dic):
     return True
 
 
+def robot_check_last_checked(robot_dic, seconds_not_checked):
+    robot_name = robot_dic["name"]
+    robot_dir = robot_dic["dir"]
+
+    order_dic = order_dic_from_robot_dir(
+        robot_dir, error_print=False
+    )
+    if order_dic is False or order_dic is None:
+        return False
+
+    order_data = order_dic.get("order_data", False)
+    if order_data is False:
+        return False
+    escrow_duration = order_data.get("escrow_duration", False)
+    if not isinstance(escrow_duration, int):
+        return False
+
+    if seconds_not_checked > int(escrow_duration / 2):
+        print_err(
+            f"{robot_name} was not successfully checked " +
+            f"for more than {seconds_not_checked} seconds"
+        )
+
+    return True
+
+
 def robot_dic_update(all_dic):
     """return number of added and failed robots"""
 
@@ -392,7 +419,8 @@ def robot_dic_update(all_dic):
     added_robots = 0
     failed_robots = 0
 
-    for robot_name, robot_state in list(all_dic.items()):
+    for robot_name, robot_info in list(all_dic.items()):
+        robot_state = robot_info["state"]
         if robot_state == "active":
             if robot_name not in active_set:
                 nicks_waiting = waiting_queue_get()
@@ -404,7 +432,7 @@ def robot_dic_update(all_dic):
                         )
                 if robot_name in pending_set:
                     print_out(f"{robot_name} moved from active to pending")
-                    all_dic[robot_name] = "pending"
+                    all_dic[robot_name]["state"] = "pending"
                 else:
                     all_dic.pop(robot_name)
                     print_out(f"{robot_name} removed from active directory")
@@ -412,7 +440,7 @@ def robot_dic_update(all_dic):
             if robot_name not in pending_set:
                 if robot_name in active_set:
                     print_out(f"{robot_name} moved from pending to active")
-                    all_dic[robot_name] = "active"
+                    all_dic[robot_name]["state"] = "active"
                 else:
                     all_dic.pop(robot_name)
                     print_out(f"{robot_name} removed from pending directory")
@@ -424,7 +452,10 @@ def robot_dic_update(all_dic):
             if count_active_orders_this_hour(all_dic) >= roboauto_options["order_maximum"]:
                 robot_wait(robot_active)
 
-            all_dic[robot_active] = "active"
+            all_dic[robot_active] = {
+                "state": "active",
+                "last_checked": int(time.time())
+            }
 
             added_robots += 1
 
@@ -441,7 +472,10 @@ def robot_dic_update(all_dic):
         if robot_pending not in all_dic:
             print_out(f"{robot_pending} added to pending directory")
 
-            all_dic[robot_pending] = "pending"
+            all_dic[robot_pending] = {
+                "state": "pending",
+                "last_checked": int(time.time())
+            }
 
             added_robots += 1
 
@@ -490,11 +524,19 @@ def keep_online_no_lock(should_sleep, initial_info):
 
     ordered_all_dic = {}
 
+    all_starting_time = time.time()
+
     for active_robot in active_list:
-        ordered_all_dic[active_robot] = "active"
+        ordered_all_dic[active_robot] = {
+            "state": "active",
+            "last_checked": int(all_starting_time)
+        }
 
     for pending_robot in pending_list:
-        ordered_all_dic[pending_robot] = "pending"
+        ordered_all_dic[pending_robot] = {
+            "state": "pending",
+            "last_checked": int(all_starting_time)
+        }
 
     all_dic = shuffle_dic(ordered_all_dic)
 
@@ -525,10 +567,11 @@ def keep_online_no_lock(should_sleep, initial_info):
 
         failed_numbers = 0
 
-        for robot_name, robot_state in list(all_dic.items()):
+        for robot_name, robot_info in list(all_dic.items()):
             if robot_name not in all_dic:
                 total_robots -= 1
                 continue
+            robot_state = robot_info["state"]
 
             starting_time = time.time()
 
@@ -541,9 +584,19 @@ def keep_online_no_lock(should_sleep, initial_info):
             if robot_state == "active":
                 if robot_handle_active(robot_dic, all_dic) is False:
                     failed_numbers += 1
+                    robot_check_last_checked(
+                        robot_dic, int(starting_time) - robot_info["last_checked"]
+                    )
+                else:
+                    all_dic[robot_name]["last_checked"] = int(starting_time)
             elif robot_state == "pending":
                 if robot_handle_pending(robot_dic) is False:
                     failed_numbers += 1
+                    robot_check_last_checked(
+                        robot_dic, int(starting_time) - robot_info["last_checked"]
+                    )
+                else:
+                    all_dic[robot_name]["last_checked"] = int(starting_time)
 
             added_robots, additional_failed_robots = robot_dic_update(all_dic)
             total_robots += added_robots

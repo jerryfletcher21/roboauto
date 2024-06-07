@@ -507,12 +507,20 @@ def order_rate_coordinator(robot_dic, extra_arg):
 
 
 def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
+    extra_arg = ()
+
+    if extra_type == "escrow_pay":
+        use_node = True
+        if len(argv) >= 1 and argv[0] == "--no-node":
+            use_node = False
+            argv = argv[1:]
+
+        extra_arg = use_node
+
     # pylint: disable=R0801 duplicate-code
     robot_dic, argv = robot_input_from_argv(argv)
     if robot_dic is False:
         return False
-
-    extra_arg = ()
 
     if extra_type == "update_invoice":
         budget_ppm = None
@@ -538,13 +546,6 @@ def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
             print_err("invoice not set")
 
         extra_arg = (budget_ppm, invoice)
-    if extra_type == "escrow_pay":
-        use_node = True
-        if len(argv) >= 1 and argv[0] == "--no-node":
-            use_node = False
-            argv = argv[1:]
-
-        extra_arg = use_node
     elif extra_type == "update_address":
         if len(argv) < 1:
             print_err("insert address")

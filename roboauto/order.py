@@ -27,7 +27,7 @@ from roboauto.requests_api import \
 from roboauto.utils import \
     json_dumps, string_is_false_none_null, file_is_executable, \
     json_loads, input_ask, roboauto_get_coordinator_from_url, \
-    file_json_read, file_json_write, file_remove
+    file_json_read, file_json_write, file_remove, bad_request_is_cancelled
 from roboauto.subprocess_commands import subprocess_pay_invoice_and_check
 
 
@@ -167,11 +167,13 @@ def order_requests_order_dic(
     bad_request = order_response_json.get("bad_request", False)
     if bad_request is not False:
         print_err(bad_request, error=False, date=False)
-        print_err(f"{robot_name} {order_id} not available")
         if not isinstance(bad_request, str):
             print_err("bad_request is not a string")
+            print_err(f"{robot_name} {order_id} not available")
             return False
         else:
+            if not bad_request_is_cancelled(bad_request):
+                print_err(f"{robot_name} {order_id} not available")
             return bad_request
 
     coordinator = roboauto_get_coordinator_from_url(robot_url)
@@ -186,10 +188,10 @@ def order_requests_order_dic(
     payment_method = order_response_json.get("payment_method", False)
     premium = order_response_json.get("premium", False)
     public_duration = order_response_json.get(
-        "public_duration", str(roboauto_options["default_duration"])
+        "public_duration", roboauto_options["default_duration"]
     )
     escrow_duration = order_response_json.get(
-        "escrow_duration", str(roboauto_options["default_escrow"])
+        "escrow_duration", roboauto_options["default_escrow"]
     )
     bond_size = order_response_json.get(
         "bond_size", str(roboauto_options["default_bond_size"])
