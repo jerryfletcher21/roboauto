@@ -294,6 +294,15 @@ $(
 --swap"
             fi
         ;;
+        invoice-amount-calculate)
+            if [ "$cword" -eq 2 ]; then
+                if [ "$advanced_completion" = true ]; then
+                    if [ "$cword" != "--budget-ppm=" ]; then
+                        OPTS="--budget-ppm="
+                    fi
+                fi
+            fi
+        ;;
         import-robot)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$(___roboauto_get_coordinators)"

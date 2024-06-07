@@ -609,6 +609,53 @@ def invoice_get_correct_amount(amount, budget_ppm):
     return int(amount * (1 - budget_ppm / 1000000))
 
 
+def arg_key_value_number(var_name, arg):
+    if re.match(f"^--{var_name}", arg) is None:
+        return None
+
+    key_value = arg[2:].split("=", 1)
+    if len(key_value) != 2:
+        print_err(f"{var_name} is not --{var_name}=number")
+        return False
+    key, value = key_value
+
+    if key != var_name:
+        print_err(f"key {key} not recognied")
+        return False
+
+    value_number = get_uint(value)
+    if value_number is False:
+        return False
+
+    return value_number
+
+
+def invoice_amount_calculate_arg(argv):
+    budget_ppm = roboauto_options["routing_budget_ppm"]
+    if len(argv) >= 1:
+        arg_budget_ppm = arg_key_value_number("budget-ppm", argv[0])
+        if arg_budget_ppm is False:
+            return False
+        elif arg_budget_ppm is not None:
+            budget_ppm = arg_budget_ppm
+            argv = argv[1:]
+
+    if len(argv) < 1:
+        print_err("insert full-amount")
+        return False
+
+    full_amount = get_int(argv[0])
+    if full_amount is False:
+        return False
+    argv = argv[1:]
+
+    correct_amount = invoice_get_correct_amount(full_amount, budget_ppm)
+
+    print_out(correct_amount)
+
+    return True
+
+
 def random_interval(max_value):
     return random.randint(1, max_value) - 1
 

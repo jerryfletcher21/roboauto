@@ -9,7 +9,7 @@ import signal
 from roboauto.logger import print_out, print_err
 from roboauto.utils import \
     global_setup, global_shutdown, state_set_command_type, \
-    list_configs, update_roboauto_options
+    list_configs, update_roboauto_options, invoice_amount_calculate_arg
 from roboauto.robot import \
     robot_import, robot_print_token, robot_print_coordinator, robot_print_dir_argv, \
     waiting_queue_print, robot_change_dir_from_argv, robot_generate, \
@@ -41,6 +41,7 @@ list-configs
 list-currencies
 list-payment-methods [--fiat, --swap]
 list-order-fields
+invoice-amount-calculate [--budget-ppm=number] full-amount
 import-robot --{coordinator-name} [--pending, --paused, --inactive] [robot-name] [token]
 print-token robot-name
 print-coordinator robot-name
@@ -108,6 +109,11 @@ list-payment-methods [--fiat, --swap]
 
 list-order-fields
     list order fields for create-order and recreate-order
+
+invoice-amount-calculate [--budget-ppm=number] full-amount
+    calculate the amount of the invoice considering the budget-ppm
+    to be used with invoice-send without lightning node
+    budget-ppm can be specified otherwise default is used
 
 import-robot --{coordinator-name} [--pending, --paused, --inactive] [robot-name] [token]
     import a robot, robot-name and token are required
@@ -357,6 +363,8 @@ def main(argv):
             return_status = list_payment_methods(argv)
         elif action == "list-order-fields":
             return_status = list_order_fields()
+        elif action == "invoice-amount-calculate":
+            return_status = invoice_amount_calculate_arg(argv)
         elif action == "import-robot":
             return_status = robot_import(argv)
         elif action == "print-token":

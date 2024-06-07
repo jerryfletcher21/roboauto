@@ -4,7 +4,6 @@
 
 # pylint: disable=C0116 missing-function-docstring
 
-import re
 import time
 
 import filelock
@@ -37,7 +36,7 @@ from roboauto.date_utils import \
     date_convert_time_zone_and_format_string
 from roboauto.utils import \
     update_roboauto_options, lock_file_name_get, \
-    get_uint, shuffle_dic, file_is_executable, \
+    shuffle_dic, file_is_executable, arg_key_value_number, \
     bad_request_is_cancelled, bad_request_is_wrong_robot
 
 
@@ -582,6 +581,7 @@ def keep_online_no_lock(should_sleep, initial_info):
             f"{failed_numbers} failed",
             level=1
         )
+        logger_flush()
 
 
 def keep_online(argv):
@@ -595,25 +595,15 @@ def keep_online(argv):
             should_sleep = False
         elif current_arg == "--no-initial-info":
             initial_info = False
-        elif re.match('^--verbosity', current_arg) is not None:
-            key_value = current_arg[2:].split("=", 1)
-            if len(key_value) != 2:
-                print_err("verbosity is not --verbosity=number", date=False, error=False)
-                return False
-            verbosity_string, verbosity_number_string = key_value
-
-            if verbosity_string != "verbosity":
-                print_err(f"key {verbosity_string} not recognied", date=False, error=False)
-                return False
-
-            verbosity_number = get_uint(verbosity_number_string)
-            if verbosity_number is False:
-                return False
-
-            roboauto_state["log_level"] = verbosity_number
         else:
-            print_err(f"option {current_arg} not recognied", date=False, error=False)
-            return False
+            arg_verbosity = arg_key_value_number("verbosity", current_arg)
+            if arg_verbosity is False:
+                return False
+            elif arg_verbosity is not None:
+                roboauto_state["log_level"] = arg_verbosity
+            else:
+                print_err(f"option {current_arg} not recognied", date=False, error=False)
+                return False
 
     if not file_is_executable(roboauto_state["lightning_node_command"]):
         print_err("lightning node not set, it is required for keep-online")

@@ -190,16 +190,42 @@ YourRobotName order-id robosats rated 5 stars
 $ roboauto take-order --no-node YourRobotName order-id 0.01
 YourRobotName PeerRobotName order-id sell btc 0.01-0.03 0.40 On-Chain BTC Waiting for taker bond
 lnbc...
+# pay the bond invoice with an external wallet
 
-# pay the invoice with an external wallet
+## if you are the seller
 
-# pay the escrow if you are the seller
+# get the escrow invoice
 $ roboauto escrow-pay --no-node YourRobotName
 YourRobotName PeerRobotName order-id sell btc 0.01 0.40 On-Chain BTC Waiting only for seller trade collateral
 lnbc...
-# or generate the invoice with an external wallet and submit it if you are the buyer
-$ roboauto invoice-send YourRobotName invoice
+# pay the escrow invoice with an external wallet
 
+## if you are the buyer
+
+# get the correct invoice amount
+# robosats only specifies the full amount, the correct invoice should
+# take into account the budget ppm, that should be subtracted from the
+# full amount
+# roboauto invoice-amount-calculate calculates the correct amount
+
+# with default budget ppm
+$ roboauto invoice-amount-calculate "$(roboauto order-info YourRobotName | jq -r '.order_response_json.trade_satoshis')"
+correct-invoice-amount
+
+# with specified budget ppm
+$ roboauto invoice-amount-calculate --budget-ppm=2000 "$(roboauto order-info YourRobotName | jq -r '.order_response_json.trade_satoshis')"
+correct-invoice-amount
+
+# generate the invoice with an external wallet and submit it
+$ roboauto invoice-send YourRobotName invoice
+YourRobotName PeerRobotName order-id sell btc 0.01 0.40 On-Chain BTC Waiting only for buyer invoice
+YourRobotName order-id invoice sent successfully
+
+# if you have used a different budget ppm than the default one above, it
+# should also be used here
+$ roboauto invoice-send --budget-ppm=2000 YourRobotName invoice
+YourRobotName PeerRobotName order-id sell btc 0.01 0.40 On-Chain BTC Waiting only for buyer invoice
+YourRobotName order-id invoice sent successfully
 ```
 
 ## Features

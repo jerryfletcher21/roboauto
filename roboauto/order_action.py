@@ -5,12 +5,11 @@
 # pylint: disable=C0116 missing-function-docstring
 
 import os
-import re
 
 from roboauto.global_state import roboauto_options, roboauto_state
 from roboauto.utils import \
     print_out, print_err, get_uint, json_loads, json_dumps, \
-    input_ask, file_write, file_read, \
+    input_ask, file_write, file_read, arg_key_value_number, \
     invoice_get_correct_amount, is_float, file_is_executable
 from roboauto.robot import \
     robot_get_current_fingerprint, robot_var_from_dic, \
@@ -162,16 +161,10 @@ def order_buyer_update_data(
         budget_ppm = extra_value
 
         if invoice is None or invoice is False:
-            if not order_is_failed_routing(status_id):
-                invoice_amount = order_response_json.get("invoice_amount", False)
-                if invoice_amount is False:
-                    print_err("invoice amount is not present")
-                    return False
-            else:
-                invoice_amount = order_response_json.get("trade_satoshis", False)
-                if invoice_amount is False:
-                    print_err("trade satoshis is not present")
-                    return False
+            invoice_amount = order_response_json.get("trade_satoshis", False)
+            if invoice_amount is False:
+                print_err("trade satoshis is not present")
+                return False
 
             correct_invoice_amount = invoice_get_correct_amount(invoice_amount, budget_ppm)
 
@@ -523,27 +516,21 @@ def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
 
     if extra_type == "update_invoice":
         budget_ppm = None
-        if len(argv) >= 1 and re.match('^--budget-ppm', argv[0]) is not None:
-            argv = argv[1:]
-            key_value = argv[0][2:].split("=", 1)
-            if len(key_value) != 2:
-                print_err("budget-ppm is not --budget-ppm=number")
+        if len(argv) >= 1:
+            arg_budget_ppm = arg_key_value_number("budget-ppm", argv[0])
+            if arg_budget_ppm is False:
                 return False
-            budget_ppm_string, budget_ppm_number_string = key_value
-
-            if budget_ppm_string != "budget-ppm":
-                print_err(f"key {budget_ppm_string} not recognied")
-                return False
-
-            budget_ppm = get_uint(budget_ppm_number_string)
-            if budget_ppm is False:
-                return False
+            elif arg_budget_ppm is not None:
+                budget_ppm = arg_budget_ppm
+                argv = argv[1:]
 
         invoice = None
         if len(argv) >= 1:
             invoice = argv[0]
             argv = argv[1:]
-        if not file_is_executable(roboauto_state["lightning_node_command"]) and invoice is None:
+        if \
+            not file_is_executable(roboauto_state["lightning_node_command"]) and \
+            invoice is None:
             invoice = input_ask("insert invoice: ")
             if invoice is False:
                 return False
