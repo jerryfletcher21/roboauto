@@ -32,7 +32,7 @@ from roboauto.book import list_offers_per_hour_argv, list_offers_argv
 from roboauto.keep_online import keep_online
 
 
-VERSION = "0.2.2"
+VERSION = "0.3.1"
 
 INFO = """\
 roboauto action [options]

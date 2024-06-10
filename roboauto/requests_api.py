@@ -28,13 +28,16 @@ def response_is_error(response):
 
 
 def requests_tor_response(
-    url, user, timeout, headers, data, error_print=True
+    url: str, user, timeout, headers, data, error_print=True
 ) -> requests.Response | bool | None:
-    tor_socks = user + ":" + user + "@" + "127.0.0.1:9050"
-    proxies = {
-        "http": "socks5h://" + tor_socks,
-        "https": "socks5h://" + tor_socks
-    }
+    if not url.startswith("http://127.0.0.1"):
+        tor_socks = user + ":" + user + "@" + "127.0.0.1:9050"
+        proxies = {
+            "http": "socks5h://" + tor_socks,
+            "https": "socks5h://" + tor_socks
+        }
+    else:
+        proxies = None
 
     # one concurrent connection per circuit
     try:

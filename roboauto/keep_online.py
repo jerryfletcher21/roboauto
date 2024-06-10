@@ -415,9 +415,12 @@ def robot_check_last_checked(robot_dic, seconds_not_checked):
         return False
 
     if seconds_not_checked > int(escrow_duration / 2):
-        print_err(
+        minutes_not_chcked = int(seconds_not_checked / 60)
+        minutes_escrow = int (escrow_duration / 60)
+        print_out(
             f"{robot_name} was not successfully checked " +
-            f"for more than {seconds_not_checked} seconds"
+            f"for {minutes_not_chcked} minutes, " +
+            f"escrow duration {minutes_escrow} minutes"
         )
 
     return True

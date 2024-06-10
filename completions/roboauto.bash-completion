@@ -800,6 +800,7 @@ $(___roboauto_get_robots "$pending_home")"
             case "$word" in
             *=)
                 compopt -o nospace
+                break
             ;;
             esac
         done

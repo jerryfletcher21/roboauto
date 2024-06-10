@@ -441,7 +441,8 @@ def make_order(
     if check_change is true, change the order from data saved on disk
     return False if an error None if the requests was not made"""
 
-    robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
+    robot_name, _, robot_dir, _, coordinator, token_base91, robot_url = \
+        robot_var_from_dic(robot_dic)
 
     if roboauto_options["robot_maximum_orders"] > 0:
         max_orders = roboauto_options["robot_maximum_orders"]
@@ -449,7 +450,10 @@ def make_order(
         if \
             order_ids is not False and order_ids is not None and \
             len(order_ids) >= max_orders:
-            print_out(f"{robot_name} maximum orders {max_orders} reached, moving to inactive")
+            print_out(
+                f"{robot_name} {coordinator} maximum orders {max_orders} reached, " +
+                "moving to inactive"
+            )
             if not robot_change_dir(robot_name, "inactive"):
                 print_err(f"{robot_name} moving to inactive")
                 return False

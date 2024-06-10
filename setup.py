@@ -7,7 +7,7 @@ import setuptools
 
 setuptools.setup(
     name="roboauto",
-    version="0.2.2",
+    version="0.3.1",
     description="robosats cli",
     license="ISC",
     author="jerryfletcher21",
