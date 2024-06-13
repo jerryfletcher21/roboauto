@@ -5,7 +5,9 @@
 # in roboauto create-order, recreate-order and change-order-expire
 
 __roboauto_completion() {
-    if ! command -v roboauto >/dev/null 2>&1; then
+    local roboauto_bin="$1"
+
+    if ! command -v "$roboauto_bin" >/dev/null 2>&1; then
         return 0
     fi
 
@@ -176,7 +178,7 @@ sell"
             currency=*)
                 cur="${cur#*=}"
                 OPTS="$OPTS
-$(roboauto list-currencies)"
+$($roboauto_bin list-currencies)"
             ;;
             payment_method=*)
                 cur="${cur#*=}"
@@ -196,9 +198,9 @@ $(roboauto list-currencies)"
                     esac
                 done
                 if [ "$methods" = "all" ]; then
-                    payment_methods="$(roboauto list-payment-methods)"
+                    payment_methods="$($roboauto_bin list-payment-methods)"
                 else
-                    payment_methods="$(roboauto list-payment-methods --"${methods}")"
+                    payment_methods="$($roboauto_bin list-payment-methods --"${methods}")"
                 fi
                 OPTS="$OPTS
 $(
@@ -211,7 +213,7 @@ $(
         *)
             local order_keys order_keys_correct
 
-            order_keys="$(roboauto list-order-fields)"
+            order_keys="$($roboauto_bin list-order-fields)"
             order_keys_correct="payment_method
 $(
     ___list_non_already_set_array \
@@ -229,7 +231,7 @@ $(
     }
 
     ___roboauto_get_coordinators() {
-        roboauto list-configs |
+        $roboauto_bin list-configs |
         jq -r '.federation | keys[] as $k | "--\($k)"'
     }
 
@@ -270,7 +272,7 @@ $(
 -v
 --version
 $(
-    roboauto -h |
+    $roboauto_bin -h |
     grep '^[^[:space:]]' |
     tail -n +2 |
     cut -d " " -f 1 |
@@ -499,7 +501,7 @@ $(___roboauto_get_robots "$pending_home")"
         list-offers)
             local coordinators_list currencies_list
             coordinators_list="$(___roboauto_get_coordinators)"
-            currencies_list="$(roboauto list-currencies)"
+            currencies_list="$($roboauto_bin list-currencies)"
 
             if [ "${cword}" -eq 2 ]; then
                 OPTS="--until-success
