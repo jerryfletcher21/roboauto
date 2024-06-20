@@ -12,7 +12,7 @@ from roboauto.utils import \
     list_configs, update_roboauto_options, invoice_amount_calculate_arg
 from roboauto.robot import \
     robot_import, robot_print_token, robot_print_coordinator, robot_print_dir_argv, \
-    waiting_queue_print, robot_change_dir_from_argv, robot_generate, \
+    waiting_queue_print, robot_change_dir_from_argv, robot_generate_argv, \
     robot_claim_reward_argv, robot_update_stealth_invoice_option_argv
 from roboauto.order_local import order_info_dir, order_summary
 from roboauto.order import \
@@ -399,7 +399,7 @@ def main(argv):
         if action == "robosats-info":
             return_status = robosats_info(argv)
         elif action == "generate-robot":
-            return_status = robot_generate(argv)
+            return_status = robot_generate_argv(argv)
         elif action == "robot-info":
             return_status = robot_info_argv(argv)
         elif action == "claim-reward":

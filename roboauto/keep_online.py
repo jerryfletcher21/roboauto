@@ -23,21 +23,51 @@ from roboauto.order_data import  \
     order_is_waiting_seller, order_is_waiting_buyer, \
     order_is_failed_routing, order_expired_is_not_taken
 from roboauto.order_local import \
-    robot_handle_taken, order_dic_from_robot_dir, \
-    order_robot_get_last_order_id, order_save_order_file
+    robot_handle_taken, order_dic_from_robot_dir, robot_have_orders_dir, \
+    order_robot_get_last_order_id, order_save_order_file, \
+    order_is_this_hour_and_online, robot_have_make_response, \
+    robot_order_get_local_make_data
 from roboauto.order import \
-    order_requests_order_dic, bond_order, make_order, peer_nick_from_response
+    order_requests_order_dic, bond_order, make_order, \
+    peer_nick_from_response
 from roboauto.order_action import \
     order_seller_bond_escrow, order_buyer_update_invoice
-from roboauto.book import get_hour_offer
 from roboauto.date_utils import \
-    get_current_timestamp, get_current_hour_from_timestamp, \
-    get_current_minutes_from_timestamp, timestamp_from_date_string, \
-    date_convert_time_zone_and_format_string
+    get_current_timestamp, get_current_minutes_from_timestamp, \
+    timestamp_from_date_string, date_convert_time_zone_and_format_string
 from roboauto.utils import \
     update_roboauto_options, lock_file_name_get, \
     shuffle_dic, file_is_executable, arg_key_value_number, \
     bad_request_is_cancelled, bad_request_is_wrong_robot
+
+
+def robot_handle_active_expired(robot_dic, all_dic, make_data):
+    robot_name = robot_dic["name"]
+    robot_dir = robot_dic["dir"]
+    if count_active_orders_this_hour(all_dic) < roboauto_options["order_maximum"]:
+        if make_data is None or make_data is False:
+            make_data = robot_order_get_local_make_data(robot_dir)
+            if make_data is None or make_data is False:
+                print_out(
+                    f"{robot_name} does not have orders and make data, " +
+                    "moving to paused"
+                )
+                return robot_change_dir(robot_name, "paused")
+            print_out(f"{robot_dic} creating order from make data")
+
+        # will return None when maxium robot orders is reached,
+        # it is ok to return True since the robot is checked correctly
+        if make_order(
+            robot_dic,
+            make_data,
+            check_change=True
+        ) is False:
+            return False
+    else:
+        if not robot_wait(robot_name):
+            return False
+
+    return True
 
 
 def robot_handle_active(robot_dic, all_dic):
@@ -46,6 +76,10 @@ def robot_handle_active(robot_dic, all_dic):
     robot_name = robot_dic["name"]
     robot_dir = robot_dic["dir"]
     robot_coordinator = robot_dic["coordinator"]
+
+    # handle robot without an order already but with make data
+    if not robot_have_orders_dir(robot_dir) and not robot_have_make_response(robot_dir):
+        return robot_handle_active_expired(robot_dic, all_dic, None)
 
     order_id = order_robot_get_last_order_id(robot_dic, error_print=False)
     if order_id is False or order_id is None:
@@ -136,67 +170,14 @@ def robot_handle_active(robot_dic, all_dic):
                 if not robot_wait(robot_name):
                     return False
         elif order_is_expired(status_id):
-            if count_active_orders_this_hour(all_dic) < roboauto_options["order_maximum"]:
-                # will return None when maxium robot orders is reached,
-                # it is ok to return True since the robot is checked correctly
-                if make_order(
-                    robot_dic, order_id,
-                    order_dic["order_data"],
-                    check_change=True
-                ) is False:
-                    return False
-            else:
-                if not robot_wait(robot_name):
-                    return False
+            return robot_handle_active_expired(
+                robot_dic, all_dic, order_dic["order_data"]
+            )
         else:
             if not robot_handle_taken(
                 robot_name, status_id, order_id, order_info["order_description"]
             ):
                 return False
-
-    return True
-
-
-def order_is_this_hour_and_online(order, coordinator=False):
-    current_timestamp = get_current_timestamp()
-
-    order_info = order.get("order_info", False)
-    if order_info is False:
-        return False
-
-    if not isinstance(coordinator, bool):
-        order_coordinator = order_info.get("coordinator", False)
-        if order_coordinator is False:
-            return False
-        if coordinator[:3] != order_coordinator[:3]:
-            return False
-
-    order_response_json = order.get("order_response_json", False)
-    if order_response_json is False:
-        return False
-
-    expires_at = order_response_json.get("expires_at", False)
-    if expires_at is False:
-        return False
-
-    date_hour = get_hour_offer(
-        expires_at, current_timestamp,
-        roboauto_state["keep_online_hour_relative"]
-    )
-    if date_hour is False:
-        return False
-    if date_hour != get_current_hour_from_timestamp(current_timestamp):
-        return False
-
-    status_id = order_info.get("status", False)
-    if status_id is False:
-        return False
-
-    if \
-        not order_is_public(status_id) and \
-        not order_is_paused(status_id) and \
-        not order_is_waiting_taker_bond(status_id):
-        return False
 
     return True
 

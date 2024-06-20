@@ -226,6 +226,11 @@ def update_roboauto_options(print_info=False):
                     new_value = parser.get(general_section, option).strip("'\"")
                     update_single_option(option, new_value, print_info=print_info)
 
+            option = "create_new_after_maximum_orders"
+            if parser.has_option(general_section, option):
+                new_value = parser.getboolean(general_section, option)
+                update_single_option(option, new_value, print_info=print_info)
+
             for option in (
                 "seconds_pending_order", "order_maximum", "robot_maximum_orders",
                 "tab_size", "routing_budget_ppm", "requests_timeout", "orders_timeout",

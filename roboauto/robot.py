@@ -510,13 +510,9 @@ def robot_save_gpg_public_private(robot_dic, robot_response_json):
     return True
 
 
-def robot_generate(argv):
-    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+def robot_generate(coordinator, robot_state):
+    coordinator_url = roboauto_get_coordinator_url(coordinator)
     if coordinator_url is False:
-        return False
-
-    robot_state, argv = robot_get_state_from_argv(argv, default_state="paused")
-    if robot_state is False:
         return False
 
     token = generate_random_token_base62()
@@ -556,8 +552,6 @@ def robot_generate(argv):
             print_err("robot {robot_name} already exists")
         return False
 
-    print_out(robot_name)
-
     robot_dic = robot_save_to_disk_and_get_dic(
         robot_name, robot_state, robot_dir, token, coordinator
     )
@@ -568,6 +562,27 @@ def robot_generate(argv):
         robot_dir, public_key, private_key, fingerprint, set_default=True
     ):
         return False
+
+    # could make sure that when False is returned the robot directory
+    # is not created
+
+    return robot_dic
+
+
+def robot_generate_argv(argv):
+    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    if coordinator_url is False:
+        return False
+
+    robot_state, argv = robot_get_state_from_argv(argv, default_state="paused")
+    if robot_state is False:
+        return False
+
+    robot_dic = robot_generate(coordinator, robot_state)
+    if robot_dic is False:
+        return False
+
+    print_out(robot_dic["name"])
 
     return True
 
@@ -596,6 +611,9 @@ def waiting_queue_print():
 def robot_wait(robot_name):
     """move robot to waiting queue"""
     nicks_waiting = waiting_queue_get()
+
+    if robot_name in nicks_waiting:
+        return True
 
     nicks_waiting.append(robot_name)
     print_out(robot_name + " added to waiting queue")

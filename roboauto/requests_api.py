@@ -315,13 +315,10 @@ def requests_api_post(
 
 
 def requests_api_make(
-    token_base91, order_id, base_url, user, make_data,
+    token_base91, base_url, user, make_data,
     options=None
 ):
-    if order_id:
-        referer_path = "/order/" + order_id
-    else:
-        referer_path = ""
+    referer_path = ""
     return requests_api_post(
         token_base91,
         base_url, user, referer_path,

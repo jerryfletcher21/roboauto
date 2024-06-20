@@ -11,13 +11,16 @@ import shutil
 
 from roboauto.logger import print_out, print_err
 from roboauto.global_state import roboauto_state, roboauto_options
-from roboauto.date_utils import date_convert_time_zone_and_format_string
+from roboauto.date_utils import \
+    date_convert_time_zone_and_format_string, \
+    get_current_timestamp, get_hour_offer, get_current_hour_from_timestamp
 from roboauto.utils import \
     json_dumps, file_json_read, is_float, get_int, \
     dir_make_sure_exists, file_json_write, directory_get_file_numbers
 from roboauto.subprocess_commands import message_notification_send
 from roboauto.order_data import \
-    get_currency_string, order_is_pending, get_type_string
+    get_currency_string, order_is_pending, get_type_string, \
+    order_is_public, order_is_paused, order_is_waiting_taker_bond
 from roboauto.robot import \
     robot_list_dir, robot_get_dir_dic, \
     robot_load_from_name
@@ -149,6 +152,58 @@ def offer_dic_print(offer_dic):
         offer_dic["date_end"],
         offer_dic["payment_method"]
     ))
+
+
+def robot_have_orders_dir(robot_dir):
+    if os.path.isdir(robot_dir + "/orders"):
+        return True
+
+    return False
+
+
+def robot_have_make_response(robot_dir):
+    if os.path.isfile(robot_dir + "/make-response"):
+        return True
+
+    return False
+
+
+def robot_set_make_response(robot_dir, make_response_json):
+    if not file_json_write(robot_dir + "/make-response", make_response_json):
+        return False
+
+    return True
+
+
+def robot_get_make_response(robot_dir):
+    make_response_file = robot_dir + "/make-response"
+    if not os.path.isfile(make_response_file):
+        return False
+    make_response_json = file_json_read(make_response_file)
+    if make_response_json is False:
+        return False
+
+    return make_response_json
+
+
+def robot_order_set_local_make_data(robot_dir, make_data):
+    if file_json_write(robot_dir + "/make-data", make_data) is False:
+        return False
+
+    return True
+
+
+def robot_order_get_local_make_data(robot_dir):
+    local_make_data_file = robot_dir + "/make-data"
+
+    if not os.path.isfile(local_make_data_file):
+        return False
+
+    make_data = file_json_read(local_make_data_file)
+    if make_data is False:
+        return False
+
+    return make_data
 
 
 def order_id_list_from_robot_dir(robot_dir, error_print=True):
@@ -350,7 +405,6 @@ def order_summary(argv):
         "buy": {},
         "sell": {}
     }
-    number_error = 0
     coordinator_number = {}
     for federation_coordinator in roboauto_options["federation"]:
         coordinator_number[federation_coordinator] = 0
@@ -359,26 +413,32 @@ def order_summary(argv):
         for robot_name in os.listdir(robot_get_dir_dic()[first_arg[2:]]):
             robot_dic = robot_load_from_name(robot_name, error_print=False)
             if robot_dic is False:
-                number_error += 1
                 continue
+
+            robot_dir = robot_dic["dir"]
+            coordinator = robot_dic["coordinator"]
 
             order_dic = order_dic_from_robot_dir(
-                robot_dic["dir"], order_id=None, error_print=False
+                robot_dir, order_id=None, error_print=False
             )
-            if order_dic is None or order_dic is False:
-                number_error += 1
-                continue
-
-            order_info = order_dic.get("order_info", False)
-            order_user = order_dic.get("order_user", False)
-            if order_info is False or order_user is False:
-                number_error += 1
-                continue
-
-            coordinator = order_info["coordinator"]
-
-            type_string = order_user["type"]
-            currency_string = order_user["currency"]
+            if order_dic is not None and order_dic is not False:
+                order_user = order_dic.get("order_user", False)
+                if order_user is False:
+                    continue
+                type_string = order_user["type"]
+                currency_string = order_user["currency"]
+            else:
+                make_data = robot_get_make_response(robot_dir)
+                if make_data is False:
+                    make_data = robot_order_get_local_make_data(robot_dir)
+                    if make_data is False:
+                        continue
+                type_string = str(get_type_string(
+                    make_data.get("type", False)
+                ))
+                currency_string = str(get_currency_string(
+                    make_data.get("currency", False)
+                )).lower()
 
             if currency_string not in summary_dic[type_string]:
                 summary_dic[type_string][currency_string] = {}
@@ -437,8 +497,8 @@ def robot_handle_taken(robot_name, status_id, order_id, other):
         dest_dir = roboauto_state["inactive_home"]
         dest_name = "inactive"
 
-    print_out("something happened with " + robot_name + " " + order_id)
-    print_out("%s moved to %s" % (robot_name, dest_name))
+    print_out(f"{robot_name} {order_id} something happened")
+    print_out(f"{robot_name} moved to {dest_name}")
 
     try:
         shutil.move(robot_dir, dest_dir)
@@ -572,3 +632,47 @@ def order_data_from_order_user(order_user):
         payment_method, premium,
         public_duration, escrow_duration, bond_size
     )
+
+
+def order_is_this_hour_and_online(order, coordinator=False):
+    current_timestamp = get_current_timestamp()
+
+    order_info = order.get("order_info", False)
+    if order_info is False:
+        return False
+
+    if not isinstance(coordinator, bool):
+        order_coordinator = order_info.get("coordinator", False)
+        if order_coordinator is False:
+            return False
+        if coordinator[:3] != order_coordinator[:3]:
+            return False
+
+    order_response_json = order.get("order_response_json", False)
+    if order_response_json is False:
+        return False
+
+    expires_at = order_response_json.get("expires_at", False)
+    if expires_at is False:
+        return False
+
+    date_hour = get_hour_offer(
+        expires_at, current_timestamp,
+        roboauto_state["keep_online_hour_relative"]
+    )
+    if date_hour is False:
+        return False
+    if date_hour != get_current_hour_from_timestamp(current_timestamp):
+        return False
+
+    status_id = order_info.get("status", False)
+    if status_id is False:
+        return False
+
+    if \
+        not order_is_public(status_id) and \
+        not order_is_paused(status_id) and \
+        not order_is_waiting_taker_bond(status_id):
+        return False
+
+    return True

@@ -17,10 +17,13 @@ from roboauto.order_data import \
     order_is_waiting_taker_bond, order_is_expired
 from roboauto.order_local import \
     order_data_from_order_user, get_order_data, order_dic_from_robot_dir, \
-    order_save_order_file, get_order_user, order_id_list_from_robot_dir
+    order_save_order_file, get_order_user, order_id_list_from_robot_dir, \
+    order_is_this_hour_and_online, robot_set_make_response, \
+    robot_order_set_local_make_data
 from roboauto.robot import \
     robot_input_from_argv, robot_change_dir, robot_load_from_name, \
-    robot_var_from_dic, robot_requests_get_order_id
+    robot_var_from_dic, robot_requests_get_order_id, robot_generate, \
+    robot_list_dir
 from roboauto.requests_api import \
     requests_api_order, requests_api_order_cancel, \
     requests_api_make, response_is_error, requests_api_order_take
@@ -434,30 +437,17 @@ def bond_order(robot_dic, order_id, taker=False, take_amount=None, use_node=True
 
 
 def make_order(
-    robot_dic, order_id, make_data, should_bond=True, check_change=False, use_node=True
+    robot_dic, make_data, should_bond=True, check_change=False, use_node=True
 ):
     """make the request to the coordinator to create an order.
-    if should_bond is true, also bond it.
+    if should_bond is true, also bond it, if it is false do not create
+    the order if there are more than maximum order this hour, save
+    make data to file instead
     if check_change is true, change the order from data saved on disk
     return False if an error None if the requests was not made"""
 
-    robot_name, _, robot_dir, _, coordinator, token_base91, robot_url = \
+    robot_name, robot_state, robot_dir, _, coordinator, token_base91, robot_url = \
         robot_var_from_dic(robot_dic)
-
-    if roboauto_options["robot_maximum_orders"] > 0:
-        max_orders = roboauto_options["robot_maximum_orders"]
-        order_ids = order_id_list_from_robot_dir(robot_dir, error_print=False)
-        if \
-            order_ids is not False and order_ids is not None and \
-            len(order_ids) >= max_orders:
-            print_out(
-                f"{robot_name} {coordinator} maximum orders {max_orders} reached, " +
-                "moving to inactive"
-            )
-            if not robot_change_dir(robot_name, "inactive"):
-                print_err(f"{robot_name} moving to inactive")
-                return False
-            return None
 
     change_order_file = robot_dir + "/change-next-order"
 
@@ -470,16 +460,80 @@ def make_order(
                         old_value = make_data[key]
                         make_data[key] = value
                         print_out(
-                            f"{robot_name} {order_id} {key} "
+                            f"{robot_name} {key} "
                             f"changed from {old_value} to {value}"
                         )
+
+    if roboauto_options["robot_maximum_orders"] > 0:
+        max_orders = roboauto_options["robot_maximum_orders"]
+        order_ids = order_id_list_from_robot_dir(robot_dir, error_print=False)
+        if \
+            order_ids is not False and order_ids is not None and \
+            len(order_ids) >= max_orders:
+            print_out(
+                f"{robot_name} {coordinator} maximum orders {max_orders} reached"
+            )
+            if roboauto_options["create_new_after_maximum_orders"] is True:
+                new_robot_dic = robot_generate(coordinator, robot_state)
+                if new_robot_dic is False:
+                    return False
+                new_robot_name = new_robot_dic["name"]
+                new_robot_dir = new_robot_dic["dir"]
+
+                print_out(f"{new_robot_name} created with order data of {robot_name}")
+
+                if robot_order_set_local_make_data(new_robot_dir, make_data) is False:
+                    return False
+
+                print_out(f"{robot_name} moving to inactive")
+                if not robot_change_dir(robot_name, "inactive"):
+                    print_err(f"{robot_name} moving to inactive")
+                    return False
+
+                return make_order(
+                    new_robot_dic, make_data,
+                    should_bond=should_bond,
+                    check_change=check_change,
+                    use_node=use_node
+                )
+            else:
+                print_out(f"{robot_name} moving to inactive")
+                if not robot_change_dir(robot_name, "inactive"):
+                    print_err(f"{robot_name} moving to inactive")
+                    return False
+
+                return None
+
+    if should_bond is False:
+        robot_this_hour = 0
+
+        active_list = robot_list_dir(roboauto_state["active_home"])
+        for robot_active in active_list:
+            # pylint: disable=R0801 duplicate-code
+            order_dic = order_dic_from_robot_dir(
+                roboauto_state["active_home"] + "/" + robot_active,
+                order_id=None, error_print=False
+            )
+            if order_dic is False or order_dic is None:
+                continue
+
+            if order_is_this_hour_and_online(order_dic):
+                robot_this_hour += 1
+
+        order_maximum = roboauto_options["order_maximum"]
+        if robot_this_hour >= order_maximum:
+            print_out(
+                f"{robot_name} there are already {order_maximum} orders this hour, " +
+                "saving make data to file without creating order"
+            )
+            return robot_order_set_local_make_data(robot_dir, make_data)
 
     if not make_data["bond_size"]:
         print_err("bond size percentage not defined")
         return False
 
     make_response_all = requests_api_make(
-        token_base91, order_id, robot_url, robot_name, make_data=json_dumps(make_data)
+        token_base91, robot_url, robot_name, make_data=json_dumps(make_data)
     )
     if response_is_error(make_response_all):
         return False
@@ -502,6 +556,9 @@ def make_order(
             print_err(make_response, end="", error=False, date=False)
             print_err(make_data, error=False, date=False)
             print_err("getting id of new order for " + robot_name)
+        return False
+
+    if not robot_set_make_response(robot_dir, make_response_json):
         return False
 
     order_id = str(order_id_number)
@@ -621,7 +678,7 @@ def create_order(argv):
 
     make_order_result = make_order(
         robot_dic,
-        False, order_data,
+        order_data,
         should_bond=should_bond,
         use_node=use_node
     )
@@ -713,9 +770,6 @@ def recreate_order(argv):
     if order_dic is False or order_dic is None:
         return False
 
-    order_info = order_dic["order_info"]
-    order_id = order_info["order_id"]
-
     order_user_old = order_dic["order_user"]
     for key, value in order_user.items():
         if value is False:
@@ -727,7 +781,7 @@ def recreate_order(argv):
 
     make_order_result = make_order(
         robot_dic,
-        order_id, order_data,
+        order_data,
         should_bond=should_bond,
         use_node=use_node
     )
