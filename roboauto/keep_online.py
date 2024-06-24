@@ -21,7 +21,8 @@ from roboauto.order_data import  \
     order_is_waiting_taker_bond, order_is_expired, \
     order_is_finished_for_seller, order_is_waiting_seller_buyer, \
     order_is_waiting_seller, order_is_waiting_buyer, \
-    order_is_failed_routing, order_expired_is_not_taken
+    order_is_failed_routing, get_order_expiry_reason_string, \
+    order_expired_is_not_taken, order_expired_is_maker_bond_not_locked
 from roboauto.order_local import \
     robot_handle_taken, order_dic_from_robot_dir, robot_have_orders_dir, \
     order_robot_get_last_order_id, order_save_order_file, \
@@ -41,9 +42,26 @@ from roboauto.utils import \
     bad_request_is_cancelled, bad_request_is_wrong_robot
 
 
-def robot_handle_active_expired(robot_dic, all_dic, make_data):
+def robot_handle_active_expired(robot_dic, all_dic, make_data, expiry_reason=None):
     robot_name = robot_dic["name"]
     robot_dir = robot_dic["dir"]
+
+    if expiry_reason is not None and expiry_reason is not False:
+        if \
+            not order_expired_is_not_taken(expiry_reason) and \
+            not order_expired_is_maker_bond_not_locked(expiry_reason):
+            expiry_string = get_order_expiry_reason_string(expiry_reason)
+            print_out(f"{robot_name} was active and now is {expiry_string}")
+
+            earned_rewards = robot_check_and_claim_reward(robot_dic)
+            if earned_rewards is False:
+                return False
+            elif earned_rewards > 0:
+                # while there are rewards to be claimed it is not moving from active
+                return True
+            print_out(f"{robot_name} unusual expiry, moving to paused")
+            return robot_change_dir(robot_name, "paused")
+
     if count_active_orders_this_hour(all_dic) < roboauto_options["order_maximum"]:
         if make_data is None or make_data is False:
             make_data = robot_order_get_local_make_data(robot_dir)
@@ -53,7 +71,7 @@ def robot_handle_active_expired(robot_dic, all_dic, make_data):
                     "moving to paused"
                 )
                 return robot_change_dir(robot_name, "paused")
-            print_out(f"{robot_dic} creating order from make data")
+            print_out(f"{robot_name} creating order from make data")
 
         # will return None when maxium robot orders is reached,
         # it is ok to return True since the robot is checked correctly
@@ -107,9 +125,8 @@ def robot_handle_active(robot_dic, all_dic):
             return False
         elif earned_rewards > 0:
             return True
-        else:
-            print_out(f"{robot_name} {order_id} active is cancelled, moving to inactive")
-            return robot_change_dir(robot_name, "inactive")
+        print_out(f"{robot_name} {order_id} active is cancelled, moving to inactive")
+        return robot_change_dir(robot_name, "inactive")
     elif isinstance(order_dic, str):
         return False
 
@@ -138,7 +155,6 @@ def robot_handle_active(robot_dic, all_dic):
             not order_is_public(status_id) and \
             not order_is_paused(status_id) and \
             not order_is_waiting_taker_bond(status_id) and \
-            not order_is_waiting_maker_bond(status_id) and \
             not order_is_expired(status_id):
             if robot_unwait(nicks_waiting, robot_name) is False:
                 return False
@@ -171,7 +187,8 @@ def robot_handle_active(robot_dic, all_dic):
                     return False
         elif order_is_expired(status_id):
             return robot_handle_active_expired(
-                robot_dic, all_dic, order_dic["order_data"]
+                robot_dic, all_dic, order_dic["order_data"],
+                expiry_reason=order_dic["order_response_json"].get("expiry_reason", None)
             )
         else:
             if not robot_handle_taken(
@@ -265,9 +282,8 @@ def robot_handle_pending(robot_dic):
             return False
         elif earned_rewards > 0:
             return True
-        else:
-            print_out(f"{robot_name} {order_id} pending is cancelled, moving to inactive")
-            return robot_change_dir(robot_name, "inactive")
+        print_out(f"{robot_name} {order_id} pending is cancelled, moving to inactive")
+        return robot_change_dir(robot_name, "inactive")
     elif isinstance(order_dic, str):
         return False
 
@@ -365,12 +381,20 @@ def robot_handle_pending(robot_dic):
                 "moving to active"
             )
             return robot_change_dir(robot_name, "active")
-        elif order_is_expired(status_id) and order_expired_is_not_taken(expiry_reason):
-            print_out(
-                f"{robot_name} {order_id} was pending and now is expired not taken, " +
-                "moving to active"
-            )
-            return robot_change_dir(robot_name, "active")
+        elif order_is_expired(status_id):
+            if order_expired_is_not_taken(expiry_reason):
+                print_out(
+                    f"{robot_name} {order_id} was pending and now is expired not taken, " +
+                    "moving to active"
+                )
+                return robot_change_dir(robot_name, "active")
+            else:
+                expiry_string = get_order_expiry_reason_string(expiry_reason)
+                print_out(
+                    f"{robot_name} {order_id} was pending and now is {expiry_string}, " +
+                    "moving to paused"
+                )
+                return robot_change_dir(robot_name, "paused")
         else:
             print_err(f"{robot_name} strange state, moving to paused")
             return robot_change_dir(robot_name, "paused")
@@ -626,11 +650,18 @@ def keep_online_no_lock(should_sleep, initial_info):
                 print_out(f"{robot_unwaited} removed from waiting queue")
 
         all_elapsed_time = int(time.time() - all_starting_time)
-        print_out(
-            f"{total_robots} robots checked in {all_elapsed_time} seconds " +
-            f"{failed_numbers} failed",
-            level=1
-        )
+        if failed_numbers < total_robots / 2:
+            print_out(
+                f"{total_robots} robots checked in {all_elapsed_time} seconds " +
+                f"{failed_numbers} failed",
+                level=1
+            )
+        else:
+            print_out(
+                f"{total_robots} robots checked in {all_elapsed_time} seconds " +
+                f"{failed_numbers} failed, connection may be instable",
+                level=0
+            )
         logger_flush()
 
 

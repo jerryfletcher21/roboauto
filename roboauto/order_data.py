@@ -367,3 +367,7 @@ def get_order_expiry_reason_string(target, reverse=False):
 
 def order_expired_is_not_taken(data):
     return data == 0
+
+
+def order_expired_is_maker_bond_not_locked(data):
+    return data == 1
