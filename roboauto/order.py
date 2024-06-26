@@ -19,7 +19,7 @@ from roboauto.order_local import \
     order_data_from_order_user, get_order_data, order_dic_from_robot_dir, \
     order_save_order_file, get_order_user, order_id_list_from_robot_dir, \
     order_is_this_hour_and_online, robot_set_make_response, \
-    robot_order_set_local_make_data
+    robot_order_set_local_make_data, robot_order_remove_local_make_data
 from roboauto.robot import \
     robot_input_from_argv, robot_change_dir, robot_load_from_name, \
     robot_var_from_dic, robot_requests_get_order_id, robot_generate, \
@@ -559,6 +559,8 @@ def make_order(
         return False
 
     if not robot_set_make_response(robot_dir, make_response_json):
+        return False
+    if not robot_order_remove_local_make_data(robot_dir):
         return False
 
     order_id = str(order_id_number)

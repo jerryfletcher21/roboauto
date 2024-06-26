@@ -24,9 +24,9 @@ from roboauto.order_data import  \
     order_is_failed_routing, get_order_expiry_reason_string, \
     order_expired_is_not_taken, order_expired_is_maker_bond_not_locked
 from roboauto.order_local import \
-    robot_handle_taken, order_dic_from_robot_dir, robot_have_orders_dir, \
+    robot_handle_taken, order_dic_from_robot_dir, \
     order_robot_get_last_order_id, order_save_order_file, \
-    order_is_this_hour_and_online, robot_have_make_response, \
+    order_is_this_hour_and_online, robot_have_make_data, \
     robot_order_get_local_make_data
 from roboauto.order import \
     order_requests_order_dic, bond_order, make_order, \
@@ -95,8 +95,8 @@ def robot_handle_active(robot_dic, all_dic):
     robot_dir = robot_dic["dir"]
     robot_coordinator = robot_dic["coordinator"]
 
-    # handle robot without an order already but with make data
-    if not robot_have_orders_dir(robot_dir) and not robot_have_make_response(robot_dir):
+    # handle robot with make data
+    if robot_have_make_data(robot_dir):
         return robot_handle_active_expired(robot_dic, all_dic, None)
 
     order_id = order_robot_get_last_order_id(robot_dic, error_print=False)

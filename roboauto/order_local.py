@@ -15,7 +15,7 @@ from roboauto.date_utils import \
     date_convert_time_zone_and_format_string, \
     get_current_timestamp, get_hour_offer, get_current_hour_from_timestamp
 from roboauto.utils import \
-    json_dumps, file_json_read, is_float, get_int, \
+    json_dumps, file_json_read, is_float, get_int, file_remove, \
     dir_make_sure_exists, file_json_write, directory_get_file_numbers
 from roboauto.subprocess_commands import message_notification_send
 from roboauto.order_data import \
@@ -168,6 +168,13 @@ def robot_have_make_response(robot_dir):
     return False
 
 
+def robot_have_make_data(robot_dir):
+    if os.path.isfile(robot_dir + "/make-data"):
+        return True
+
+    return False
+
+
 def robot_set_make_response(robot_dir, make_response_json):
     if not file_json_write(robot_dir + "/make-response", make_response_json):
         return False
@@ -175,11 +182,13 @@ def robot_set_make_response(robot_dir, make_response_json):
     return True
 
 
-def robot_get_make_response(robot_dir):
+def robot_get_make_response(robot_dir, error_print=True):
     make_response_file = robot_dir + "/make-response"
+
     if not os.path.isfile(make_response_file):
         return False
-    make_response_json = file_json_read(make_response_file)
+
+    make_response_json = file_json_read(make_response_file, error_print=error_print)
     if make_response_json is False:
         return False
 
@@ -193,17 +202,30 @@ def robot_order_set_local_make_data(robot_dir, make_data):
     return True
 
 
-def robot_order_get_local_make_data(robot_dir):
+def robot_order_get_local_make_data(robot_dir, error_print=True):
+    # remember to remove the make data after creating the order
     local_make_data_file = robot_dir + "/make-data"
 
     if not os.path.isfile(local_make_data_file):
         return False
 
-    make_data = file_json_read(local_make_data_file)
+    make_data = file_json_read(local_make_data_file, error_print=error_print)
     if make_data is False:
         return False
 
     return make_data
+
+
+def robot_order_remove_local_make_data(robot_dir):
+    local_make_data_file = robot_dir + "/make-data"
+
+    if not os.path.isfile(local_make_data_file):
+        return True
+
+    if not file_remove(local_make_data_file):
+        return False
+
+    return True
 
 
 def order_id_list_from_robot_dir(robot_dir, error_print=True):
@@ -233,7 +255,25 @@ def order_id_last_from_robot_dir(robot_dir, error_print=True):
 
 
 def order_robot_get_last_order_id(robot_dic, error_print=True):
-    return order_id_last_from_robot_dir(robot_dic["dir"], error_print=error_print)
+    """return a string"""
+    robot_dir = robot_dic["dir"]
+
+    maximum_order_id = False
+
+    order_ids = order_id_list_from_robot_dir(robot_dir, error_print=error_print)
+    if order_ids is not False and order_ids is not None:
+        maximum_order_id = order_ids[-1]
+
+    make_data = robot_get_make_response(robot_dir, error_print=error_print)
+    if make_data is not False and make_data is not None:
+        make_id = make_data.get("id", False)
+        if make_id is not False and make_id > maximum_order_id:
+            maximum_order_id = make_id
+
+    if isinstance(maximum_order_id, int):
+        return str(maximum_order_id)
+    else:
+        return False
 
 
 def order_dic_from_robot_dir(robot_dir, order_id=None, error_print=True):

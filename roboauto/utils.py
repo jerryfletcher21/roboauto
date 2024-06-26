@@ -423,13 +423,14 @@ def file_write(file_name, string, error_print=True):
     return True
 
 
-def file_json_write(file_name, data):
+def file_json_write(file_name, data, error_print=True):
     try:
         with open(file_name, "w", encoding="utf8") as file:
             json.dump(data, file, indent=roboauto_options["tab_size"])
             file.write("\n")
     except EnvironmentError:
-        print_err("writing json data to %s" % file_name)
+        if error_print:
+            print_err("writing json data to %s" % file_name)
         return False
 
     return True
@@ -447,7 +448,7 @@ def file_read(file_name, error_print=True):
     return string
 
 
-def file_json_read(file_name):
+def file_json_read(file_name, error_print=True):
     try:
         with open(file_name, "r", encoding="utf8") as file:
             try:
@@ -455,7 +456,8 @@ def file_json_read(file_name):
             except json.decoder.JSONDecodeError:
                 return False
     except EnvironmentError:
-        print_err("reading json data from %s" % file_name)
+        if error_print:
+            print_err("reading json data from %s" % file_name)
         return False
 
     return data
