@@ -285,25 +285,33 @@ def update_roboauto_options(print_info=False):
     return True
 
 
-def global_setup():
-    home = os.getenv("HOME")
-    if home is None:
-        print_err("HOME not set")
-        return False
+def global_setup(config_dir=None, data_dir=None):
+    if config_dir is None:
+        home = os.getenv("HOME")
+        if home is None:
+            print_err("HOME not set")
+            return False
+        config_home = os.getenv("XDG_CONFIG_HOME")
+        if config_home is None:
+            config_home = home + "/.config"
+        roboauto_config = config_home + "/roboauto"
+    else:
+        roboauto_config = config_dir
 
-    data_home = os.getenv("XDG_DATA_HOME")
-    if data_home is None:
-        local_home = os.getenv("XDG_LOCAL_HOME")
-        if local_home is None:
-            local_home = home + "/.local"
-        data_home = local_home + "/share"
-
-    config_home = os.getenv("XDG_CONFIG_HOME")
-    if config_home is None:
-        config_home = home + "/.config"
-
-    roboauto_home = data_home + "/roboauto"
-    roboauto_config = config_home + "/roboauto"
+    if data_dir is None:
+        home = os.getenv("HOME")
+        if home is None:
+            print_err("HOME not set")
+            return False
+        data_home = os.getenv("XDG_DATA_HOME")
+        if data_home is None:
+            local_home = os.getenv("XDG_LOCAL_HOME")
+            if local_home is None:
+                local_home = home + "/.local"
+            data_home = local_home + "/share"
+        roboauto_home = data_home + "/roboauto"
+    else:
+        roboauto_home = data_dir
 
     roboauto_state["active_home"] = roboauto_home + "/active"
     roboauto_state["pending_home"] = roboauto_home + "/pending"

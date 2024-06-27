@@ -35,7 +35,7 @@ from roboauto.keep_online import keep_online
 VERSION = "0.3.1"
 
 INFO = """\
-roboauto action [options]
+roboauto [--config-dir config-dir] [--data-dir data-dir] action [options]
 
 list-configs
 list-currencies
@@ -89,7 +89,7 @@ keep-online [--verbosity=number] [--no-sleep] [--no-initial-info]
 """
 
 INFO_VERBOSE = """\
-roboauto action [options]
+roboauto [--config-dir config-dir] [--data-dir data-dir] action [options]
 
 -h|--help
     print this help message
@@ -97,6 +97,8 @@ roboauto action [options]
     print long help message
 -v|--version
     print roboauto version
+
+config-dir and data-dir can be the same directory
 
 list-configs
     list configs
@@ -325,19 +327,38 @@ def main(argv):
         print_err("insert parameters")
         return False
 
-    option = argv[0]
-    if option in ("-h", "--help"):
-        print_out(INFO, end="")
-        return True
-    elif option == "--verbose-help":
-        print_out(INFO_VERBOSE, end="")
-        return True
-    elif option in ("-v", "--version"):
-        print_out(VERSION)
-        return True
-    elif re.match('^-', option) is not None:
-        print_err("option " + option + " not recognized")
-        return False
+    config_dir = None
+    data_dir = None
+    while len(argv) > 0:
+        option = argv[0]
+        if option in ("-h", "--help"):
+            print_out(INFO, end="")
+            return True
+        elif option == "--verbose-help":
+            print_out(INFO_VERBOSE, end="")
+            return True
+        elif option in ("-v", "--version"):
+            print_out(VERSION)
+            return True
+        elif option == "--config-dir":
+            argv = argv[1:]
+            if len(argv) < 1:
+                print_err("insert config-dir")
+                return False
+            config_dir = argv[0]
+            argv = argv[1:]
+        elif option == "--data-dir":
+            argv = argv[1:]
+            if len(argv) < 1:
+                print_err("insert data-dir")
+                return False
+            data_dir = argv[0]
+            argv = argv[1:]
+        elif re.match('^-', option) is not None:
+            print_err("option " + option + " not recognized")
+            return False
+        else:
+            break
 
     if len(argv) < 1:
         print_err("insert action")
@@ -345,7 +366,7 @@ def main(argv):
     action = argv[0]
     argv = argv[1:]
 
-    if global_setup() is False:
+    if global_setup(config_dir=config_dir, data_dir=data_dir) is False:
         return False
 
     return_status = None
