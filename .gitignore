@@ -1,7 +1,8 @@
-build
-*.egg-info
+build/
+dist/
+*.egg-info/
 
-__pycache__
+__pycache__/
 
-saved
-robo
+saved/
+robo/
