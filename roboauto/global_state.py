@@ -45,6 +45,8 @@ roboauto_state = {
     "fetch_site": "cross-site",
     # "fetch_site": "same-origin",
     "robot_date_format": "%Y-%m-%dT%H:%M:%S.%fZ",
+    "config_home": "",
+    "data_home": "",
     "active_home": "",
     "pending_home": "",
     "inactive_home": "",

@@ -352,7 +352,7 @@ $(
         fi
     else
         if [ "$roboauto_home" = false ]; then
-            roboauto_home="${XDG_DATA_HOME:-${XDG_LOCAL_HOME:-$HOME/.local}/share}/roboauto"
+            roboauto_home="$($roboauto_bin print-data-directory)"
         fi
 
         local active_home="$roboauto_home/active"

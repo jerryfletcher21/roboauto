@@ -313,6 +313,9 @@ def global_setup(config_dir=None, data_dir=None):
     else:
         roboauto_home = data_dir
 
+    roboauto_state["config_home"] = roboauto_config
+    roboauto_state["data_home"] = roboauto_home
+
     roboauto_state["active_home"] = roboauto_home + "/active"
     roboauto_state["pending_home"] = roboauto_home + "/pending"
     roboauto_state["inactive_home"] = roboauto_home + "/inactive"
@@ -507,6 +510,18 @@ def password_ask(question):
 
 def password_ask_token():
     return password_ask("insert token: ")
+
+
+def print_config_directory():
+    print_out(roboauto_state["config_home"])
+
+    return True
+
+
+def print_data_directory():
+    print_out(roboauto_state["data_home"])
+
+    return True
 
 
 def list_configs():

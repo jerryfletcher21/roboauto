@@ -9,7 +9,8 @@ import signal
 from roboauto.logger import print_out, print_err
 from roboauto.utils import \
     global_setup, global_shutdown, state_set_command_type, \
-    list_configs, update_roboauto_options, invoice_amount_calculate_arg
+    list_configs, update_roboauto_options, invoice_amount_calculate_arg, \
+    print_config_directory, print_data_directory
 from roboauto.robot import \
     robot_import, robot_print_token, robot_print_coordinator, robot_print_dir_argv, \
     waiting_queue_print, robot_change_dir_from_argv, robot_generate_argv, \
@@ -37,6 +38,8 @@ VERSION = "0.3.2"
 INFO = """\
 roboauto [--config-dir config-dir] [--data-dir data-dir] action [options]
 
+print-config-directory
+print-data-directory
 list-configs
 list-currencies
 list-payment-methods [--fiat, --swap]
@@ -99,6 +102,12 @@ roboauto [--config-dir config-dir] [--data-dir data-dir] action [options]
     print roboauto version
 
 config-dir and data-dir can be the same directory
+
+print-config-directory
+    get the config directory
+
+print-data-directory
+    get the data directory
 
 list-configs
     list configs
@@ -376,7 +385,11 @@ def main(argv):
             print_err("reading the config file")
             return False
 
-        if action == "list-configs":
+        if action == "print-config-directory":
+            return_status = print_config_directory()
+        elif action == "print-data-directory":
+            return_status = print_data_directory()
+        elif action == "list-configs":
             return_status = list_configs()
         elif action == "list-currencies":
             return_status = list_currencies()
