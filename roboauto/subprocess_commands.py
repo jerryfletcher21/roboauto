@@ -84,9 +84,17 @@ def subprocess_pay_invoice_and_check(
         invoice, pay_label
     ]
 
+    subprocess_running = True
     retries = 0
     with subprocess.Popen(pay_command, start_new_session=True) as pay_subprocess:
         while True:
+            if subprocess_running:
+                try:
+                    os.getpgid(pay_subprocess.pid)
+                except ProcessLookupError:
+                    print_out("pay subprocess ended")
+                    subprocess_running = False
+
             if maximum_retries is not None and retries > maximum_retries:
                 print_err("maximum retries occured for pay command")
                 return False
