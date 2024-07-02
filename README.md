@@ -67,7 +67,8 @@ Some examples for `lightning-node` and `message-notification` are in
 `lightning-node` should support 3 actions:
 * check: takes an invoice and an amount and exits with an error status
   if the invoice is not for the correct amount
-* pay: takes an invoice and a label and pays the invoice
+* pay: takes an invoice and a label, starts the pay command in the
+  background and prints his pid
 * invoice: takes an amount and a label, create the invoice and prints it
   to stdout
 

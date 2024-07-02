@@ -7,23 +7,24 @@
 import os
 import time
 import subprocess
+import select
 import signal
 
 from roboauto.global_state import roboauto_state, roboauto_options
 from roboauto.logger import print_out, print_err
-from roboauto.utils import file_is_executable, json_dumps
+from roboauto.utils import file_is_executable, json_dumps, get_uint
 
 
 def subprocess_run_command(program, error_print=True):
     try:
-        process = subprocess.run(program, capture_output=True, check=False)
+        process = subprocess.run(program, capture_output=True, check=False, text=True)
     except FileNotFoundError:
         program_name = program[0]
         print_err(f"command {program_name} does not exists")
         return False
     if process.returncode != 0:
         if error_print:
-            print_err(process.stderr.decode(), end="", error=False, date=False)
+            print_err(process.stderr, end="", error=False, date=False)
         return False
 
     return process.stdout
@@ -42,7 +43,7 @@ def message_notification_send(event, message):
         print_err(f"sending message {event}")
         return False
 
-    return message_stdout.decode()
+    return message_stdout
 
 
 def subprocess_generate_invoice(invoice_amout, invoice_label):
@@ -54,7 +55,40 @@ def subprocess_generate_invoice(invoice_amout, invoice_label):
         print_err("generating the invoice")
         return False
 
-    return invoice_generate_output.decode()
+    return invoice_generate_output
+
+
+def subprocess_readline_with_timeout(process, timeout):
+    if not hasattr(process, "stdout"):
+        print_err("subprocess does not have stdout")
+        return False
+    if process.stdout is None:
+        print_err("subprocess stdout is None")
+        return False
+    if not hasattr(process.stdout, "fileno"):
+        print_err("subprocess stdout does not have fileno")
+        return False
+    if not hasattr(process.stdout, "readline"):
+        print_err("subprocess stdout does not have readline")
+        return False
+
+    ready = select.select([process.stdout.fileno()], [], [], timeout)
+    if ready[0]:
+        return process.stdout.readline()
+    else:
+        return None
+
+
+def subprocess_kill(process):
+    if not hasattr(process, "pid"):
+        return False
+
+    try:
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+    except OSError:
+        pass
+
+    return True
 
 
 def subprocess_pay_invoice_and_check(
@@ -76,7 +110,7 @@ def subprocess_pay_invoice_and_check(
             "lightning-node check returned false, invoice will not be paid"
         )
         return False
-    print_out(check_output.decode(), end="", date=False)
+    print_out(check_output, end="", date=False)
     print_out("invoice checked successfully")
 
     pay_command = [
@@ -85,24 +119,56 @@ def subprocess_pay_invoice_and_check(
     ]
 
     subprocess_running = True
-    retries = 0
-    with subprocess.Popen(pay_command, start_new_session=True) as pay_subprocess:
+    retries_total = 0
+    retries_after_failed = 0
+    with subprocess.Popen(
+        pay_command,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        start_new_session=True, text=True
+    ) as pay_subprocess:
+        read_line = subprocess_readline_with_timeout(pay_subprocess, 4)
+        if read_line is None or read_line is False:
+            if read_line is None:
+                print_err(
+                    "process read timeout, check lightning node script, " +
+                    "it should print out the subprocess pid"
+                )
+            subprocess_kill(pay_subprocess)
+            return False
+        pay_pid = get_uint(read_line.strip())
+        if pay_pid is False:
+            print_err("pay command did not return a pid")
+            subprocess_kill(pay_subprocess)
+            return False
+
         while True:
             if subprocess_running:
                 try:
-                    os.getpgid(pay_subprocess.pid)
-                except ProcessLookupError:
-                    print_out("pay subprocess ended")
+                    os.kill(pay_pid, 0)
+                except OSError:
+                    _, stderr = pay_subprocess.communicate()
+                    print_err(stderr, end="", date=False, error=False)
+                    print_err("pay subprocess ended")
                     subprocess_running = False
+            if not subprocess_running:
+                maximum_retries_after_failed = 4
+                if retries_after_failed >= maximum_retries_after_failed:
+                    print_err("maximum retries after pay command failed")
+                    subprocess_kill(pay_subprocess)
+                    return False
+                retries_after_failed += 1
 
-            if maximum_retries is not None and retries > maximum_retries:
+            if maximum_retries is not None and retries_total > maximum_retries:
                 print_err("maximum retries occured for pay command")
+                subprocess_kill(pay_subprocess)
                 return False
+            retries_total += 1
 
             print_out(string_checking)
 
             order_dic = order_dic_function(robot_dic, order_id)
             if order_dic is False or order_dic is None or isinstance(order_dic, str):
+                subprocess_kill(pay_subprocess)
                 return False
 
             order_response_json = order_dic["order_response_json"]
@@ -111,6 +177,7 @@ def subprocess_pay_invoice_and_check(
             if order_status is False:
                 print_err(json_dumps(order_response_json), error=False, date=False)
                 print_err(f"getting order_status of {robot_name} {order_id}")
+                subprocess_kill(pay_subprocess)
                 return False
 
             if is_paid_function(order_status):
@@ -120,12 +187,8 @@ def subprocess_pay_invoice_and_check(
                 else:
                     print_err(robot_name + " " + string_not_paid)
                     return_output = False
-                try:
-                    os.killpg(os.getpgid(pay_subprocess.pid), signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
 
+                subprocess_kill(pay_subprocess)
                 return return_output
 
-            retries += 1
             time.sleep(roboauto_options["pay_interval"])

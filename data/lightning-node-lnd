@@ -80,7 +80,10 @@ lightning_pay() {
 
     ln_cli payinvoice \
         --force "$invoice" \
-        >/dev/null 2>&1 &
+        >&2 &
+
+    echo "$!"
+    return 0
 }
 
 # generate an invoice with lnd

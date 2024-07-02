@@ -86,7 +86,10 @@ lightning_pay() {
     lightning_cli -k pay \
         bolt11="$invoice" \
         label="$pay_label" \
-        >/dev/null 2>&1 &
+        >&2 &
+
+    echo "$!"
+    return 0
 }
 
 # generate an invoice with core lightning

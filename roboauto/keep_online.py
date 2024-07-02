@@ -17,7 +17,7 @@ from roboauto.robot import \
     robot_requests_get_order_id
 from roboauto.order_data import  \
     order_is_public, order_is_paused, order_is_finished, \
-    order_is_pending, order_is_waiting_maker_bond, \
+    order_is_pending, order_is_waiting_maker_bond, get_order_string, \
     order_is_waiting_taker_bond, order_is_expired, \
     order_is_finished_for_seller, order_is_waiting_seller_buyer, \
     order_is_waiting_seller, order_is_waiting_buyer, \
@@ -375,10 +375,10 @@ def robot_handle_pending(robot_dic):
             (is_seller and order_is_finished_for_seller(status_id)):
             print_out(f"{robot_name} {order_id} is completed, moving to inactive")
             return robot_change_dir(robot_name, "inactive")
-        elif order_is_public(status_id):
+        elif order_is_public(status_id) or order_is_waiting_taker_bond(status_id):
             print_out(
-                f"{robot_name} {order_id} was pending and now is public, " +
-                "moving to active"
+                f"{robot_name} {order_id} was pending and now is " +
+                f"{get_order_string(status_id)}, moving to active"
             )
             return robot_change_dir(robot_name, "active")
         elif order_is_expired(status_id):
