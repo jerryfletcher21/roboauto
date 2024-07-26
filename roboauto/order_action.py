@@ -339,7 +339,7 @@ def order_seller_bond_escrow(robot_dic, extra_arg):
 
 def order_post_action_simple(
     robot_dic, order_post_function, is_wrong_status,
-    string_error, string_or_bad_request,
+    string_error, string_success,
     extra_arg=None,
     should_be_buyer=False, should_be_seller=False
 ):
@@ -390,24 +390,21 @@ def order_post_action_simple(
         print_err(f"{robot_name} {order_id} response is not json")
         return False
 
-    # strange reseponse for order post cancel
+    # strange response for order post cancel
     # bad_request is set when success
     # see https://github.com/RoboSats/robosats/issues/1245
     bad_request = order_post_response_json.get("bad_request", False)
-    if string_or_bad_request is False:
-        if bad_request is False:
-            print_err(order_post_response, error=False, date=False)
-            print_err(f"{robot_name} {order_id} problems in the response")
-            return False
-
+    if bad_request in (
+        "This order has been cancelled by the maker",
+        "This order has been cancelled collaborativelly"
+    ):
         print_out(bad_request, date=False)
-    else:
-        if bad_request is not False:
-            print_err(bad_request, error=False, date=False)
-            print_err(f"{robot_name} {order_id} problems in the response")
-            return False
+    elif bad_request is not False:
+        print_err(bad_request, error=False, date=False)
+        print_err(f"{robot_name} {order_id} problems in the response")
+        return False
 
-        print_out(f"{robot_name} {order_id} " + string_or_bad_request)
+    print_out(f"{robot_name} {order_id} " + string_success)
 
     return True
 
@@ -432,7 +429,7 @@ def order_collaborative_cancel(robot_dic):
             not order_is_waiting_buyer(status_id) and \
             not order_is_waiting_fiat_sent(status_id),
         "can not send collaborative cancel",
-        False
+        "collaborative cancel sent"
     )
 
 

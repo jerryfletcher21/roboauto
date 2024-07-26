@@ -548,10 +548,16 @@ def make_order(
         bad_request = make_response_json.get("bad_request", False)
         if bad_request is not False:
             print_err(bad_request, error=False, date=False)
-            print_err("making order")
             if "Your order maximum amount is too big" in bad_request:
+                print_out(f"{robot_name} maximum amount too big, moving to paused")
                 if not robot_change_dir(robot_name, "paused", error_is_already=False):
                     return False
+            elif "Current limit is 0 orders" in bad_request:
+                print_out(f"{robot_name} {coordinator} paused orders, moving to paused")
+                if not robot_change_dir(robot_name, "paused", error_is_already=False):
+                    return False
+            else:
+                print_err("making order")
         else:
             print_err(make_response, end="", error=False, date=False)
             print_err(make_data, error=False, date=False)

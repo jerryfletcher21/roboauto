@@ -449,65 +449,68 @@ def order_summary(argv):
     for federation_coordinator in roboauto_options["federation"]:
         coordinator_number[federation_coordinator] = 0
 
-    if first_arg in ("--active", "--pending", "--paused", "--inactive"):
-        for robot_name in os.listdir(robot_get_dir_dic()[first_arg[2:]]):
-            robot_dic = robot_load_from_name(robot_name, error_print=False)
-            if robot_dic is False:
+    if first_arg not in ("--active", "--pending", "--paused", "--inactive"):
+        print_err(f"{first_arg} not recognized")
+        return False
+
+    for robot_name in os.listdir(robot_get_dir_dic()[first_arg[2:]]):
+        robot_dic = robot_load_from_name(robot_name, error_print=False)
+        if robot_dic is False:
+            continue
+
+        robot_dir = robot_dic["dir"]
+        coordinator = robot_dic["coordinator"]
+
+        order_dic = order_dic_from_robot_dir(
+            robot_dir, order_id=None, error_print=False
+        )
+        if order_dic is not None and order_dic is not False:
+            order_user = order_dic.get("order_user", False)
+            if order_user is False:
                 continue
-
-            robot_dir = robot_dic["dir"]
-            coordinator = robot_dic["coordinator"]
-
-            order_dic = order_dic_from_robot_dir(
-                robot_dir, order_id=None, error_print=False
-            )
-            if order_dic is not None and order_dic is not False:
-                order_user = order_dic.get("order_user", False)
-                if order_user is False:
-                    continue
-                type_string = order_user["type"]
-                currency_string = order_user["currency"]
-            else:
-                make_data = robot_get_make_response(robot_dir)
+            type_string = order_user["type"]
+            currency_string = order_user["currency"]
+        else:
+            make_data = robot_get_make_response(robot_dir)
+            if make_data is False:
+                make_data = robot_order_get_local_make_data(robot_dir)
                 if make_data is False:
-                    make_data = robot_order_get_local_make_data(robot_dir)
-                    if make_data is False:
-                        continue
-                type_string = str(get_type_string(
-                    make_data.get("type", False)
-                ))
-                currency_string = str(get_currency_string(
-                    make_data.get("currency", False)
-                )).lower()
+                    continue
+            type_string = str(get_type_string(
+                make_data.get("type", False)
+            ))
+            currency_string = str(get_currency_string(
+                make_data.get("currency", False)
+            )).lower()
 
-            if currency_string not in summary_dic[type_string]:
-                summary_dic[type_string][currency_string] = {}
-                for federation_coordinator in roboauto_options["federation"]:
-                    summary_dic[type_string][currency_string][federation_coordinator] = 0
+        if currency_string not in summary_dic[type_string]:
+            summary_dic[type_string][currency_string] = {}
+            for federation_coordinator in roboauto_options["federation"]:
+                summary_dic[type_string][currency_string][federation_coordinator] = 0
 
-            if coordinator not in summary_dic[type_string][currency_string]:
-                summary_dic[type_string][currency_string][coordinator] = 0
-                coordinator_number[coordinator] = 0
+        if coordinator not in summary_dic[type_string][currency_string]:
+            summary_dic[type_string][currency_string][coordinator] = 0
+            coordinator_number[coordinator] = 0
 
-            summary_dic[type_string][currency_string][coordinator] += 1
-            coordinator_number[coordinator] += 1
+        summary_dic[type_string][currency_string][coordinator] += 1
+        coordinator_number[coordinator] += 1
 
-        summary_sorted = {}
-        for key, value in summary_dic.items():
-            summary_sorted[key] = dict(sorted(value.items()))
-            for currency in summary_sorted[key]:
-                total_currency = 0
-                for coordinator in summary_sorted[key][currency]:
-                    total_currency += summary_sorted[key][currency][coordinator]
-                summary_sorted[key][currency]["TOT"] = total_currency
+    summary_sorted = {}
+    for key, value in summary_dic.items():
+        summary_sorted[key] = dict(sorted(value.items()))
+        for currency in summary_sorted[key]:
+            total_currency = 0
+            for coordinator in summary_sorted[key][currency]:
+                total_currency += summary_sorted[key][currency][coordinator]
+            summary_sorted[key][currency]["TOT"] = total_currency
 
-        coordinator_total = 0
-        for _, number in coordinator_number.items():
-            coordinator_total += number
-        coordinator_number["TOT"] = coordinator_total
+    coordinator_total = 0
+    for _, number in coordinator_number.items():
+        coordinator_total += number
+    coordinator_number["TOT"] = coordinator_total
 
-        print_out(json_dumps(summary_sorted))
-        print_out(json_dumps(coordinator_number))
+    print_out(json_dumps(summary_sorted))
+    print_out(json_dumps(coordinator_number))
 
     return True
 
