@@ -35,6 +35,8 @@ Roboauto can also be used without a lightning node.
 
 ## Installation
 
+Roboauto requires python 3.10 or later.
+
 #### Local (suggested)
 ```
 $ python3 -m venv robo
