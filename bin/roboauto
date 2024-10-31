@@ -12,10 +12,10 @@ from roboauto.utils import \
     list_configs, update_roboauto_options, invoice_amount_calculate_arg, \
     print_config_directory, print_data_directory
 from roboauto.robot import \
-    robot_import, robot_print_token, robot_print_coordinator, robot_print_dir_argv, \
+    robot_import, robot_print_token, robot_print_coordinator, \
     waiting_queue_print, robot_change_dir_from_argv, robot_generate_argv, \
     robot_claim_reward_argv, robot_update_stealth_invoice_option_argv
-from roboauto.order_local import order_info_dir, order_summary
+from roboauto.order_local import order_info_dir, order_summary, robot_print_dir_argv
 from roboauto.order import \
     create_order, cancel_order, recreate_order, list_order_fields, \
     list_currencies, list_payment_methods, order_change_next_expire
@@ -48,7 +48,7 @@ invoice-amount-calculate [--budget-ppm=number] full-amount
 import-robot --{coordinator-name} [--pending, --paused, --inactive] [robot-name] [token]
 print-token robot-name
 print-coordinator robot-name
-list-active|list-pending|list-inactive|list-paused [--coordinator]
+list-active|list-pending|list-inactive|list-paused [--coordinator|--data]
 list-waiting-queue
 set-active robot-name
 set-pending|set-inactive|set-paused robot-name|--all
@@ -61,7 +61,7 @@ robot-info robot-name
 robot-info --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
 claim-reward robot-name [invoice]
 stealth-option robot-name true|false
-order-info [--local|--search] [--simple] robot-name [order-id]
+order-info [--local|--search] [--full] robot-name [order-id]
 chat-print [--local] robot-name
 message-send robot-name
 list-historical --{coordinator-name}
@@ -140,9 +140,10 @@ print-token robot-name
 print-coordinator robot-name
     print robot coordinator and url
 
-list-active|list-pending|list-inactive|list-paused [--coordinator]
+list-active|list-pending|list-inactive|list-paused [--coordinator|--data]
     list active|pending|inactive|paused robots one per line
     if --coordinator is specified also print the coordinator name or every robot
+    if --data is specified print the coordinator name and the desription of the order
 
 list-waiting-queue
     list waiting queue
@@ -181,9 +182,9 @@ claim-reward robot-name [invoice]
 stealth-option robot-name true|false
     set stealth invoice option for robot-name
 
-order-info [--local|--search] [--simple] robot-name [order-id]
+order-info [--local|--search] [--full] robot-name [order-id]
     get info about the order of a robot
-    if --simple only print important data
+    if --full print all data
     if --local print the order saved on disk
     if --search make the robot request to get the last order-id
     without getting it from disk

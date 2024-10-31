@@ -404,7 +404,8 @@ $(
         ;;
         list-active|list-pending|list-inactive|list-paused)
             if [ "${cword}" -eq 2 ]; then
-                OPTS="--coordinator"
+                OPTS="--coordinator
+--data"
             fi
         ;;
         set-active)
@@ -497,7 +498,7 @@ false"
             if new_options="$(
                 ___multiple_options_handle "2" \
 "--local --search
---simple" \
+--full" \
                     "${words[@]}"
             )"; then
                 OPTS="$new_options"

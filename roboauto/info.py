@@ -193,7 +193,7 @@ def robot_info_argv(argv):
 def order_info_argv(argv):
     local_mode = False
     search_mode = False
-    full_mode = True
+    full_mode = False
     while len(argv) > 0:
         first_argv = argv[0]
         if first_argv == "--local":
@@ -202,8 +202,8 @@ def order_info_argv(argv):
         elif first_argv == "--search":
             search_mode = True
             argv = argv[1:]
-        elif first_argv == "--simple":
-            full_mode = False
+        elif first_argv == "--full":
+            full_mode = True
             argv = argv[1:]
         elif re.match('^-', first_argv) is not None:
             print_err(f"{first_argv} not recognied")

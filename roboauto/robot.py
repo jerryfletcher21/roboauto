@@ -262,28 +262,6 @@ def robot_list_dir(robot_dir, get_set=False):
     return sorted([full_path.split("/")[-1] for full_path in full_path_list])
 
 
-def robot_print_dir_argv(robot_state, argv):
-    print_coordinator = False
-    if len(argv) > 0 and argv[0] == "--coordinator":
-        print_coordinator = True
-        argv = argv[1:]
-
-    dir_home = robot_get_dir_dic()[robot_state]
-    for robot_name in robot_list_dir(dir_home):
-        if print_coordinator is False:
-            print_out(robot_name)
-        else:
-            robot_dic = robot_load_from_name(robot_name)
-            if robot_dic is False:
-                return False
-
-            coordinator = robot_dic["coordinator"]
-
-            print_out(f"{robot_name} {coordinator}")
-
-    return True
-
-
 def robot_change_dir(robot_name, destination_state, error_is_already=True):
     if destination_state not in robot_get_dir_dic():
         print_err(f"{destination_state} is not an available destination directory")

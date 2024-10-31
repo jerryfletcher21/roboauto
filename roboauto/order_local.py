@@ -228,6 +228,41 @@ def robot_order_remove_local_make_data(robot_dir):
     return True
 
 
+def robot_print_dir_argv(robot_state, argv):
+    print_action = None
+    if len(argv) > 0:
+        if argv[0] == "--coordinator":
+            print_action = "coordinator"
+            argv = argv[1:]
+        elif argv[0] == "--data":
+            print_action = "data"
+            argv = argv[1:]
+
+    dir_home = robot_get_dir_dic()[robot_state]
+    for robot_name in robot_list_dir(dir_home):
+        if print_action is None:
+            print_out(robot_name)
+        else:
+            robot_dic = robot_load_from_name(robot_name)
+            if robot_dic is False:
+                return False
+
+            coordinator = robot_dic["coordinator"]
+
+            if print_action == "coordinator":
+                print_out(f"{robot_name} {coordinator}")
+            elif print_action == "data":
+                order_dic = order_dic_from_robot_dir(
+                    robot_dic["dir"], error_print=True
+                )
+                if order_dic is None or order_dic is False:
+                    return False
+                order_desc = order_dic["order_info"]["order_description"]
+                print_out(f"{robot_name} {coordinator} {order_desc}")
+
+    return True
+
+
 def order_id_list_from_robot_dir(robot_dir, error_print=True):
     orders_dir = robot_dir + "/orders"
     if not os.path.isdir(orders_dir):
