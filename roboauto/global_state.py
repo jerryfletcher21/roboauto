@@ -44,7 +44,6 @@ roboauto_state = {
     "waiting_queue_remove_after": 10,
     "fetch_site": "cross-site",
     # "fetch_site": "same-origin",
-    "robot_date_format": "%Y-%m-%dT%H:%M:%S.%fZ",
     "config_home": "",
     "data_home": "",
     "active_home": "",

@@ -8,7 +8,19 @@ import time
 import calendar
 import datetime
 
-from roboauto.global_state import roboauto_options, roboauto_state
+from roboauto.global_state import roboauto_options
+
+
+def time_strptime_understand_format(date_string):
+    possible_formats = [ "%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ" ]
+
+    for date_format in possible_formats:
+        try:
+            return time.strptime(date_string, date_format)
+        except ValueError:
+            pass
+
+    return False
 
 
 def timestamp_from_utc_date(time_input):
@@ -17,12 +29,8 @@ def timestamp_from_utc_date(time_input):
     return calendar.timegm(time_input)
 
 
-def timestamp_from_date_string(
-    date_string, input_format=roboauto_state["robot_date_format"]
-):
-    return timestamp_from_utc_date(time.strptime(
-        date_string, input_format
-    ))
+def timestamp_from_date_string(date_string):
+    return timestamp_from_utc_date(time_strptime_understand_format(date_string))
 
 
 def date_convert_time_zone_and_format(time_input, output_format):
@@ -38,14 +46,13 @@ def date_convert_time_zone_and_format(time_input, output_format):
 
 def date_convert_time_zone_and_format_string(
     date_string,
-    output_format=roboauto_options["date_format"],
-    input_format=roboauto_state["robot_date_format"]
+    output_format=roboauto_options["date_format"]
 ):
     """convert a date string utc in input format to a local
     time zone date string in output format"""
 
     return date_convert_time_zone_and_format(
-        time.strptime(date_string, input_format),
+        time_strptime_understand_format(date_string),
         output_format
     )
 
