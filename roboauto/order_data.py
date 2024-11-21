@@ -335,6 +335,10 @@ def order_is_pending(data):
     return data in (6, 7, 8, 9, 10, 11, 13, 15, 16)
 
 
+def order_is_in_chat(data):
+    return data in (9, 10)
+
+
 def order_is_finished(data):
     return data in (4, 12, 14, 17, 18)
 

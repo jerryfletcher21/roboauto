@@ -42,6 +42,7 @@ roboauto_state = {
     "requests_max_retries": 8,
     "sleep_interval": 5,
     "waiting_queue_remove_after": 10,
+    "chat_save_before_dispute_seconds": 1200,
     "fetch_site": "cross-site",
     # "fetch_site": "same-origin",
     "config_home": "",

@@ -15,12 +15,13 @@ from roboauto.robot import \
     robot_change_dir, robot_get_dir_dic, robot_wait, \
     robot_unwait, robot_check_and_claim_reward, \
     robot_requests_get_order_id
+from roboauto.chat import robot_requests_chat
 from roboauto.order_data import  \
     order_is_public, order_is_paused, order_is_finished, \
     order_is_pending, order_is_waiting_maker_bond, get_order_string, \
     order_is_waiting_taker_bond, order_is_expired, \
     order_is_finished_for_seller, order_is_waiting_seller_buyer, \
-    order_is_waiting_seller, order_is_waiting_buyer, \
+    order_is_waiting_seller, order_is_waiting_buyer, order_is_in_chat, \
     order_is_failed_routing, get_order_expiry_reason_string, \
     order_expired_is_not_taken, order_expired_is_maker_bond_not_locked
 from roboauto.order_local import \
@@ -167,6 +168,10 @@ def robot_handle_active(robot_dic, all_dic):
         if order_is_public(status_id):
             return True
 
+        order_response_json = order_dic["order_response_json"]
+
+        is_seller = order_response_json.get("is_seller", False)
+
         status_string = order_info["status_string"]
         print_out(f"{robot_name} {robot_coordinator} {order_id} {status_string}")
 
@@ -188,8 +193,19 @@ def robot_handle_active(robot_dic, all_dic):
         elif order_is_expired(status_id):
             return robot_handle_active_expired(
                 robot_dic, all_dic, order_dic["order_data"],
-                expiry_reason=order_dic["order_response_json"].get("expiry_reason", None)
+                expiry_reason=order_response_json.get("expiry_reason", None)
             )
+        elif \
+            order_is_finished(status_id) or \
+            (is_seller and order_is_finished_for_seller(status_id)):
+            earned_rewards = robot_check_and_claim_reward(robot_dic)
+            if earned_rewards is False:
+                return False
+            elif earned_rewards > 0:
+                # while there are rewards to be claimed it is not moving from active
+                return True
+            print_out(f"{robot_name} {order_id} active is completed, moving to inactive")
+            return robot_change_dir(robot_name, "inactive")
         else:
             if not robot_handle_taken(
                 robot_name, status_id, order_id, order_info["order_description"]
@@ -247,6 +263,17 @@ def pending_robot_should_act(expires_timestamp, escrow_duration):
     elif seconds_pending_order < 0:
         if remaining_seconds < escrow_duration + seconds_pending_order:
             return True
+
+    return False
+
+
+def pending_robot_should_save_chat(expires_timestamp):
+    remaining_seconds = expires_timestamp - get_current_timestamp()
+    if remaining_seconds < 0:
+        return False
+
+    if remaining_seconds < roboauto_state["chat_save_before_dispute_seconds"]:
+        return True
 
     return False
 
@@ -318,22 +345,24 @@ def robot_handle_pending(robot_dic):
                     print_out(f"{robot_name} {peer_nick} {order_id} {failure_reason}")
                 return True
 
+        expires_at = order_response_json.get("expires_at", False)
+        if expires_at is False:
+            print_err("no expires_at")
+            return False
+
+        current_timestamp = timestamp_from_date_string(expires_at)
+
         if \
             order_is_waiting_seller_buyer(status_id) or \
             order_is_waiting_seller(status_id) or \
             order_is_waiting_buyer(status_id):
-            expires_at = order_response_json.get("expires_at", False)
-            if expires_at is False:
-                print_err("no expires_at")
-                return False
-
             escrow_duration = order_response_json.get("escrow_duration", False)
             if escrow_duration is False:
                 print_err("no escrow_duration")
                 return False
 
             if pending_robot_should_act(
-                timestamp_from_date_string(expires_at),
+                current_timestamp,
                 int(escrow_duration)
             ):
                 date_short_expire = date_convert_time_zone_and_format_string(
@@ -357,6 +386,15 @@ def robot_handle_pending(robot_dic):
                             f"expires at {date_short_expire}, sending invoice"
                         )
                         return order_buyer_update_invoice(robot_dic, (None, None))
+
+        if order_is_in_chat(status_id):
+            if pending_robot_should_save_chat(current_timestamp):
+                chat_response, chat_response_json = robot_requests_chat(robot_dic)
+                if chat_response is False or chat_response_json is False:
+                    return False
+                robot_name = robot_dic["name"]
+                print_out(f"{robot_name} chat saved on disk")
+                return True
     else:
         status_string = order_info["status_string"]
         print_out(f"{robot_name} {robot_coordinator} {order_id} {status_string}")
@@ -405,6 +443,7 @@ def robot_handle_pending(robot_dic):
 def robot_check_last_checked(robot_dic, seconds_not_checked):
     robot_name = robot_dic["name"]
     robot_dir = robot_dic["dir"]
+    robot_coordinator = robot_dic["coordinator"]
 
     order_dic = order_dic_from_robot_dir(
         robot_dir, error_print=False
@@ -423,7 +462,7 @@ def robot_check_last_checked(robot_dic, seconds_not_checked):
         minutes_not_chcked = int(seconds_not_checked / 60)
         minutes_escrow = int (escrow_duration / 60)
         print_out(
-            f"{robot_name} was not successfully checked " +
+            f"{robot_name} {robot_coordinator} was not successfully checked " +
             f"for {minutes_not_chcked} minutes, " +
             f"escrow duration {minutes_escrow} minutes"
         )
