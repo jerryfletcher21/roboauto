@@ -258,7 +258,9 @@ def robot_print_dir_argv(robot_state, argv):
                 if order_dic is None or order_dic is False:
                     return False
                 order_desc = order_dic["order_info"]["order_description"]
-                print_out(f"{robot_name} {coordinator} {order_desc}")
+                expires_at = order_dic["order_response_json"]["expires_at"]
+                expires_data = date_convert_time_zone_and_format_string(expires_at)
+                print_out(f"{robot_name:<30} {coordinator:<3} {order_desc:<84} {expires_data}")
 
     return True
 

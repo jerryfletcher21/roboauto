@@ -393,7 +393,9 @@ def robot_handle_pending(robot_dic):
                 if chat_response is False or chat_response_json is False:
                     return False
                 robot_name = robot_dic["name"]
-                print_out(f"{robot_name} chat saved on disk")
+                expires_at = order_response_json["expires_at"]
+                expires_data = date_convert_time_zone_and_format_string(expires_at)
+                print_out(f"{robot_name} expire at {expires_data} chat saved on disk")
                 return True
     else:
         status_string = order_info["status_string"]

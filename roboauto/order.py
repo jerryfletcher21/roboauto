@@ -199,7 +199,8 @@ def order_requests_order_dic(
     bond_size = order_response_json.get(
         "bond_size", str(roboauto_options["default_bond_size"])
     )
-    is_taken = order_response_json.get("taker_locked", False)
+    is_taken = order_response_json.get("taker", None) is not None and \
+        not order_is_waiting_taker_bond(status_id)
 
     peer_nick = peer_nick_from_response(order_response_json)
 

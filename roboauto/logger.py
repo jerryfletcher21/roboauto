@@ -54,7 +54,7 @@ def print_and_log(arg, end="\n", file_stream=None, level: int | bool = True):
 
 
 def print_out(arg, end="\n", date=True, level: int | bool = True):
-    string_print = arg
+    string_print = str(arg)
 
     if roboauto_state["current_command_type"] == "keep-online" and date:
         date_current = date_get_current()
@@ -67,7 +67,7 @@ def print_stderr(
     error_string, arg, end="\n",
     date=True, error=True, level: int | bool = True
 ):
-    string_print = arg
+    string_print = str(arg)
 
     if error:
         string_print = error_string + string_print
