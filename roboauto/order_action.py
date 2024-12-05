@@ -627,8 +627,8 @@ def robot_order_post_action_argv(argv, order_post_function, extra_type=None):
             save_chat = False
 
         if save_chat is True:
-            chat_response, chat_response_json = robot_requests_chat(robot_dic)
-            if chat_response is False or chat_response_json is False:
+            chat_response, _, _ = robot_requests_chat(robot_dic)
+            if chat_response is False:
                 return False
             robot_name = robot_dic["name"]
             print_out(f"{robot_name} chat saved on disk")

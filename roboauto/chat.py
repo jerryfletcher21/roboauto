@@ -21,8 +21,88 @@ from roboauto.gpg_key import \
     gpg_import_key, gpg_encrypt_sign_message, gpg_decrypt_check_message
 
 
+def messages_from_chat_response(robot_dic, chat_response_json):
+    robot_name, _, robot_dir, token, _, _, _ = robot_var_from_dic(robot_dic)
+
+    unsorted_messages = chat_response_json.get("messages", False)
+    if unsorted_messages is False:
+        print_err(chat_response_json, end="", error=False, date=False)
+        print_err("chat response does not have messages")
+        return False
+
+    messages = sorted(unsorted_messages, key=lambda mex: mex["time"])
+
+    current_fingerprint = robot_get_current_fingerprint(robot_dir)
+    if current_fingerprint is False:
+        print_err("current key fingerprint is not present")
+        return False
+
+    peer_fingerprint = robot_get_peer_fingerprint(robot_dir, error_print=False)
+    if peer_fingerprint is False:
+        print_err("peer key fingerprint is not present")
+        return False
+
+    decrypted_messages = []
+
+    for message in messages:
+        message_enc = string_from_multiline_format(message.get("message", False))
+        if message_enc is False:
+            print_err("getting encrypted message")
+            return False
+
+        message_time = message.get("time", False)
+        if message_time is False:
+            print_err("getting message time")
+            return False
+
+        message_nick = message.get("nick", False)
+        if message_nick is False:
+            print_err("getting message nick")
+            return False
+
+        message_date = date_convert_time_zone_and_format_string(message_time)
+
+        signature_error = None
+        if re.match('^#', message_enc) is not None:
+            status_char = "N"
+            message_print = message_enc
+        elif token is not False:
+            if message_nick == robot_name:
+                signature_fingerprint = current_fingerprint
+            else:
+                signature_fingerprint = peer_fingerprint
+            decrypted_message, signature_error = gpg_decrypt_check_message(
+                message_enc, signature_fingerprint, passphrase=token, error_print=False
+            )
+            if decrypted_message is not False:
+                message_print = decrypted_message
+            else:
+                message_print = "error decrypting message"
+            if signature_error is None:
+                status_char = "E"
+            else:
+                status_char = "X"
+        else:
+            print_err("token is False")
+            return False
+
+        message_dic = message_get(
+            message_date, message_nick, message_print, status_char, signature_error
+        )
+        if message_dic is False:
+            return False
+
+        decrypted_messages.append(message_dic)
+
+    decrypted_messages_file = robot_dir + "/messages-decrypted"
+    if not file_json_write(decrypted_messages_file, decrypted_messages):
+        return False
+
+    return decrypted_messages
+
+
 def robot_requests_chat(robot_dic):
-    multi_false = False, False
+    multi_false = False, False, False
 
     robot_name, _, robot_dir, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
@@ -66,7 +146,11 @@ def robot_requests_chat(robot_dic):
     ) is False:
         return multi_false
 
-    return chat_response, chat_response_json
+    decrypted_messages = messages_from_chat_response(robot_dic, chat_response_json)
+    if decrypted_messages is False:
+        return multi_false
+
+    return chat_response, chat_response_json, decrypted_messages
 
 
 def message_get(message_date, message_nick, message_print, status_char, signature_error):
@@ -95,91 +179,16 @@ def chat_print_single_message(message_dic):
     return True
 
 
-def chat_print_encrypted_messages(robot_dic, chat_response_json):
-    robot_name, _, robot_dir, token, _, _, _ = robot_var_from_dic(robot_dic)
-
-    unsorted_messages = chat_response_json.get("messages", False)
-    if unsorted_messages is False:
-        print_err(chat_response_json, end="", error=False, date=False)
-        print_err("chat response does not have messages")
-        return False
-
-    messages = sorted(unsorted_messages, key=lambda mex: mex["time"])
-
-    current_fingerprint = robot_get_current_fingerprint(robot_dir)
-    if current_fingerprint is False:
-        print_err("current key fingerprint is not present")
-        return False
-
-    peer_fingerprint = robot_get_peer_fingerprint(robot_dir, error_print=False)
-    if peer_fingerprint is False:
-        print_err("peer key fingerprint is not present")
-        return False
-
-    decrypted_messages = []
-
+def decrypted_messages_print(decrypted_messages):
     first_message = True
-    for message in messages:
-        message_enc = string_from_multiline_format(message.get("message", False))
-        if message_enc is False:
-            print_err("getting encrypted message")
-            return False
-
-        message_time = message.get("time", False)
-        if message_time is False:
-            print_err("getting message time")
-            return False
-
-        message_nick = message.get("nick", False)
-        if message_nick is False:
-            print_err("getting message nick")
-            return False
-
-        message_date = date_convert_time_zone_and_format_string(message_time)
-
-        signature_error = None
-        if re.match('^#', message_enc) is not None:
-            status_char = "N"
-            message_print = message_enc
-        elif token is not False:
-            if message_nick == robot_name:
-                signature_fingerprint = current_fingerprint
-            else:
-                signature_fingerprint = peer_fingerprint
-            decrypted_message, signature_error = gpg_decrypt_check_message(
-                message_enc, signature_fingerprint, passphrase=token, error_print=False
-            )
-            if decrypted_message is not False:
-                message_print = decrypted_message
-            else:
-                message_print = "error decrypting message"
-            if signature_error is None:
-                status_char = "E"
-            else:
-                status_char = "X"
-        else:
-            print_err("token is False")
-            return False
-
+    for message_dic in decrypted_messages:
         if first_message:
             first_message = False
         else:
             print_out("\n", end="")
 
-        message_dic = message_get(
-            message_date, message_nick, message_print, status_char, signature_error
-        )
-        if message_dic is False:
-            return False
-
         if chat_print_single_message(message_dic) is False:
             return False
-
-        decrypted_messages.append(message_dic)
-
-    decrypted_messages_file = robot_dir + "/messages-decrypted"
-    if not file_json_write(decrypted_messages_file, decrypted_messages):
-        return False
 
     return True
 
@@ -203,7 +212,7 @@ def robot_send_chat_message(robot_dic, message):
         peer_fingerprint = robot_get_peer_fingerprint(robot_dir, error_print=False)
         if peer_fingerprint is False:
             print_out("peer gpg key not yet present, searching it")
-            chat_response, _ = robot_requests_chat(robot_dic)
+            chat_response, _, _ = robot_requests_chat(robot_dic)
             if chat_response is False:
                 return False
             peer_fingerprint = robot_get_peer_fingerprint(robot_dir)

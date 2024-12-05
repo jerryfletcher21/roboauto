@@ -324,6 +324,13 @@ def robot_handle_pending(robot_dic):
     if \
         old_order_dic is False or old_order_dic is None or \
         status_id != old_order_dic["order_info"]["status"]:
+        old_status_string = "?"
+        if old_order_dic is not False and old_order_dic is not None:
+            old_status_string = get_order_string(old_order_dic["order_info"]["status"])
+        print_out(
+            f"{robot_name} {robot_coordinator} {order_id} changed from "
+            f"{old_status_string} to {get_order_string(status_id)}"
+        )
         if not order_save_order_file(robot_dir, order_id, order_dic):
             return False
 
@@ -389,8 +396,8 @@ def robot_handle_pending(robot_dic):
 
         if order_is_in_chat(status_id):
             if pending_robot_should_save_chat(current_timestamp):
-                chat_response, chat_response_json = robot_requests_chat(robot_dic)
-                if chat_response is False or chat_response_json is False:
+                chat_response, _, _ = robot_requests_chat(robot_dic)
+                if chat_response is False:
                     return False
                 robot_name = robot_dic["name"]
                 expires_at = order_response_json["expires_at"]

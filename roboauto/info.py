@@ -17,7 +17,7 @@ from roboauto.order_local import \
     order_dic_print
 from roboauto.order import order_requests_order_dic
 from roboauto.chat import \
-    robot_requests_chat, chat_print_encrypted_messages, chat_print_single_message
+    robot_requests_chat, decrypted_messages_print, messages_from_chat_response
 from roboauto.requests_api import \
     response_is_error, requests_api_info, \
     requests_api_historical, requests_api_limits, \
@@ -273,11 +273,11 @@ def robot_chat(argv):
     robot_dir = robot_dic["dir"]
 
     if from_local is False:
-        chat_response, chat_response_json = robot_requests_chat(robot_dic)
+        chat_response, chat_response_json, decrypted_messages = robot_requests_chat(robot_dic)
         if chat_response is False:
             return False
 
-        if not chat_print_encrypted_messages(robot_dic, chat_response_json):
+        if not decrypted_messages_print(decrypted_messages):
             return False
     else:
         decrypted_messages_file = robot_dir + "/messages-decrypted"
@@ -287,25 +287,19 @@ def robot_chat(argv):
             decrypted_messages = file_json_read(decrypted_messages_file)
             if decrypted_messages is False:
                 return False
-
-            first_message = True
-            for message_dic in decrypted_messages:
-                if first_message:
-                    first_message = False
-                else:
-                    print_out("\n", end="")
-
-                if chat_print_single_message(message_dic) is False:
-                    return False
         elif os.path.isfile(chat_response_file):
             chat_response_json = file_json_read(chat_response_file)
             if chat_response_json is False:
                 return False
 
-            if not chat_print_encrypted_messages(robot_dic, chat_response_json):
+            decrypted_messages = messages_from_chat_response(robot_dic, chat_response_json)
+            if decrypted_messages is False:
                 return False
         else:
             print_err("there are no local messages")
+            return False
+
+        if decrypted_messages_print(decrypted_messages) is False:
             return False
 
     return True
