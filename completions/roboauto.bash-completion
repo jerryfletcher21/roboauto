@@ -563,7 +563,9 @@ $robots"
             if [ "${cword}" -eq 2 ]; then
                 OPTS="--local"
             fi
-            if [ "${cword}" -eq 2 ] || [ "${cword}" -eq 3 ]; then
+            if [ "${cword}" -eq 2 ] || {
+                [ "$cword" -eq 3 ] && [ "$prev" = "--local" ]
+            }; then
                 OPTS="$OPTS
 $(___roboauto_get_robots "$pending_home")"
             fi
@@ -891,7 +893,7 @@ $(___roboauto_get_robots "$pending_home")"
         # shellcheck disable=SC2207
         COMPREPLY=($(
             printf "%s\n" "$OPTS" |
-            awk -v IGNORECASE=1 -v p="$cur" 'p==substr($0,0,length(p))'
+            awk -v p="$cur" 'tolower(p) == tolower(substr($0, 0, length(p)))'
         ))
         IFS="$ifs_original"
 
