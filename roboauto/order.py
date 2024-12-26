@@ -607,27 +607,27 @@ def order_user_from_argv(argv, with_default=False, only_set=False):
         if order_user is False:
             print_err(f"{robot_name} does not have order user")
             return False
-    else:
-        while len(argv) > 0:
-            param = argv[0]
-            argv = argv[1:]
-            key_value = param.split("=", 1)
-            if len(key_value) != 2:
-                print_err("parameter %s is not key=value" % param)
-                return False
-            key, value = key_value
-            if key in order_user:
-                if order_user[key] is False:
-                    order_user[key] = value
-                else:
-                    if key != "payment_method":
-                        print_err(f"{key} can not be set multiple times")
-                        return False
-                    else:
-                        order_user[key] += " " + value
+
+    while len(argv) > 0:
+        param = argv[0]
+        argv = argv[1:]
+        key_value = param.split("=", 1)
+        if len(key_value) != 2:
+            print_err("parameter %s is not key=value" % param)
+            return False
+        key, value = key_value
+        if key in order_user:
+            if order_user[key] is False:
+                order_user[key] = value
             else:
-                print_err("%s is not a valid key" % key)
-                return False
+                if key != "payment_method":
+                    print_err(f"{key} can not be set multiple times")
+                    return False
+                else:
+                    order_user[key] += " " + value
+        else:
+            print_err("%s is not a valid key" % key)
+            return False
 
     if only_set is False:
         return order_user
@@ -800,9 +800,8 @@ def recreate_order(argv):
     if use_node:
         print_out(f"{robot_name} order recreated successfully")
 
-    if should_cancel is False:
-        if not robot_change_dir(robot_name, "active"):
-            return False
+    if not robot_change_dir(robot_name, "active", error_is_already=not should_cancel):
+        return False
 
     return True
 

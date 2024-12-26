@@ -40,7 +40,7 @@ fi
 # shellcheck disable=SC2086
 pylint \
     -s n \
-    -d R0911,R0912,R0913,R0914,R0915,R0916,R1705 \
+    -d R0911,R0912,R0913,R0914,R0915,R0916,R0917,R1705 \
     $python_scripts
 
 ## check sh scripts

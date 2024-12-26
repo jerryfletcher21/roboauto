@@ -70,13 +70,10 @@ list-price --{coordinator-name}
 list-ticks --{coordinator-name} [start-date] [end-date]
 list-hours [--relative]
 list-offers [--until-success|--local] --{coordinators}|--all [--sell|--buy] [currency] [search]
-create-order [--no-bond|--no-node] [--no-active] robot-name key=value...
-create-order [--no-bond|--no-node] [--no-active] robot-name --from-robot robot-name
+create-order [--no-bond|--no-node] [--no-active] robot-name [--from-robot robot-name] key=value...
 cancel-order robot-name
-recreate-order [--no-bond|--no-node] [--no-cancel] robot-name key=value...
-recreate-order [--no-bond|--no-node] [--no-cancel] robot-name --from-robot robot-name
-change-order-expire [--print, --remove] robot-name key=value...
-change-order-expire [--print, --remove] robot-name --from-robot robot-name
+recreate-order [--no-bond|--no-node] [--no-cancel] robot-name [--from-robot robot-name] key=value...
+change-order-expire [--print, --remove] robot-name [--from-robot robot-name] key=value...
 take-order [--fully|--no-node] robot-name order-id [take-amount]
 pause-toggle robot-name
 escrow-pay [--no-node] robot-name
@@ -226,8 +223,7 @@ list-offers [--until-success|--local] --{coordinators}|--all [--sell|--buy] [cur
     otherwise offers from that book will not be shown
     if --local get book responses from disk
 
-create-order [--no-bond|--no-node] [--no-active] robot-name key=value...
-create-order [--no-bond|--no-node] [--no-active] robot-name --from-robot robot-name
+create-order [--no-bond|--no-node] [--no-active] robot-name [--from-robot robot-name] key=value...
     create a new order
     if --no-bond create order but do not bond
     if --no-active do not set the robot to the active directory
@@ -236,15 +232,14 @@ create-order [--no-bond|--no-node] [--no-active] robot-name --from-robot robot-n
     payment_method can be provided multiple times
     if public_duration, escrow_duration and bond_size are not specified,
     default values from config.ini will be used
-    instead of key=value.. --from-robot robot-name can be provided
+    if --from-robot robot-name is provided, start from robot-name order-data
     if --no-node print the invoice instead of paying it with the
     lightning node
 
 cancel-order robot-name
     cancel robot order just if order is public or paused
 
-recreate-order [--no-bond|--no-node] [--no-cancel] robot-name key=value...
-recreate-order [--no-bond|--no-node] [--no-cancel] robot-name --from-robot robot-name
+recreate-order [--no-bond|--no-node] [--no-cancel] robot-name [--from-robot robot-name] key=value...
     recreate robot order just if order is public or paused
     if --no-bond create order but do not bond
     if --no-cancel do not cancel the order, recreate is from
@@ -255,7 +250,7 @@ recreate-order [--no-bond|--no-node] [--no-cancel] robot-name --from-robot robot
     if --no-node print the invoice instead of paying it with the
     lightning node
 
-change-order-expire [--print, --remove] robot-name [key=value... | --from-robot robot-name]
+change-order-expire [--print, --remove] robot-name [--from-robot robot-name] key=value...
     change an order next time it is recreated after if has expired
     while running keep-online
     the list of key=value... and --from-robot are the same as for create-order

@@ -625,51 +625,37 @@ $currencies_list"
             fi
         ;;
         create-order)
-            if [ "${cword}" -eq 2 ]; then
-                OPTS="
---no-bond
---no-node
---no-active"
+            local words_after_options
+            words_after_options="0"
+            if new_options="$(
+                ___multiple_options_handle "2" \
+"--no-bond --no-node
+--no-active" \
+                    "${words[@]}"
+            )"; then
+                OPTS="$new_options"
+            else
+                words_after_options="$new_options"
             fi
-            if [ "${cword}" -eq 3 ]; then
-                if [ "$prev" = "--no-bond" ] || [ "$prev" = "--no-node" ]; then
-                    OPTS="--no-active"
-                elif [ "$prev" = "--no-active" ]; then
-                    OPTS="--no-bond
---no-node"
-                fi
-            fi
-            if \
-                [ "${cword}" -eq 2 ] || {
-                    { [ "${cword}" -eq 3 ] || [ "${cword}" -eq 4 ]; } && {
-                        [ "$prev" = "--no-bond" ] ||
-                        [ "$prev" = "--no-node" ] ||
-                        [ "$prev" = "--no-active" ]
-                    }
-                }
-            then
+
+            if [ "$words_after_options" -eq 0 ]; then
                 OPTS="$OPTS
 $(___roboauto_get_robots "$paused_home")"
-            elif [ "$advanced_completion" = true ]; then
-                case "$cur" in
-                *=*) ;;
-                *)
-                    case "$prev" in
-                    --from-robot)
-                        OPTS="$(
-                            ___roboauto_get_robots \
-                                "$active_home" "$pending_home" \
-                                "$inactive_home" "$paused_home"
-                        )"
-                    ;;
-                    *=*) ;;
-                    *)
+            else
+                if [ "$words_after_options" -eq 2 ] && [ "$prev" = "--from-robot" ]; then
+                    OPTS="$(
+                        ___roboauto_get_robots \
+                            "$active_home" "$pending_home" \
+                            "$inactive_home" "$paused_home"
+                    )"
+                else
+                    if [ "$words_after_options" -eq 1 ]; then
                         OPTS="--from-robot"
-                    ;;
-                    esac
-                    ;;
-                esac
-                ___roboauto_complete_order_fields
+                    fi
+                    if [ "$advanced_completion" = true ]; then
+                        ___roboauto_complete_order_fields
+                    fi
+                fi
             fi
         ;;
         cancel-order)
@@ -678,38 +664,29 @@ $(___roboauto_get_robots "$paused_home")"
             fi
         ;;
         recreate-order)
-            if [ "${cword}" -eq 2 ]; then
-                OPTS="
---no-cancel
---no-node
---no-bond"
+            local words_after_options
+            words_after_options="0"
+            if new_options="$(
+                ___multiple_options_handle "2" \
+"--no-bond --no-node
+--no-cancel" \
+                    "${words[@]}"
+            )"; then
+                OPTS="$new_options"
+            else
+                words_after_options="$new_options"
             fi
-            if [ "${cword}" -eq 3 ]; then
-                if [ "$prev" = "--no-bond" ] || [ "$prev" = "--no-node" ]; then
-                    OPTS="--no-cancel"
-                elif [ "$prev" = "--no-cancel" ]; then
-                    OPTS="--no-bond
---no-node"
-                fi
-            fi
-            local should_cancel=true
-            for word in "${words[@]}"; do
-                case "$word" in
-                --no-cancel)
-                    should_cancel=false
-                    break
-                ;;
-                esac
-            done
-            if \
-                [ "${cword}" -eq 2 ] || {
-                    { [ "${cword}" -eq 3 ] || [ "${cword}" -eq 4 ]; } && {
-                        [ "$prev" = "--no-bond" ] ||
-                        [ "$prev" = "--no-node" ] ||
-                        [ "$prev" = "--no-cancel" ]
-                    }
-                }
-            then
+
+            if [ "$words_after_options" -eq 0 ]; then
+                local should_cancel=true
+                for word in "${words[@]}"; do
+                    case "$word" in
+                    --no-cancel)
+                        should_cancel=false
+                        break
+                    ;;
+                    esac
+                done
                 local robots
                 if [ "$should_cancel" = true ]; then
                     robots="$(___roboauto_get_robots "$active_home")"
@@ -718,72 +695,54 @@ $(___roboauto_get_robots "$paused_home")"
                 fi
                 OPTS="$OPTS
 $robots"
-            elif [ "$advanced_completion" = true ]; then
-                case "$cur" in
-                *=*) ;;
-                *)
-                    case "$prev" in
-                    --from-robot)
-                        OPTS="$(
-                            ___roboauto_get_robots \
-                                "$active_home" "$pending_home" \
-                                "$inactive_home" "$paused_home"
-                        )"
-                    ;;
-                    *=*) ;;
-                    *)
+            else
+                if [ "$words_after_options" -eq 2 ] && [ "$prev" = "--from-robot" ]; then
+                    OPTS="$(
+                        ___roboauto_get_robots \
+                            "$active_home" "$pending_home" \
+                            "$inactive_home" "$paused_home"
+                    )"
+                else
+                    if [ "$words_after_options" -eq 1 ]; then
                         OPTS="--from-robot"
-                    ;;
-                    esac
-                    ;;
-                esac
-                ___roboauto_complete_order_fields
+                    fi
+                    if [ "$advanced_completion" = true ]; then
+                        ___roboauto_complete_order_fields
+                    fi
+                fi
             fi
         ;;
         change-order-expire)
-            if [ "${cword}" -eq 2 ]; then
-                OPTS="
---print
---remove"
+            local words_after_options
+            words_after_options="0"
+            if new_options="$(
+                ___multiple_options_handle "2" \
+"--print
+--remove" \
+                    "${words[@]}"
+            )"; then
+                OPTS="$new_options"
+            else
+                words_after_options="$new_options"
             fi
-            if \
-                [ "${cword}" -eq 2 ] || {
-                    [ "${cword}" -eq 3 ] && \
-                    { [ "$prev" = "--print" ] || [ "$prev" = "--remove" ]; }
-                }
-            then
+
+            if [ "$words_after_options" -eq 0 ]; then
                 OPTS="$OPTS
 $(___roboauto_get_robots "$active_home")"
-            elif [ "$advanced_completion" = true ]; then
-                local should_complete=true
-                for word in "${words[@]}"; do
-                    case "$word" in
-                    --print|--remove)
-                        should_complete=false
-                        break
-                    ;;
-                    esac
-                done
-                if [ "$should_complete" = true ]; then
-                    case "$cur" in
-                    *=*) ;;
-                    *)
-                        case "$prev" in
-                        --from-robot)
-                            OPTS="$(
-                                ___roboauto_get_robots \
-                                    "$active_home" "$pending_home" \
-                                    "$inactive_home" "$paused_home"
-                            )"
-                        ;;
-                        *=*) ;;
-                        *)
-                            OPTS="--from-robot"
-                        ;;
-                        esac
-                        ;;
-                    esac
-                    ___roboauto_complete_order_fields
+            else
+                if [ "$words_after_options" -eq 2 ] && [ "$prev" = "--from-robot" ]; then
+                    OPTS="$(
+                        ___roboauto_get_robots \
+                            "$active_home" "$pending_home" \
+                            "$inactive_home" "$paused_home"
+                    )"
+                else
+                    if [ "$words_after_options" -eq 1 ]; then
+                        OPTS="--from-robot"
+                    fi
+                    if [ "$advanced_completion" = true ]; then
+                        ___roboauto_complete_order_fields
+                    fi
                 fi
             fi
         ;;
