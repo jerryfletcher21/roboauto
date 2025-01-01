@@ -57,6 +57,7 @@ roboauto_state = {
     "log_home": "",
     "waiting_queue_file": "",
     "config_file": "",
+    "config_file_hash": None,
     "message_notification_command": "",
     "lightning_node_command": "",
 }

@@ -193,94 +193,137 @@ def update_federation_option(name, new_value, print_info=False):
     return True
 
 
+def remove_federation_option(key, print_info=False):
+    old_value = roboauto_options["federation"][key]
+    del roboauto_options["federation"][key]
+    if print_info:
+        print_out(
+            "coordinator %s removed old url %s" %
+            (key, str(old_value))
+        )
+
+
+def get_file_hash(filename):
+    try:
+        with open(filename, 'rb') as file:
+            file_content = file.read()
+            return hashlib.sha256(file_content).hexdigest()
+    except FileNotFoundError:
+        return None
+
+
 def update_roboauto_options(print_info=False):
     # pylint: disable=R1702 too-many-nested-blocks
 
-    if os.path.isfile(roboauto_state["config_file"]):
-        parser = configparser.RawConfigParser()
-        parser.read(roboauto_state["config_file"])
+    if not os.path.isfile(roboauto_state["config_file"]):
+        if roboauto_state["config_file_hash"] is not None:
+            roboauto_state["config_file_hash"] = None
+            if print_info:
+                print_out("config file removed")
+        return True
+    else:
+        if roboauto_state["config_file_hash"] is None:
+            if print_info:
+                print_out("config file present")
 
-        general_section = "general"
-        federation_section = "federation"
+    new_config_file_hash = get_file_hash(roboauto_state["config_file"])
+    if new_config_file_hash != roboauto_state["config_file_hash"]:
+        roboauto_state["config_file_hash"] = new_config_file_hash
+    else:
+        return True
 
-        for section in list(parser):
-            if section not in (
-                "DEFAULT", general_section, federation_section
-            ):
-                print_err(f"section {section} not recognized")
+    parser = configparser.RawConfigParser()
+    parser.read(roboauto_state["config_file"])
+
+    general_section = "general"
+    federation_section = "federation"
+
+    for section in list(parser):
+        if section not in (
+            "DEFAULT", general_section, federation_section
+        ):
+            print_err(f"section {section} not recognized")
+            return False
+
+    if parser.has_section(general_section):
+        for option in parser.options(general_section):
+            if option not in roboauto_options:
+                print_err(f"option {option} not recognied")
+                return False
+            elif isinstance(roboauto_options[option], dict):
+                print_err(f"{option} is a section not an option")
                 return False
 
-        if parser.has_section(general_section):
-            for option in parser.options(general_section):
-                if option not in roboauto_options:
-                    print_err(f"option {option} not recognied")
-                    return False
-                elif isinstance(roboauto_options[option], dict):
-                    print_err(f"{option} is a section not an option")
-                    return False
-
-            for option in (
-                "user_agent", "date_format"
-            ):
-                if parser.has_option(general_section, option):
-                    new_value = parser.get(general_section, option).strip("'\"")
-                    update_single_option(option, new_value, print_info=print_info)
-
-            option = "create_new_after_maximum_orders"
+        for option in (
+            "user_agent", "date_format"
+        ):
             if parser.has_option(general_section, option):
-                new_value = parser.getboolean(general_section, option)
+                new_value = parser.get(general_section, option).strip("'\"")
                 update_single_option(option, new_value, print_info=print_info)
 
-            for option in (
-                "seconds_pending_order", "order_maximum", "robot_maximum_orders",
-                "tab_size", "routing_budget_ppm", "requests_timeout", "orders_timeout",
-                "active_interval", "pending_interval", "pay_interval", "error_interval",
-                "default_duration", "default_escrow"
-            ):
-                if parser.has_option(general_section, option):
-                    try:
-                        new_value = parser.getint(general_section, option)
-                    except (ValueError, TypeError):
-                        print_err("reading %s" % option)
-                        return False
+        option = "create_new_after_maximum_orders"
+        if parser.has_option(general_section, option):
+            new_value = parser.getboolean(general_section, option)
+            update_single_option(option, new_value, print_info=print_info)
 
-                    if option == "seconds_pending_order":
-                        seconds_min_value = 300
-                        if \
-                            new_value != 0 and \
-                            (-1 * seconds_min_value) < new_value < seconds_min_value:
-                            print_err(
-                                f"{option} if not 0, absolute value can "
-                                f"not be less than {seconds_min_value}"
-                            )
-                            return False
-                    elif new_value < 0:
-                        print_err(f"{option} can not be negative")
-                        return False
-
-                    update_single_option(option, new_value, print_info=print_info)
-
-            for option in (
-                "default_bond_size"
-            ):
-                if parser.has_option(general_section, option):
-                    try:
-                        new_value = parser.getfloat(general_section, option)
-                    except (ValueError, TypeError):
-                        print_err("reading %s" % option)
-                        return False
-
-                    if new_value < 0:
-                        print_err(f"{option} can not be negative")
-                        return False
-
-                    update_single_option(option, new_value, print_info=print_info)
-
-        if parser.has_section(federation_section):
-            for key in parser.options(federation_section):
-                value = parser.get(federation_section, key).strip("'\"")
-                if update_federation_option(key, value, print_info=print_info) is False:
+        for option in (
+            "seconds_pending_order", "order_maximum", "robot_maximum_orders",
+            "tab_size", "routing_budget_ppm", "requests_timeout", "orders_timeout",
+            "active_interval", "pending_interval", "pay_interval", "error_interval",
+            "default_duration", "default_escrow"
+        ):
+            if parser.has_option(general_section, option):
+                try:
+                    new_value = parser.getint(general_section, option)
+                except (ValueError, TypeError):
+                    print_err("reading %s" % option)
                     return False
+
+                if option == "seconds_pending_order":
+                    seconds_min_value = 300
+                    if \
+                        new_value != 0 and \
+                        (-1 * seconds_min_value) < new_value < seconds_min_value:
+                        print_err(
+                            f"{option} if not 0, absolute value can "
+                            f"not be less than {seconds_min_value}"
+                        )
+                        return False
+                elif new_value < 0:
+                    print_err(f"{option} can not be negative")
+                    return False
+
+                update_single_option(option, new_value, print_info=print_info)
+
+        for option in (
+            "default_bond_size"
+        ):
+            if parser.has_option(general_section, option):
+                try:
+                    new_value = parser.getfloat(general_section, option)
+                except (ValueError, TypeError):
+                    print_err("reading %s" % option)
+                    return False
+
+                if new_value < 0:
+                    print_err(f"{option} can not be negative")
+                    return False
+
+                update_single_option(option, new_value, print_info=print_info)
+
+    federation_section_options = []
+    if parser.has_section(federation_section):
+        federation_section_options = parser.options(federation_section)
+
+    for key in federation_section_options:
+        value = parser.get(federation_section, key).strip("'\"")
+        if update_federation_option(key, value, print_info=print_info) is False:
+            return False
+
+    for key in list(roboauto_options["federation"]):
+        if key not in federation_section_options:
+            if remove_federation_option(key, print_info=print_info) is False:
+                return False
 
     return True
 

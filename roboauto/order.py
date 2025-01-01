@@ -94,7 +94,7 @@ def amount_correct_format(amount, is_fiat):
         return "null"
 
     if is_fiat is True:
-        amount_format = "%.0f"
+        amount_format = "%.2f"
     else:
         amount_format = "%.8f"
 
