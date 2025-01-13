@@ -80,7 +80,7 @@ def order_take_argv(argv):
     if len(argv) >= 1:
         take_amount = argv[0]
         argv = argv[1:]
-        if get_uint(take_amount) is False:
+        if is_float(take_amount, additional_check="positive") is False:
             return False
     else:
         take_amount = None

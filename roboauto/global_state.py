@@ -10,6 +10,7 @@ roboauto_options = {
     "order_maximum": 2,
     "robot_maximum_orders": 0,
     "create_new_after_maximum_orders": False,
+    "log_level_waiting_for_taker_bond": 0,
     "tab_size": 4,
     "routing_budget_ppm": 1000,
     "requests_timeout": 120,

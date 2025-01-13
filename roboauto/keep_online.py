@@ -164,6 +164,18 @@ def robot_handle_active(robot_dic, all_dic):
                 robot_name, status_id, order_id, order_info["order_description"]
             ):
                 return False
+    elif order_is_waiting_taker_bond(status_id):
+        status_string = order_info["status_string"]
+
+        print_out(
+            f"{robot_name} {robot_coordinator} {order_id} {status_string}",
+            level=roboauto_options["log_level_waiting_for_taker_bond"]
+        )
+
+        print_out(
+            robot_name + " " + order_id + " is in the process of being taken",
+            level=roboauto_options["log_level_waiting_for_taker_bond"]
+        )
     else:
         if order_is_public(status_id):
             return True
@@ -181,8 +193,6 @@ def robot_handle_active(robot_dic, all_dic):
             if not robot_change_dir(robot_name, "paused"):
                 print_err("moving " + robot_name + " to paused")
                 return False
-        elif order_is_waiting_taker_bond(status_id):
-            print_out(robot_name + " " + order_id + " is in the process of being taken")
         elif order_is_waiting_maker_bond(status_id):
             if count_active_orders_this_hour(all_dic) < roboauto_options["order_maximum"]:
                 if bond_order(robot_dic, order_id) is False:

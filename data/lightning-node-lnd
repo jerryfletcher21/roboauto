@@ -105,7 +105,7 @@ lightning_invoice() {
     fi
     if ! invoice="$(
         printf "%s\n" "$invoice_output" |
-        jq -e -r '.pay_req'
+        jq -e -r '.payment_request // .pay_req'
     )"; then
         echo "error: invoice not present" >&2
         return 1

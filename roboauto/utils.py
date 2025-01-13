@@ -268,8 +268,9 @@ def update_roboauto_options(print_info=False):
 
         for option in (
             "seconds_pending_order", "order_maximum", "robot_maximum_orders",
-            "tab_size", "routing_budget_ppm", "requests_timeout", "orders_timeout",
-            "active_interval", "pending_interval", "pay_interval", "error_interval",
+            "log_level_waiting_for_taker_bond", "tab_size", "routing_budget_ppm",
+            "requests_timeout", "orders_timeout", "active_interval",
+            "pending_interval", "pay_interval", "error_interval",
             "default_duration", "default_escrow"
         ):
             if parser.has_option(general_section, option):

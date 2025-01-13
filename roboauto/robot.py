@@ -38,7 +38,7 @@ def robot_get_dir_dic():
     }
 
 
-def robot_get_dic(robot_name, robot_state, robot_dir, token, coordinator):
+def robot_get_dic(robot_name, robot_state, robot_dir, token, coordinator, check_coordinator=True):
     if robot_get_dir_dic()[robot_state] + "/" + robot_name != robot_dir:
         print_err(f"{robot_name} wrong state and directory")
         return False
@@ -47,8 +47,9 @@ def robot_get_dic(robot_name, robot_state, robot_dir, token, coordinator):
         print_err(f"{robot_name} directory not present")
         return False
 
-    if roboauto_get_coordinator_url(coordinator) is False:
-        return False
+    if check_coordinator:
+        if roboauto_get_coordinator_url(coordinator) is False:
+            return False
 
     return {
         "name": robot_name,
@@ -70,7 +71,7 @@ def robot_var_from_dic(robot_dic):
         roboauto_get_coordinator_url(robot_dic["coordinator"])
 
 
-def robot_load_from_name(robot_name, error_print=True):
+def robot_load_from_name(robot_name, check_coordinator=True, error_print=True):
     possible_state_base_dir = robot_get_dir_dic()
     found = False
     robot_dir = ""
@@ -113,7 +114,10 @@ def robot_load_from_name(robot_name, error_print=True):
                 print_war(f"{robot_name} reading coordinator, using default")
             coordinator = roboauto_first_coordinator()
 
-    return robot_get_dic(robot_name, robot_state, robot_dir, token, coordinator)
+    return robot_get_dic(
+        robot_name, robot_state, robot_dir, token, coordinator,
+        check_coordinator=check_coordinator
+    )
 
 
 def robot_save_to_disk_and_get_dic(robot_name, robot_state, robot_dir, token, coordinator):

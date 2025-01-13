@@ -243,7 +243,7 @@ def robot_print_dir_argv(robot_state, argv):
         if print_action is None:
             print_out(robot_name)
         else:
-            robot_dic = robot_load_from_name(robot_name)
+            robot_dic = robot_load_from_name(robot_name, check_coordinator=False)
             if robot_dic is False:
                 return False
 
