@@ -31,7 +31,9 @@ def requests_tor_response(
     url: str, user, timeout, headers, data, error_print=True
 ) -> requests.Response | bool | None:
     if not url.startswith("http://127.0.0.1"):
-        tor_socks = user + ":" + user + "@" + "127.0.0.1:9050"
+        tor_socks = \
+            user + ":" + user + "@" + \
+            roboauto_options["tor_host"] + ":" + str(roboauto_options["tor_port"])
         proxies = {
             "http": "socks5h://" + tor_socks,
             "https": "socks5h://" + tor_socks

@@ -6,6 +6,8 @@
 roboauto_options = {
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Firefox/115.0",
     "date_format": "%Y/%m/%d %H:%M:%S",
+    "tor_host": "127.0.0.1",
+    "tor_port": 9050,
     "seconds_pending_order": 0,
     "order_maximum": 2,
     "robot_maximum_orders": 0,

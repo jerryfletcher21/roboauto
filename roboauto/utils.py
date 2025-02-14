@@ -255,7 +255,7 @@ def update_roboauto_options(print_info=False):
                 return False
 
         for option in (
-            "user_agent", "date_format"
+            "user_agent", "date_format", "tor_host"
         ):
             if parser.has_option(general_section, option):
                 new_value = parser.get(general_section, option).strip("'\"")
@@ -267,7 +267,7 @@ def update_roboauto_options(print_info=False):
             update_single_option(option, new_value, print_info=print_info)
 
         for option in (
-            "seconds_pending_order", "order_maximum", "robot_maximum_orders",
+            "tor_port", "seconds_pending_order", "order_maximum", "robot_maximum_orders",
             "log_level_waiting_for_taker_bond", "tab_size", "routing_budget_ppm",
             "requests_timeout", "orders_timeout", "active_interval",
             "pending_interval", "pay_interval", "error_interval",
