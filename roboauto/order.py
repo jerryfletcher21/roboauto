@@ -67,22 +67,17 @@ def list_payment_methods(argv):
     return True
 
 
-def order_user_empty_get(with_default):
+def order_user_empty_get():
     empty_order = get_order_user(
         False, False, False, False, False,
         False, False, False, False
     )
 
-    if with_default:
-        empty_order["public_duration"] = str(roboauto_options["default_duration"])
-        empty_order["escrow_duration"] = str(roboauto_options["default_escrow"])
-        empty_order["bond_size"] = str(roboauto_options["default_bond_size"])
-
     return empty_order
 
 
 def list_order_fields():
-    empty_order_user = order_user_empty_get(False)
+    empty_order_user = order_user_empty_get()
     for item in empty_order_user:
         print_out(item)
 
@@ -585,7 +580,7 @@ def make_order(
 
 def order_user_from_argv(argv, with_default=False, only_set=False):
     """get order_user's fields from argv"""
-    order_user = order_user_empty_get(with_default)
+    order_user = order_user_empty_get()
 
     if len(argv) > 0 and argv[0] == "--from-robot":
         argv = argv[1:]
@@ -628,6 +623,17 @@ def order_user_from_argv(argv, with_default=False, only_set=False):
         else:
             print_err("%s is not a valid key" % key)
             return False
+
+    if with_default:
+        default_mapping = {
+            "public_duration": "default_duration",
+            "escrow_duration": "default_escrow",
+            "bond_size": "default_bond_size",
+        }
+
+        for key, value in default_mapping.items():
+            if key not in order_user or order_user[key] is False:
+                order_user[key] = str(roboauto_options[value])
 
     if only_set is False:
         return order_user
