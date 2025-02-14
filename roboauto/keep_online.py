@@ -21,7 +21,7 @@ from roboauto.order_data import  \
     order_is_pending, order_is_waiting_maker_bond, get_order_string, \
     order_is_waiting_taker_bond, order_is_expired, \
     order_is_finished_for_seller, order_is_waiting_seller_buyer, \
-    order_is_waiting_seller, order_is_waiting_buyer, order_is_in_chat, \
+    order_is_waiting_seller, order_is_waiting_buyer, \
     order_is_failed_routing, get_order_expiry_reason_string, \
     order_expired_is_not_taken, order_expired_is_maker_bond_not_locked
 from roboauto.order_local import \
@@ -41,6 +41,82 @@ from roboauto.utils import \
     update_roboauto_options, lock_file_name_get, \
     shuffle_dic, file_is_executable, arg_key_value_number, \
     bad_request_is_cancelled, bad_request_is_wrong_robot
+
+
+def robot_active_should_save_order_to_file(order_dic, old_order_dic):
+    if old_order_dic is False or old_order_dic is None:
+        return True
+
+    # do not save when is waiting taken bond because it will change expires_at
+    # and the robot will not appear to be online
+    if \
+        order_dic["order_info"]["status"] != old_order_dic["order_info"]["status"] and \
+        not order_is_waiting_taker_bond(order_dic["order_info"]["status"]):
+        return True
+
+    return False
+
+
+def robot_pending_should_save_order_to_file(order_dic, old_order_dic, robot_dic, order_id):
+    robot_name = robot_dic["name"]
+    robot_coordinator = robot_dic["coordinator"]
+
+    return_status = False
+
+    if old_order_dic is False or old_order_dic is None:
+        return_status = True
+        old_status_string = "?"
+    else:
+        old_status_string = get_order_string(old_order_dic["order_info"]["status"])
+
+        if order_dic["order_info"]["status"] != old_order_dic["order_info"]["status"]:
+            return_status = True
+
+    status_id = order_dic["order_info"]["status"]
+    if return_status is True:
+        print_out(
+            f"{robot_name} {robot_coordinator} {order_id} changed from "
+            f"{old_status_string} to {get_order_string(status_id)}"
+        )
+
+    for attribute in (
+        "pending_cancel", "asked_for_cancel",
+        "statement_submitted", "chat_last_index"
+    ):
+        try:
+            if old_order_dic is False or old_order_dic is None:
+                old_attribute = None
+                old_attribute_set = False
+            else:
+                old_attribute = old_order_dic["order_response_json"][attribute]
+                old_attribute_set = True
+        except KeyError:
+            old_attribute = None
+            old_attribute_set = False
+
+        try:
+            new_attribute = order_dic["order_response_json"][attribute]
+            new_attribute_set = True
+        except KeyError:
+            new_attribute = None
+            new_attribute_set = False
+
+        if old_attribute_set == new_attribute_set and old_attribute == new_attribute:
+            continue
+
+        if attribute == "chat_last_index" and new_attribute_set is False:
+            continue
+
+        return_status = True
+        if old_attribute not in (None, False, 0) or new_attribute not in (None, False, 0):
+            print_out(
+                f"{robot_name} {robot_coordinator} {order_id} changed {attribute} from "
+                f"{str(old_attribute)} to {str(new_attribute)}"
+            )
+        if attribute == "chat_last_index":
+            _, _, _ = robot_requests_chat(robot_dic)
+
+    return return_status
 
 
 def robot_handle_active_expired(robot_dic, all_dic, make_data, expiry_reason=None):
@@ -135,13 +211,7 @@ def robot_handle_active(robot_dic, all_dic):
 
     status_id = order_info["status"]
 
-    # do not save when is waiting taken bond because it will change expires_at
-    # and the robot will not appear to be online
-    if \
-        old_order_dic is False or old_order_dic is None or (
-            status_id != old_order_dic["order_info"]["status"] and
-            not order_is_waiting_taker_bond(status_id)
-        ):
+    if robot_active_should_save_order_to_file(order_dic, old_order_dic):
         if not order_save_order_file(robot_dir, order_id, order_dic):
             return False
 
@@ -277,17 +347,6 @@ def pending_robot_should_act(expires_timestamp, escrow_duration):
     return False
 
 
-def pending_robot_should_save_chat(expires_timestamp):
-    remaining_seconds = expires_timestamp - get_current_timestamp()
-    if remaining_seconds < 0:
-        return False
-
-    if remaining_seconds < roboauto_state["chat_save_before_dispute_seconds"]:
-        return True
-
-    return False
-
-
 def robot_handle_pending(robot_dic):
     robot_name = robot_dic["name"]
     robot_dir = robot_dic["dir"]
@@ -331,16 +390,7 @@ def robot_handle_pending(robot_dic):
 
     is_seller = order_response_json.get("is_seller", False)
 
-    if \
-        old_order_dic is False or old_order_dic is None or \
-        status_id != old_order_dic["order_info"]["status"]:
-        old_status_string = "?"
-        if old_order_dic is not False and old_order_dic is not None:
-            old_status_string = get_order_string(old_order_dic["order_info"]["status"])
-        print_out(
-            f"{robot_name} {robot_coordinator} {order_id} changed from "
-            f"{old_status_string} to {get_order_string(status_id)}"
-        )
+    if robot_pending_should_save_order_to_file(order_dic, old_order_dic, robot_dic, order_id):
         if not order_save_order_file(robot_dir, order_id, order_dic):
             return False
 
@@ -403,17 +453,6 @@ def robot_handle_pending(robot_dic):
                             f"expires at {date_short_expire}, sending invoice"
                         )
                         return order_buyer_update_invoice(robot_dic, (None, None))
-
-        if order_is_in_chat(status_id):
-            if pending_robot_should_save_chat(current_timestamp):
-                chat_response, _, _ = robot_requests_chat(robot_dic)
-                if chat_response is False:
-                    return False
-                robot_name = robot_dic["name"]
-                expires_at = order_response_json["expires_at"]
-                expires_data = date_convert_time_zone_and_format_string(expires_at)
-                print_out(f"{robot_name} expire at {expires_data} chat saved on disk")
-                return True
     else:
         status_string = order_info["status_string"]
         print_out(f"{robot_name} {robot_coordinator} {order_id} {status_string}")

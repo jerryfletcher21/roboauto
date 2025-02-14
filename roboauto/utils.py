@@ -412,6 +412,15 @@ def state_set_command_type(command_type):
     roboauto_state["current_command_type"] = command_type
 
 
+def bool_none_to_int_string(bool_none):
+    if bool_none is True:
+        return "1"
+    elif bool_none is False:
+        return "0"
+    else:
+        return "-"
+
+
 def get_int(string_number):
     try:
         number = int(string_number)

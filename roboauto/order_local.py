@@ -15,8 +15,8 @@ from roboauto.date_utils import \
     date_convert_time_zone_and_format_string, \
     get_current_timestamp, get_hour_offer, get_current_hour_from_timestamp
 from roboauto.utils import \
-    json_dumps, file_json_read, is_float, get_int, file_remove, \
-    dir_make_sure_exists, file_json_write, directory_get_file_numbers
+    json_dumps, file_json_read, is_float, get_int, bool_none_to_int_string, \
+    dir_make_sure_exists, file_json_write, directory_get_file_numbers, file_remove
 from roboauto.subprocess_commands import message_notification_send
 from roboauto.order_data import \
     get_currency_string, order_is_pending, get_type_string, \
@@ -238,29 +238,65 @@ def robot_print_dir_argv(robot_state, argv):
             print_action = "data"
             argv = argv[1:]
 
+    robot_dic_and_expires_at_list = []
+
     dir_home = robot_get_dir_dic()[robot_state]
     for robot_name in robot_list_dir(dir_home):
+        robot_dic = robot_load_from_name(robot_name, check_coordinator=False)
+        if robot_dic is False:
+            return False
+
+        order_dic = order_dic_from_robot_dir(
+            robot_dic["dir"], error_print=False
+        )
+        if order_dic is None or order_dic is False:
+            expires_at = ""
+        else:
+            expires_at = order_dic["order_response_json"]["expires_at"]
+
+        robot_dic_and_expires_at_list.append((expires_at, robot_dic, order_dic))
+
+    robot_dic_and_expires_at_list.sort(key=lambda x: x[0])
+
+    for robot_dic_and_expires_at in robot_dic_and_expires_at_list:
+        expires_at, robot_dic, order_dic = robot_dic_and_expires_at
+
+        robot_name = robot_dic["name"]
         if print_action is None:
             print_out(robot_name)
         else:
-            robot_dic = robot_load_from_name(robot_name, check_coordinator=False)
-            if robot_dic is False:
-                return False
-
             coordinator = robot_dic["coordinator"]
 
             if print_action == "coordinator":
                 print_out(f"{robot_name} {coordinator}")
             elif print_action == "data":
-                order_dic = order_dic_from_robot_dir(
-                    robot_dic["dir"], error_print=True
-                )
                 if order_dic is None or order_dic is False:
-                    return False
-                order_desc = order_dic["order_info"]["order_description"]
-                expires_at = order_dic["order_response_json"]["expires_at"]
-                expires_data = date_convert_time_zone_and_format_string(expires_at)
-                print_out(f"{robot_name:<30} {coordinator:<3} {order_desc:<84} {expires_data}")
+                    order_desc = ""
+                    expires_data = ""
+                    pending_cancel = "-"
+                    asked_for_cancel = "-"
+                    statement_submitted = "-"
+                    chat_last_index = "-"
+                else:
+                    order_desc = order_dic["order_info"]["order_description"]
+                    expires_data = date_convert_time_zone_and_format_string(expires_at)
+                    order_response_json = order_dic["order_response_json"]
+                    pending_cancel = bool_none_to_int_string(
+                        order_response_json.get("pending_cancel", None)
+                    )
+                    asked_for_cancel = bool_none_to_int_string(
+                        order_response_json.get("asked_for_cancel", None)
+                    )
+                    statement_submitted = bool_none_to_int_string(
+                        order_response_json.get("statement_submitted", None)
+                    )
+                    chat_last_index = str(order_response_json.get("chat_last_index", "-"))
+
+                print_out(
+                    f"{robot_name:<30} {expires_data:<19} {coordinator:<3} {order_desc:<84} " +
+                    f"{pending_cancel} {asked_for_cancel} " +
+                    f"{statement_submitted} {chat_last_index:>2}"
+                )
 
     return True
 
