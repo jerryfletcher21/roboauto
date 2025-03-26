@@ -581,6 +581,7 @@ def make_order(
 def order_user_from_argv(argv, with_default=False, only_set=False):
     """get order_user's fields from argv"""
     order_user = order_user_empty_get()
+    order_user_old = order_user_empty_get()
 
     if len(argv) > 0 and argv[0] == "--from-robot":
         argv = argv[1:]
@@ -598,8 +599,8 @@ def order_user_from_argv(argv, with_default=False, only_set=False):
         if order_dic is False or order_dic is None:
             return False
 
-        order_user = order_dic.get("order_user", False)
-        if order_user is False:
+        order_user_old = order_dic.get("order_user", False)
+        if order_user_old is False:
             print_err(f"{robot_name} does not have order user")
             return False
 
@@ -623,6 +624,10 @@ def order_user_from_argv(argv, with_default=False, only_set=False):
         else:
             print_err("%s is not a valid key" % key)
             return False
+
+    for key, value in order_user.items():
+        if value is False:
+            order_user[key] = order_user_old[key]
 
     if with_default:
         default_mapping = {
