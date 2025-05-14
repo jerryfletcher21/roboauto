@@ -10,7 +10,7 @@ with open("README.md", "r", encoding="utf8") as fh:
 
 setuptools.setup(
     name="roboauto",
-    version="0.3.2",
+    version="0.4.0",
     author="jerryfletcher21",
     author_email="jerryfletcher@cock.email",
     description="robosats cli",

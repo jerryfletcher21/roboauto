@@ -33,7 +33,7 @@ from roboauto.book import list_offers_per_hour_argv, list_offers_argv
 from roboauto.keep_online import keep_online
 
 
-VERSION = "0.3.2"
+VERSION = "0.4.0"
 
 INFO = """\
 roboauto [--config-dir config-dir] [--data-dir data-dir] action [options]
