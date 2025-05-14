@@ -293,7 +293,7 @@ def robot_print_dir_argv(robot_state, argv):
                     chat_last_index = str(order_response_json.get("chat_last_index", "-"))
 
                 print_out(
-                    f"{robot_name:<30} {expires_data:<19} {coordinator:<3} {order_desc:<84} " +
+                    f"{robot_name:<30} {expires_data:<19} {coordinator:<3} {order_desc:<86} " +
                     f"{pending_cancel} {asked_for_cancel} " +
                     f"{statement_submitted} {chat_last_index:>2}"
                 )
