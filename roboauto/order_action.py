@@ -373,6 +373,9 @@ def order_post_action_simple(
 
     order_string_status_print(robot_name, order_id, order_description, peer_nick)
 
+    if order_post_function.__name__ == "requests_api_order_cancel":
+        extra_arg = status_id
+
     if extra_arg is False or extra_arg is None:
         order_post_response_all = order_post_function(
             token_base91, order_id, robot_url, robot_name

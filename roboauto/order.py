@@ -269,8 +269,7 @@ def order_requests_order_dic(
 
 
 # As a maker if you cancel an order after you have locked your maker bond,
-# you are returned your bond. This may change in the future to prevent
-# DDoSing the LN node and you won't be returned the maker bond.
+# you are returned your bond.
 def robot_cancel_order(robot_dic):
     robot_name, _, _, _, _, token_base91, robot_url = robot_var_from_dic(robot_dic)
 
@@ -297,7 +296,7 @@ def robot_cancel_order(robot_dic):
     print_out("robot %s cancel order %s" % (robot_name, order_id))
 
     order_cancel_response_all = requests_api_order_cancel(
-        token_base91, order_id, robot_url, robot_name
+        token_base91, order_id, robot_url, robot_name, status_id
     )
     if response_is_error(order_cancel_response_all):
         return False

@@ -484,12 +484,13 @@ def requests_api_order_pause(
 
 
 def requests_api_order_cancel(
-    token_base91, order_id, base_url, user, options=None
+    token_base91, order_id, base_url, user, cancel_status, options=None
 ):
     return requests_api_order_post(
         token_base91, order_id, base_url, user,
         json_dumps({
-            "action": "cancel"
+            "action": "cancel",
+            "cancel_status": int(cancel_status)
         }),
         options=options
     )
