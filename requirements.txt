@@ -3,3 +3,4 @@ setuptools
 requests[socks]
 filelock
 python-gnupg
+nostr-sdk

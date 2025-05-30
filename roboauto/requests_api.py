@@ -210,7 +210,7 @@ def requests_api_ticks(
 
 
 def requests_api_robot_generate(
-    token_base91, public_key, private_key, base_url, user,
+    token_base91, public_key, private_key, nostr_pubkey, base_url, user,
     options=None
 ):
     headers = {
@@ -222,7 +222,8 @@ def requests_api_robot_generate(
         "Authorization":
             "Token " + token_base91 +
             " | Public " + public_key +
-            " | Private " + private_key,
+            " | Private " + private_key +
+            " | Nostr " + nostr_pubkey,
         "Origin": "null",
         "Connection": "keep-alive",
         "Sec-Fetch-Dest": "empty",

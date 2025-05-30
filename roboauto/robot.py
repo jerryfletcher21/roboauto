@@ -500,7 +500,7 @@ def robot_generate(coordinator, robot_state):
     token = generate_random_token_base62()
     token_base91 = token_get_base91(token)
 
-    fingerprint, public_key, private_key = gpg_generate_robot(token)
+    fingerprint, public_key, private_key, nostr_pubkey = gpg_generate_robot(token)
     if fingerprint is False:
         return False
 
@@ -508,6 +508,7 @@ def robot_generate(coordinator, robot_state):
         token_base91,
         string_to_multiline_format(public_key),
         string_to_multiline_format(private_key),
+        nostr_pubkey,
         coordinator_url, coordinator
     )
     if response_is_error(generate_response_all):
