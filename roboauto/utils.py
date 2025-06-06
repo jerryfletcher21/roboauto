@@ -25,10 +25,23 @@ def roboauto_first_coordinator():
 
 # if this is called with robot_dic["coordinator"] do not check for False
 # already checked when creating the robot_dic in robot_get_dic
-def roboauto_get_coordinator_url(coordinator):
-    url = roboauto_options["federation"].get(coordinator, False)
-    if url is False:
+def roboauto_get_coordinator(coordinator):
+    coord = roboauto_options["federation"].get(coordinator, False)
+    if coord is False:
         print_err(f"coordinator {coordinator} not valid")
+        return False
+
+    return coord
+
+
+def roboauto_get_coordinator_url(coordinator):
+    coord = roboauto_get_coordinator(coordinator)
+    if coord is False:
+        return False
+
+    url = coord.get("url", False)
+    if url is False:
+        print_err(f"coordinator {coordinator} does not have url")
         return False
 
     return url
@@ -36,7 +49,7 @@ def roboauto_get_coordinator_url(coordinator):
 
 def roboauto_get_coordinator_from_url(coordinator_url):
     for coordinator in roboauto_options["federation"]:
-        if roboauto_options["federation"][coordinator] == coordinator_url:
+        if roboauto_options["federation"][coordinator].get("url", False) == coordinator_url:
             return coordinator
 
     return "---"
@@ -63,7 +76,7 @@ def get_coordinator_from_param(param):
         print_err(f"coordinator {coordinator_value} not present")
         return multi_false
 
-    return coordinator, roboauto_options["federation"][coordinator]
+    return coordinator, roboauto_options["federation"][coordinator].get("url", False)
 
 
 def roboauto_get_coordinator_from_argv(argv) -> tuple:
@@ -157,52 +170,6 @@ def update_single_option(name, new_value, print_info=False):
             )
 
 
-def update_federation_option(name, new_value, print_info=False):
-    if len(name) < 3:
-        print_err("coordinators name should be longer than 3 letters %s not valid" % name)
-        return False
-    for key in roboauto_options["federation"]:
-        if name != key and name[:3] == key[:3]:
-            print_err("coordinator name %s not valid, similar to %s" % (name, key))
-            return False
-
-    new_value_is_none = string_is_false_none_null(new_value)
-
-    old_value = roboauto_options["federation"].get(name, False)
-    if old_value is False:
-        if new_value_is_none is False:
-            roboauto_options["federation"].update({name: new_value})
-            if print_info:
-                print_out("new coordinator %s added with url %s" % (name, new_value))
-    elif old_value != new_value:
-        if new_value_is_none is True:
-            del roboauto_options["federation"][name]
-            if print_info:
-                print_out(
-                    "coordinator %s deactivated old url %s" %
-                    (name, str(old_value))
-                )
-        else:
-            roboauto_options["federation"][name] = new_value
-            if print_info:
-                print_out(
-                    "coordinator %s changed from %s to %s" %
-                    (name, str(old_value), str(new_value))
-                )
-
-    return True
-
-
-def remove_federation_option(key, print_info=False):
-    old_value = roboauto_options["federation"][key]
-    del roboauto_options["federation"][key]
-    if print_info:
-        print_out(
-            "coordinator %s removed old url %s" %
-            (key, str(old_value))
-        )
-
-
 def get_file_hash(filename):
     try:
         with open(filename, 'rb') as file:
@@ -236,14 +203,12 @@ def update_roboauto_options(print_info=False):
     parser.read(roboauto_state["config_file"])
 
     general_section = "general"
-    federation_section = "federation"
 
     for section in list(parser):
-        if section not in (
-            "DEFAULT", general_section, federation_section
-        ):
-            print_err(f"section {section} not recognized")
-            return False
+        if section not in ("DEFAULT", general_section):
+            if re.match('^federation.', section) is None:
+                print_err(f"section {section} not recognized")
+                return False
 
     if parser.has_section(general_section):
         for option in parser.options(general_section):
@@ -312,19 +277,50 @@ def update_roboauto_options(print_info=False):
 
                 update_single_option(option, new_value, print_info=print_info)
 
-    federation_section_options = []
-    if parser.has_section(federation_section):
-        federation_section_options = parser.options(federation_section)
+    new_coordinator_list = []
+    for federation_section in list(parser):
+        if re.match('^federation.', federation_section) is not None:
+            federation_section_options = parser.options(federation_section)
+            coord_name = federation_section.split(".", 1)[1]
+            new_coordinator_list.append(coord_name)
 
-    for key in federation_section_options:
-        value = parser.get(federation_section, key).strip("'\"")
-        if update_federation_option(key, value, print_info=print_info) is False:
-            return False
+            coord_sections = ("short_alias", "url", "nostr_pubkey")
+            coord_dict = {key: "" for key in coord_sections}
+            for key in federation_section_options:
+                if key not in coord_sections:
+                    print_err(f"{coord_name} wrong key {key}")
+                    return False
+                coord_dict[key] = parser.get(federation_section, key).strip("'\"")
+            for key in coord_dict:
+                if not coord_dict[key]:
+                    print_err(f"{coord_name} key {key} not set")
+                    return False
 
-    for key in list(roboauto_options["federation"]):
-        if key not in federation_section_options:
-            if remove_federation_option(key, print_info=print_info) is False:
-                return False
+            coord_is_new = coord_name not in list(roboauto_options["federation"])
+            if not coord_is_new:
+                for key in federation_section_options:
+                    old_value = roboauto_options["federation"][coord_name][key]
+                    new_value = coord_dict[key]
+                    if old_value != new_value:
+                        roboauto_options["federation"][coord_name][key] = new_value
+                        if print_info:
+                            print_out(
+                                f"{coord_name} {key} changed from {old_value} to {new_value}"
+                            )
+            else:
+                if print_info:
+                    print_out(f"{coord_name} added as new coordinator")
+                roboauto_options["federation"].update({coord_name: coord_dict})
+                for key in federation_section_options:
+                    value = coord_dict[key]
+                    if print_info:
+                        print_out(f"{coord_name} {key} set to {value}")
+
+    for coord_name in list(roboauto_options["federation"]):
+        if coord_name not in new_coordinator_list:
+            del roboauto_options["federation"][coord_name]
+            if print_info:
+                print_out(f"coordinator {coord_name} removed")
 
     return True
 

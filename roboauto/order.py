@@ -14,7 +14,7 @@ from roboauto.order_data import \
     get_order_string, get_type_string, get_currency_string, \
     order_is_public, order_is_paused, order_is_waiting_maker_bond, \
     get_all_currencies, get_fiat_payment_methods, get_swap_payment_methods, \
-    order_is_waiting_taker_bond, order_is_expired
+    order_is_waiting_taker_bond, order_is_expired, order_is_finished
 from roboauto.order_local import \
     order_data_from_order_user, get_order_data, order_dic_from_robot_dir, \
     order_save_order_file, get_order_user, order_id_list_from_robot_dir, \
@@ -25,13 +25,15 @@ from roboauto.robot import \
     robot_var_from_dic, robot_requests_get_order_id, robot_generate, \
     robot_list_dir
 from roboauto.requests_api import \
-    requests_api_order, requests_api_order_cancel, \
+    requests_api_order, requests_api_order_cancel, requests_api_review, \
     requests_api_make, response_is_error, requests_api_order_take
 from roboauto.utils import \
     json_dumps, string_is_false_none_null, file_is_executable, \
-    json_loads, input_ask, roboauto_get_coordinator_from_url, \
-    file_json_read, file_json_write, file_remove, bad_request_is_cancelled
+    json_loads, input_ask, roboauto_get_coordinator_from_url, get_uint, \
+    file_json_read, file_json_write, file_remove, bad_request_is_cancelled, \
+    roboauto_get_coordinator
 from roboauto.subprocess_commands import subprocess_pay_invoice_and_check
+from roboauto.nostr import nostr_pubkey_from_token, nostr_create_publish_event
 
 
 def list_currencies():
@@ -862,5 +864,74 @@ def order_change_next_expire(argv):
             return False
 
         print_out(json_dumps(order_user))
+
+    return True
+
+
+def order_nostr_rate_coordinator(argv):
+    robot_dic, argv = robot_input_from_argv(argv)
+    if robot_dic is False:
+        return False
+
+    robot_name, _, robot_dir, token, coord_nick, token_base91, robot_url = \
+        robot_var_from_dic(robot_dic)
+    order_dic = order_dic_from_robot_dir(robot_dir)
+    if order_dic is False or order_dic is None:
+        return False
+
+    if len(argv) < 1:
+        print_err("insert rating")
+        return False
+    rating = argv[0]
+    argv = argv[1:]
+
+    rating_uint = get_uint(rating)
+    if rating_uint is False:
+        return False
+    if rating_uint < 1 or rating_uint > 5:
+        print_err("rating should be between 1 and 5")
+        return False
+    rating_float = 5 / rating_uint
+
+    order_info = order_dic["order_info"]
+    order_id = order_info["order_id"]
+    order_status = order_info["status"]
+
+    if not order_is_finished(order_status):
+        print_err(f"{robot_name} {order_id} is not completed, can not give rating")
+        return False
+
+    nostr_pubkey = nostr_pubkey_from_token(token)
+
+    coord = roboauto_get_coordinator(coord_nick)
+    if coord is False:
+        return False
+
+    coord_token_response = requests_api_review(
+        token_base91, robot_url, robot_name, nostr_pubkey
+    )
+    if response_is_error(coord_token_response):
+        print_err(f"{robot_name} {order_id} getting coordinator token")
+        return False
+    coord_token_response_text = coord_token_response.text
+    coord_token_json = json_loads(coord_token_response_text)
+    if coord_token_json is False:
+        print_err(coord_token_response_text, end="", error=False)
+        print_err(f"{robot_name} {order_id} coordinator token response is not json")
+        return False
+    coord_token = coord_token_json.get("token", False)
+    if not coord_token:
+        print_err(json_dumps(coord_token_json), error=False)
+        print_err(f"{robot_name} {order_id} coord response did not provide token")
+        return False
+
+    coord_pubkey = coord.get("nostr_pubkey")
+    coord_short_alias = coord.get("short_alias")
+    if not nostr_create_publish_event(
+        token, coord_pubkey, coord_token, coord_short_alias,
+        order_id, rating_float
+    ):
+        print_err(f"{robot_name} {order_id} publishing rating on nostr")
+        return False
 
     return True

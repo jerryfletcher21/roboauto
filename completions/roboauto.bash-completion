@@ -810,7 +810,7 @@ $(___roboauto_get_robots "$pending_home")"
                 default_completion=true
             fi
         ;;
-        rate-coordinator)
+        old-rate-coordinator|nostr-rate-coordinator)
             if [ "${cword}" -eq 2 ]; then
                 OPTS="$(___roboauto_get_robots "$inactive_home")"
             elif [ "${cword}" -eq 3 ]; then

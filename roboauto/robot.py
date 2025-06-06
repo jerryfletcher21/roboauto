@@ -27,6 +27,7 @@ from roboauto.utils import \
     string_from_multiline_format, string_to_multiline_format
 from roboauto.gpg_key import gpg_generate_robot, gpg_import_key, gpg_sign_message
 from roboauto.subprocess_commands import subprocess_generate_invoice
+from roboauto.nostr import nostr_pubkey_from_token
 
 
 def robot_get_dir_dic():
@@ -432,6 +433,40 @@ def robot_get_current_fingerprint(robot_dir, error_print=True):
     return file_read(fingerprint_dir)
 
 
+def robot_get_gpg_public_private(robot_dir, fingerprint=None, error_print=True):
+    multi_false = False, False
+
+    if not fingerprint:
+        fingerprint = robot_get_current_fingerprint(robot_dir, error_print=error_print)
+        if not fingerprint:
+            return multi_false
+
+    gpg_list_dir = robot_dir + "/gpg"
+    if dir_make_sure_exists(gpg_list_dir) is False:
+        return multi_false
+
+    gpg_dir = gpg_list_dir + "/" + fingerprint
+    public_key_file = gpg_dir + "/public"
+    private_key_file = gpg_dir + "/private"
+
+    if not os.path.isfile(public_key_file):
+        if error_print:
+            print_err("robot does not have public key file")
+        return multi_false
+    if not os.path.isfile(private_key_file):
+        if error_print:
+            print_err("robot does not have private key file")
+        return multi_false
+
+    public_key = file_read(public_key_file)
+    private_key = file_read(private_key_file)
+
+    if not public_key or not private_key:
+        return multi_false
+
+    return public_key, private_key
+
+
 def robot_save_peer_gpg_public_key(robot_dir, peer_key, fingerprint, set_default=False):
     gpg_list_dir = robot_dir + "/gpg-peer"
     if dir_make_sure_exists(gpg_list_dir) is False:
@@ -500,7 +535,8 @@ def robot_generate(coordinator, robot_state):
     token = generate_random_token_base62()
     token_base91 = token_get_base91(token)
 
-    fingerprint, public_key, private_key, nostr_pubkey = gpg_generate_robot(token)
+    nostr_pubkey = nostr_pubkey_from_token(token)
+    fingerprint, public_key, private_key = gpg_generate_robot(token)
     if fingerprint is False:
         return False
 

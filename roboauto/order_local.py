@@ -328,7 +328,7 @@ def order_id_last_from_robot_dir(robot_dir, error_print=True):
 
 
 def order_robot_get_last_order_id(robot_dic, error_print=True):
-    """return a string"""
+    """considers make data, return a string"""
     robot_dir = robot_dic["dir"]
 
     maximum_order_id = False

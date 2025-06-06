@@ -18,7 +18,8 @@ from roboauto.robot import \
 from roboauto.order_local import order_info_dir, order_summary, robot_print_dir_argv
 from roboauto.order import \
     create_order, cancel_order, recreate_order, list_order_fields, \
-    list_currencies, list_payment_methods, order_change_next_expire
+    list_currencies, list_payment_methods, order_change_next_expire, \
+    order_nostr_rate_coordinator
 from roboauto.order_action import \
     order_buyer_update_invoice_argv, order_seller_bond_escrow_argv, \
     order_pause_toggle_argv, order_collaborative_cancel_argv, order_take_argv, \
@@ -84,7 +85,8 @@ confirm-send robot-name [--no-save-chat]
 confirm-undo robot-name
 dispute-start robot-name [--no-save-chat]
 statement-submit robot-name [statement | --file file-statement]
-rate-coordinator robot-name rating
+old-rate-coordinator robot-name rating
+nostr-rate-coordinator robot-name rating
 keep-online [--verbosity=number] [--no-sleep] [--no-initial-info]
 """
 
@@ -306,8 +308,12 @@ dispute-start robot-name [--no-save-chat]
 statement-submit robot-name [statement | --file file-statement]
     submit the dispute statement
 
-rate-coordinator robot-name rating
+old-rate-coordinator robot-name rating
     rate a coordinator for a successful order
+    uses old api, no longer useful, see nostr-rate-coordinator
+
+nostr-rate-coordinator robot-name rating
+    rate a coordinator using nostr
 
 keep-online [--verbosity=number] [--no-sleep] [--no-initial-info]
     keep the offers of the robots in the active directory online
@@ -482,8 +488,10 @@ def main(argv):
             return_status = order_start_dispute_argv(argv)
         elif action == "statement-submit":
             return_status = order_submit_statement_argv(argv)
-        elif action == "rate-coordinator":
+        elif action == "old-rate-coordinator":
             return_status = order_rate_coordinator_argv(argv)
+        elif action == "nostr-rate-coordinator":
+            return_status = order_nostr_rate_coordinator(argv)
 
         state_set_command_type("keep-online")
 

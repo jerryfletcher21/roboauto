@@ -5,12 +5,11 @@
 # pylint: disable=C0116 missing-function-docstring
 
 import gnupg
-import nostr_sdk
 
 from roboauto.global_state import roboauto_state
 from roboauto.logger import print_err
 from roboauto.date_utils import date_get_yesterday
-from roboauto.utils import token_get_double_sha256, sha256_single
+from roboauto.utils import token_get_double_sha256
 
 
 def gpg_get():
@@ -53,10 +52,8 @@ Creation-Date: {yesterday}
         fingerprint, secret=True, armor=True,
         passphrase=key_passphrase
     )
-    nostr_seckey = nostr_sdk.SecretKey.parse(sha256_single(token))
-    nostr_pubkey = nostr_sdk.Keys(nostr_seckey).public_key().to_hex()
 
-    return fingerprint, public_key, private_key, nostr_pubkey
+    return fingerprint, public_key, private_key
 
 
 def gpg_import_key(key, set_trust=True, passphrase=None, error_print=True):

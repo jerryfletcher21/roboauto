@@ -182,7 +182,7 @@ $ roboauto order-info --simple YourRobotName | jq -r '.status_string'
 $ roboauto confirm-send YourRobotName
 
 # rate the robosats coordinator 5 stars!
-$ roboauto rate-coordinator 5
+$ roboauto nostr-rate-coordinator 5
 YourRobotName order-id sell usd 200 4.00 Strike Sucessful trade
 YourRobotName order-id robosats rated 5 stars
 ```

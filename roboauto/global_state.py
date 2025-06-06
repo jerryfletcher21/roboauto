@@ -25,15 +25,33 @@ roboauto_options = {
     "default_escrow": 28800,
     "default_bond_size": 3.00,
     "federation": {
-        # "exp": "http://robosats6tkf3eva7x2voqso3a5wcorsnw34jveyxfqi2fu7oyheasid.onion",
-        # "sau": "http://satstraoq35jffvkgpfoqld32nzw2siuvowanruindbfojowpwsjdgad.onion",
         "exp": None,
         "sau": None,
-        "tos": "http://ngdk7ocdzmz5kzsysa3om6du7ycj2evxp2f2olfkyq37htx3gllwp2yd.onion",
-        "tbl": "http://4t4jxmivv6uqej6xzx2jx3fxh75gtt65v3szjoqmc4ugdlhipzdat6yd.onion",
-        "bve": "http://mmhaqzuirth5rx7gl24d4773lknltjhik57k7ahec5iefktezv4b3uid.onion",
-        "otm": "http://otmoonrndnrddqdlhu6b36heunmbyw3cgvadqo2oqeau3656wfv7fwad.onion",
-        "lba": "http://librebazovfmmkyi2jekraxsuso3mh622avuuzqpejixdl5dhuhb4tid.onion"
+        "tos": {
+            "short_alias": "temple",
+            "url": "http://ngdk7ocdzmz5kzsysa3om6du7ycj2evxp2f2olfkyq37htx3gllwp2yd.onion",
+            "nostr_pubkey": "74001620297035daa61475c069f90b6950087fea0d0134b795fac758c34e7191"
+        },
+        "tbl": {
+            "short_alias": "lake",
+            "url": "http://4t4jxmivv6uqej6xzx2jx3fxh75gtt65v3szjoqmc4ugdlhipzdat6yd.onion",
+            "nostr_pubkey": "f2d4855df39a7db6196666e8469a07a131cddc08dcaa744a344343ffcf54a10c"
+        },
+        "bve": {
+            "short_alias": "veneto",
+            "url": "http://mmhaqzuirth5rx7gl24d4773lknltjhik57k7ahec5iefktezv4b3uid.onion",
+            "nostr_pubkey": "c8dc40a80bbb41fe7430fca9d0451b37a2341486ab65f890955528e4732da34a"
+        },
+        "otm": {
+            "short_alias": "moon",
+            "url": "http://otmoonrndnrddqdlhu6b36heunmbyw3cgvadqo2oqeau3656wfv7fwad.onion",
+            "nostr_pubkey": "7af6f7cfc3bfdf8aa65df2465aa7841096fa8ee6b2d4d14fc43d974e5db9ab96"
+        },
+        "lba": {
+            "short_alias": "bazaar",
+            "url": "http://librebazovfmmkyi2jekraxsuso3mh622avuuzqpejixdl5dhuhb4tid.onion",
+            "nostr_pubkey": "95521a33ba34f5924464f425e81b896b1aa9069796a778368ed053e3612c509b"
+        }
     }
 }
 

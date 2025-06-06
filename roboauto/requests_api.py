@@ -383,6 +383,20 @@ def requests_api_stealth(
     )
 
 
+def requests_api_review(
+    token_base91, base_url, user, nostr_pubkey, options=None
+):
+    return requests_api_post(
+        token_base91, base_url, user,
+        "/robot/",
+        "/api/review/",
+        json_dumps({
+            "pubkey": nostr_pubkey
+        }),
+        options=options
+    )
+
+
 def requests_api_order_post(
     token_base91, order_id, base_url, user, order_action,
     options=None

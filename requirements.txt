@@ -3,4 +3,5 @@ setuptools
 requests[socks]
 filelock
 python-gnupg
+asyncio
 nostr-sdk
