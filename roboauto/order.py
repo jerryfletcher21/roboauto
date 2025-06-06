@@ -14,7 +14,8 @@ from roboauto.order_data import \
     get_order_string, get_type_string, get_currency_string, \
     order_is_public, order_is_paused, order_is_waiting_maker_bond, \
     get_all_currencies, get_fiat_payment_methods, get_swap_payment_methods, \
-    order_is_waiting_taker_bond, order_is_expired, order_is_finished
+    order_is_waiting_taker_bond, order_is_expired, \
+    order_is_finished, order_is_finished_for_seller
 from roboauto.order_local import \
     order_data_from_order_user, get_order_data, order_dic_from_robot_dir, \
     order_save_order_file, get_order_user, order_id_list_from_robot_dir, \
@@ -897,7 +898,7 @@ def order_nostr_rate_coordinator(argv):
     order_id = order_info["order_id"]
     order_status = order_info["status"]
 
-    if not order_is_finished(order_status):
+    if not order_is_finished(order_status) and not order_is_finished_for_seller(order_status):
         print_err(f"{robot_name} {order_id} is not completed, can not give rating")
         return False
 
