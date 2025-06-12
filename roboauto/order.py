@@ -908,6 +908,15 @@ def order_nostr_rate_coordinator(argv):
     if coord is False:
         return False
 
+    coord_pubkey = coord.get("nostr_pubkey")
+    coord_short_alias = coord.get("short_alias")
+    if not coord_pubkey:
+        print_err(
+            f"{robot_name} {order_id} {coord_short_alias} " +
+            "coordinator does not have nostr_pubkey"
+        )
+        return False
+
     coord_token_response = requests_api_review(
         token_base91, robot_url, robot_name, nostr_pubkey
     )
@@ -926,8 +935,6 @@ def order_nostr_rate_coordinator(argv):
         print_err(f"{robot_name} {order_id} coord response did not provide token")
         return False
 
-    coord_pubkey = coord.get("nostr_pubkey")
-    coord_short_alias = coord.get("short_alias")
     if not nostr_create_publish_event(
         token, coord_pubkey, coord_token, coord_short_alias,
         order_id, rating_float

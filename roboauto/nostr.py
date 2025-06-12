@@ -11,7 +11,9 @@ from nostr_sdk import \
     RelayOptions, ConnectionMode, Tag, TagKind, Timestamp
 
 from roboauto.logger import print_out, print_err
-from roboauto.utils import roboauto_options, roboauto_get_coordinator_url, sha256_single
+from roboauto.utils import \
+    roboauto_options, sha256_single, \
+    roboauto_get_coordinator_url, roboauto_get_coordinator_nostr_pubkey
 from roboauto.date_utils import get_current_timestamp
 
 
@@ -27,7 +29,8 @@ def coordinator_relays_get():
 
     for coord_name in list(roboauto_options["federation"]):
         coord_url = roboauto_get_coordinator_url(coord_name)
-        if not coord_url:
+        nostr_pubkey = roboauto_get_coordinator_nostr_pubkey(coord_name)
+        if not coord_url or not nostr_pubkey:
             continue
         relays_list.append("ws://" + coord_url.split("/", 2)[2] + "/relay")
 
@@ -45,7 +48,9 @@ def nostr_create_publish_event(
         for relay in coordinator_relays_get():
             await client.add_relay_with_opts(
                 relay, RelayOptions().connection_mode(
-                    ConnectionMode.PROXY("127.0.0.1", 9050) # pyright: ignore reportArgumentType
+                    ConnectionMode.PROXY(
+                        roboauto_options["tor_host"], roboauto_options["tor_port"]
+                    ) # pyright: ignore reportArgumentType
             ))
 
         connection_output = await client.try_connect(

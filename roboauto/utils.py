@@ -47,6 +47,32 @@ def roboauto_get_coordinator_url(coordinator):
     return url
 
 
+def roboauto_get_short_alias(coordinator):
+    coord = roboauto_get_coordinator(coordinator)
+    if coord is False:
+        return False
+
+    short_alias = coord.get("short_alias", False)
+    if short_alias is False:
+        print_err(f"coordinator {coordinator} does not have short_alias")
+        return False
+
+    return short_alias
+
+
+def roboauto_get_coordinator_nostr_pubkey(coordinator):
+    coord = roboauto_get_coordinator(coordinator)
+    if coord is False:
+        return False
+
+    nostr_pubkey = coord.get("nostr_pubkey", False)
+    if nostr_pubkey is False:
+        print_err(f"coordinator {coordinator} does not have nostr_pubkey")
+        return False
+
+    return nostr_pubkey
+
+
 def roboauto_get_coordinator_from_url(coordinator_url):
     for coordinator in roboauto_options["federation"]:
         if roboauto_options["federation"][coordinator].get("url", False) == coordinator_url:
@@ -292,7 +318,7 @@ def update_roboauto_options(print_info=False):
                     return False
                 coord_dict[key] = parser.get(federation_section, key).strip("'\"")
             for key in coord_dict:
-                if not coord_dict[key]:
+                if key != "nostr_pubkey" and not coord_dict[key]:
                     print_err(f"{coord_name} key {key} not set")
                     return False
 
