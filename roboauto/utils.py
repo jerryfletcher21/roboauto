@@ -128,6 +128,22 @@ def roboauto_get_coordinator_from_argv(argv) -> tuple:
     return coordinator, coordinator_url, argv
 
 
+def roboauto_get_coordinator_url_from_argv(argv) -> tuple:
+    """get a single coordinator or custom url from argv"""
+    multi_false = False, False, False
+
+    if re.match('^--coord-url=', argv[0]) is not None:
+        coord_url = argv[0].split("=", 1)[1]
+        argv = argv[1:]
+        user = sha256_single(coord_url)
+    else:
+        user, coord_url, argv = roboauto_get_coordinator_from_argv(argv)
+        if coord_url is False:
+            return multi_false
+
+    return user, coord_url, argv
+
+
 def roboauto_get_multi_coordinators_from_argv(argv) -> tuple:
     """get multiple coordinators from argv, with also --all"""
     multi_false = False, False

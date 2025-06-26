@@ -24,14 +24,16 @@ from roboauto.requests_api import \
     requests_api_price, requests_api_ticks
 from roboauto.utils import \
     file_json_read, json_loads, json_dumps, \
-    roboauto_get_coordinator_url, roboauto_get_coordinator_from_argv, \
+    roboauto_get_coordinator_url, roboauto_get_coordinator_url_from_argv, \
     token_get_base91
 
 
 def requests_simple_handle(
-    requests_function, coordinator_url, coordinator, description_string
+    requests_function, coordinator_url, user, description_string, until_true
 ):
-    response_all = requests_function(coordinator_url, coordinator)
+    response_all = requests_function(coordinator_url, user, options={
+        "until_true": until_true
+    })
     if response_is_error(response_all):
         return False
     response = response_all.text
@@ -44,13 +46,29 @@ def requests_simple_handle(
     return response_json
 
 
+def coordinator_url_and_until_success_from_argv(argv) -> tuple:
+    multi_false = False, False, False, False
+
+    until_success = False
+    if len(argv) >= 1 and argv[0] == "--until-success":
+        until_success = True
+        argv = argv[1:]
+
+    coordinator, coordinator_url, argv = roboauto_get_coordinator_url_from_argv(argv)
+    if coordinator_url is False:
+        return multi_false
+
+    return coordinator, coordinator_url, until_success, argv
+
+
 def list_historical(argv):
-    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    coordinator, coordinator_url, until_success, argv = \
+        coordinator_url_and_until_success_from_argv(argv)
     if coordinator_url is False:
         return False
 
     historical_response_json = requests_simple_handle(
-        requests_api_historical, coordinator_url, coordinator, "historical"
+        requests_api_historical, coordinator_url, coordinator, "historical", until_success
     )
     if historical_response_json is False:
         return False
@@ -61,12 +79,13 @@ def list_historical(argv):
 
 
 def list_limits(argv):
-    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    coordinator, coordinator_url, until_success, argv = \
+        coordinator_url_and_until_success_from_argv(argv)
     if coordinator_url is False:
         return False
 
     limits_response_json = requests_simple_handle(
-        requests_api_limits, coordinator_url, coordinator, "limits"
+        requests_api_limits, coordinator_url, coordinator, "limits", until_success
     )
     if limits_response_json is False:
         return False
@@ -77,12 +96,13 @@ def list_limits(argv):
 
 
 def list_price(argv):
-    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    coordinator, coordinator_url, until_success, argv = \
+        coordinator_url_and_until_success_from_argv(argv)
     if coordinator_url is False:
         return False
 
     price_response_json = requests_simple_handle(
-        requests_api_price, coordinator_url, coordinator, "price"
+        requests_api_price, coordinator_url, coordinator, "price", until_success
     )
     if price_response_json is False:
         return False
@@ -93,7 +113,8 @@ def list_price(argv):
 
 
 def list_ticks(argv: list):
-    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    coordinator, coordinator_url, until_success, argv = \
+        coordinator_url_and_until_success_from_argv(argv)
     if coordinator_url is False:
         return False
 
@@ -110,7 +131,9 @@ def list_ticks(argv: list):
     argv = argv[1:]
 
     ticks_response_all = requests_api_ticks(
-        coordinator_url, coordinator, start_date, end_date
+        coordinator_url, coordinator, start_date, end_date, options={
+            "until_true": until_success
+        }
     )
     if response_is_error(ticks_response_all):
         return False
@@ -127,12 +150,13 @@ def list_ticks(argv: list):
 
 
 def robosats_info(argv):
-    coordinator, coordinator_url, argv = roboauto_get_coordinator_from_argv(argv)
+    coordinator, coordinator_url, until_success, argv = \
+        coordinator_url_and_until_success_from_argv(argv)
     if coordinator_url is False:
         return False
 
     info_response_json = requests_simple_handle(
-        requests_api_info, coordinator_url, coordinator, "info"
+        requests_api_info, coordinator_url, coordinator, "info", until_success
     )
     if info_response_json is False:
         return False
@@ -164,23 +188,19 @@ def robot_info_argv(argv):
             return False
 
         token_base91 = token_get_base91(robot_dic["token"])
-        robot_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
+        coord_url = roboauto_get_coordinator_url(robot_dic["coordinator"])
     else:
         if len(argv) < 1:
             print_err("insert coordinator name or link")
             return False
 
-        if re.match('^--', argv[0]) is None:
-            robot_url = argv[0]
-            argv = argv[1:]
-        else:
-            _, robot_url, argv = roboauto_get_coordinator_from_argv(argv)
-            if robot_url is False:
-                return False
+        _, coord_url, argv = roboauto_get_coordinator_url_from_argv(argv)
+        if coord_url is False:
+            return False
 
     # pylint: disable=R0801 duplicate-code
     robot_response, robot_response_json = robot_requests_robot(
-        token_base91, robot_url, robot_dic
+        token_base91, coord_url, robot_dic
     )
     if robot_response is False:
         return False

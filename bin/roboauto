@@ -56,19 +56,19 @@ set-pending|set-inactive|set-paused robot-name|--all
 order-info-dir --active|--pending|--paused|--inactive
 order-info-dir --dir directory
 order-summary --active|--pending|--paused|--inactive
-robosats-info --{coordinator-name}
+robosats-info [--until-success] --{coordinator-name}|--coord-url={coord-url}
 generate-robot --{coordinator-name} [--active, --pending, --inactive]
 robot-info robot-name
-robot-info --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
+robot-info --stdin|--stdin-base91 --{coordinator-name}|--coord-url={coord-url}
 claim-reward robot-name [invoice]
 stealth-option robot-name true|false
 order-info [--local|--search] [--full] robot-name [order-id]
 chat-print [--local] robot-name
 message-send robot-name
-list-historical --{coordinator-name}
-list-limits --{coordinator-name}
-list-price --{coordinator-name}
-list-ticks --{coordinator-name} [start-date] [end-date]
+list-historical [--until-success] --{coordinator-name}|--coord-url={coord-url}
+list-limits [--until-success] --{coordinator-name}|--coord-url={coord-url}
+list-price [--until-success] --{coordinator-name}|--coord-url={coord-url}
+list-ticks [--until-success] --{coordinator-name}|--coord-url={coord-url} [start-date] [end-date]
 list-hours [--relative]
 list-offers [--until-success|--local] --{coordinators}|--all [--sell|--buy] [currency] [search]
 create-order [--no-bond|--no-node] [--no-active] robot-name [--from-robot robot-name] key=value...
@@ -161,14 +161,14 @@ order-info-dir --dir directory
 order-summary --active|--pending|--paused|--inactive
     print local summary about all orders of a robot directory
 
-robosats-info --{coordinator-name}
+robosats-info [--until-success] --{coordinator-name}|--coord-url={coord-url}
     get info about robosats
 
 generate-robot --{coordinator-name} [--active, --pending, --inactive]
     generate a robot on coordinator by default in paused dir
 
 robot-info robot-name
-robot-info --stdin|--stdin-base91 --{coordinator-name}|coordinator-url
+robot-info --stdin|--stdin-base91 --{coordinator-name}|--coord-url={coord-url}
     get info about a robot
     if instead of robot-name --stdin or --stdin-base91 is passed
     token is taken from stdin and coordinator is also required
@@ -197,18 +197,18 @@ message-send robot-name [message]
     send message from robot-name
     if message starts with # do not encrypt it
 
-list-historical --{coordinator-name}
+list-historical [--until-success] --{coordinator-name}|--coord-url={coord-url}
     get historical exchange activity
     lists each day's total contracts and
     their volume in btc since inception
 
-list-limits --{coordinator-name}
+list-limits [--until-success] --{coordinator-name}|--coord-url={coord-url}
     get a list of order limits for every currency pair available
 
-list-price --{coordinator-name}
+list-price [--until-success] --{coordinator-name}|--coord-url={coord-url}
     get the last market price for each currency
 
-list-ticks --{coordinator-name} [start-date] [end-date]
+list-ticks [--until-success] --{coordinator-name}|--coord-url={coord-url} [start-date] [end-date]
     get all market ticks
     returns a list of all the market ticks since inception
     date formatted as DD-MM-YYYY
