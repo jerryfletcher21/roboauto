@@ -10,7 +10,8 @@ from roboauto.global_state import roboauto_options, roboauto_state
 from roboauto.utils import \
     print_out, print_err, get_uint, json_loads, json_dumps, \
     input_ask, file_write, file_read, arg_key_value_number, \
-    invoice_get_correct_amount, is_float, file_is_executable
+    invoice_get_correct_amount, is_float, file_is_executable, \
+    bad_request_is_cancelled
 from roboauto.robot import \
     robot_get_current_fingerprint, robot_var_from_dic, \
     robot_input_from_argv, robot_change_dir
@@ -397,10 +398,7 @@ def order_post_action_simple(
     # bad_request is set when success
     # see https://github.com/RoboSats/robosats/issues/1245
     bad_request = order_post_response_json.get("bad_request", False)
-    if bad_request in (
-        "This order has been cancelled by the maker",
-        "This order has been cancelled collaborativelly"
-    ):
+    if bad_request_is_cancelled(bad_request):
         print_out(bad_request, date=False)
     elif bad_request is not False:
         print_err(bad_request, error=False, date=False)

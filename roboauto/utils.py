@@ -803,10 +803,12 @@ def bad_request_is_cancelled(bad_request):
     if not isinstance(bad_request, str):
         return False
 
-    return bad_request in (
-        "This order has been cancelled by the maker",
-        "This order has been cancelled collaborativelly"
-    )
+    # return bad_request in (
+    #     "This order has been cancelled by the maker",
+    #     "This order has been cancelled collaborativelly"
+    # )
+    # 220b4263b4324beff4189ac71de8b90d55737861
+    return bad_request == "This order has been cancelled"
 
 
 def bad_request_is_wrong_robot(bad_request):
