@@ -211,7 +211,7 @@ def robot_send_chat_message(robot_dic, message):
 
         peer_fingerprint = robot_get_peer_fingerprint(robot_dir, error_print=False)
         if peer_fingerprint is False:
-            print_out("peer gpg key not yet present, searching it")
+            print_out(f"{robot_name} {order_id} peer gpg key not yet present, searching it")
             chat_response, _, _ = robot_requests_chat(robot_dic)
             if chat_response is False:
                 return False
@@ -241,12 +241,7 @@ def robot_send_chat_message(robot_dic, message):
         print_err("chat response is not json")
         return False
 
-    print_out("message sent correctly")
-    chat_print_single_message(message_get(
-        "now", robot_name, message, status_char, None
-    ))
-
-    return True
+    return status_char
 
 
 def robot_send_chat_message_argv(argv: list):
@@ -264,7 +259,15 @@ def robot_send_chat_message_argv(argv: list):
         print_err("message can not be empty")
         return False
 
-    if not robot_send_chat_message(robot_dic, message):
+    robot_name, _, _, _, _, _, _ = robot_var_from_dic(robot_dic)
+
+    status_char = robot_send_chat_message(robot_dic, message)
+    if status_char is False:
         return False
+
+    print_out(f"{robot_name} message sent correctly")
+    chat_print_single_message(message_get(
+        "now", robot_name, message, status_char, None
+    ))
 
     return True

@@ -15,7 +15,7 @@ from roboauto.robot import \
     robot_change_dir, robot_get_dir_dic, robot_wait, \
     robot_unwait, robot_check_and_claim_reward, \
     robot_requests_get_order_id
-from roboauto.chat import robot_requests_chat
+from roboauto.chat import robot_requests_chat, robot_send_chat_message
 from roboauto.order_data import  \
     order_is_public, order_is_paused, order_is_finished, \
     order_is_pending, order_is_waiting_maker_bond, get_order_string, \
@@ -31,7 +31,8 @@ from roboauto.order_local import \
     robot_order_get_local_make_data
 from roboauto.order import \
     order_requests_order_dic, bond_order, make_order, \
-    peer_nick_from_response
+    peer_nick_from_response, order_read_initial_message_from_file, \
+    order_remove_initial_message_file
 from roboauto.order_action import \
     order_seller_bond_escrow, order_buyer_update_invoice
 from roboauto.date_utils import \
@@ -331,17 +332,16 @@ def should_remove_from_waiting_queue(all_dic):
     return False
 
 
-def pending_robot_should_act(expires_timestamp, escrow_duration):
+def pending_robot_should_act(expires_timestamp, duration, reference):
     remaining_seconds = expires_timestamp - get_current_timestamp()
     if remaining_seconds < 0:
         return False
 
-    seconds_pending_order = roboauto_options["seconds_pending_order"]
-    if seconds_pending_order > 0:
-        if remaining_seconds < seconds_pending_order:
+    if reference > 0:
+        if remaining_seconds < reference:
             return True
-    elif seconds_pending_order < 0:
-        if remaining_seconds < escrow_duration + seconds_pending_order:
+    elif reference < 0:
+        if remaining_seconds < duration + reference:
             return True
 
     return False
@@ -417,7 +417,7 @@ def robot_handle_pending(robot_dic):
             print_err("no expires_at")
             return False
 
-        current_timestamp = timestamp_from_date_string(expires_at)
+        expires_timestamp = timestamp_from_date_string(expires_at)
 
         if \
             order_is_waiting_seller_buyer(status_id) or \
@@ -429,12 +429,11 @@ def robot_handle_pending(robot_dic):
                 return False
 
             if pending_robot_should_act(
-                current_timestamp,
-                int(escrow_duration)
+                expires_timestamp,
+                int(escrow_duration),
+                roboauto_options["seconds_pending_order"]
             ):
-                date_short_expire = date_convert_time_zone_and_format_string(
-                    expires_at, output_format="%H:%M:%S"
-                )
+                date_short_expire = date_convert_time_zone_and_format_string(expires_at)
                 if is_seller:
                     if \
                         order_is_waiting_seller_buyer(status_id) or \
@@ -453,6 +452,44 @@ def robot_handle_pending(robot_dic):
                             f"expires at {date_short_expire}, sending invoice"
                         )
                         return order_buyer_update_invoice(robot_dic, (None, None))
+        else:
+            initial_message = order_read_initial_message_from_file(robot_dir)
+            if initial_message is None:
+                return True
+            elif initial_message is False:
+                print_err(f"{robot_name} {order_id} reading initial message")
+                order_remove_initial_message_file(robot_dir)
+                return False
+
+            total_secs_exp = order_response_json.get("total_secs_exp", False)
+            if total_secs_exp is False:
+                print_err("no total_secs_exp")
+                return False
+
+            timing = initial_message.get("timing", False)
+            if timing is False:
+                print_err(f"{robot_name} {order_id} initial message does not have timing")
+                order_remove_initial_message_file(robot_dir)
+                return False
+            message = initial_message.get("message", False)
+            if message is False:
+                print_err(f"{robot_name} {order_id} initial message does not have message")
+                order_remove_initial_message_file(robot_dir)
+                return False
+
+            if pending_robot_should_act(expires_timestamp, int(total_secs_exp), timing):
+                date_short_expire = date_convert_time_zone_and_format_string(expires_at)
+                print_out(
+                    f"{robot_name} {order_id} "
+                    f"expires at {date_short_expire}, sending initial message"
+                )
+                if robot_send_chat_message(robot_dic, message) is False:
+                    print_err(f"{robot_name} {order_id} sending message")
+                    order_remove_initial_message_file(robot_dir)
+                    return False
+
+                if order_remove_initial_message_file(robot_dir) is False:
+                    return False
     else:
         status_string = order_info["status_string"]
         print_out(f"{robot_name} {robot_coordinator} {order_id} {status_string}")

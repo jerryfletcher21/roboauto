@@ -723,8 +723,7 @@ $robots"
             words_after_options="0"
             if new_options="$(
                 ___multiple_options_handle "2" \
-"--print
---remove" \
+"--print --remove" \
                     "${words[@]}"
             )"; then
                 OPTS="$new_options"
@@ -750,6 +749,24 @@ $(___roboauto_get_robots "$active_home")"
                         ___roboauto_complete_order_fields
                     fi
                 fi
+            fi
+        ;;
+        initial-message)
+            local words_after_options
+            words_after_options="0"
+            if new_options="$(
+                ___multiple_options_handle "2" \
+"--print --remove" \
+                    "${words[@]}"
+            )"; then
+                OPTS="$new_options"
+            else
+                words_after_options="$new_options"
+            fi
+
+            if [ "$words_after_options" -eq 0 ]; then
+                OPTS="$OPTS
+$(___roboauto_get_robots "$active_home" "$pending_home")"
             fi
         ;;
         take-order)

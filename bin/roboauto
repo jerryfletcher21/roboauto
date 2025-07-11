@@ -16,10 +16,10 @@ from roboauto.robot import \
     waiting_queue_print, robot_change_dir_from_argv, robot_generate_argv, \
     robot_claim_reward_argv, robot_update_stealth_invoice_option_argv
 from roboauto.order_local import order_info_dir, order_summary, robot_print_dir_argv
-from roboauto.order import \
+from roboauto.order_argv import \
     create_order, cancel_order, recreate_order, list_order_fields, \
     list_currencies, list_payment_methods, order_change_next_expire, \
-    order_nostr_rate_coordinator
+    order_nostr_rate_coordinator, order_initial_message
 from roboauto.order_action import \
     order_buyer_update_invoice_argv, order_seller_bond_escrow_argv, \
     order_pause_toggle_argv, order_collaborative_cancel_argv, order_take_argv, \
@@ -75,6 +75,7 @@ create-order [--no-bond|--no-node] [--no-active] robot-name [--from-robot robot-
 cancel-order robot-name
 recreate-order [--no-bond|--no-node] [--no-cancel] robot-name [--from-robot robot-name] key=value...
 change-order-expire [--print, --remove] robot-name [--from-robot robot-name] key=value...
+initial-message [--print, --remove] robot-name [timing] [message]
 take-order [--fully|--no-node] robot-name order-id [take-amount]
 pause-toggle robot-name
 escrow-pay [--no-node] robot-name
@@ -258,6 +259,12 @@ change-order-expire [--print, --remove] robot-name [--from-robot robot-name] key
     the list of key=value... and --from-robot are the same as for create-order
     if --print prints the current changes if present
     if --remove removes the current changes if present and prints it
+
+initial-message [--print, --remove] robot-name [timing] [message]
+    create/modify an initial message to automatically send
+    timing should be in the same format as seconds_pending_order in config.ini
+    positive numbers are minutes before the escrow duration expires
+    negative numbers are minutes after the order is taken
 
 take-order [--fully|--no-node] robot-name order-id [take-amount]
     make sure the order-id is of the same coordinator as your robot
@@ -468,6 +475,8 @@ def main(argv):
             return_status = recreate_order(argv)
         elif action == "change-order-expire":
             return_status = order_change_next_expire(argv)
+        elif action == "initial-message":
+            return_status = order_initial_message(argv)
         elif action == "take-order":
             return_status = order_take_argv(argv)
         elif action == "pause-toggle":
