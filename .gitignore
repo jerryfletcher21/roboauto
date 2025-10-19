@@ -1,8 +1,13 @@
+# personal
+/saved/
+/todo
+
+# editor
+/tags
+
+# python
+venv/
 build/
 dist/
 *.egg-info/
-
 __pycache__/
-
-/saved/
-venv/

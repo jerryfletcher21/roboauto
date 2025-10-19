@@ -12,13 +12,14 @@ from nostr_sdk import \
 
 from roboauto.logger import print_out, print_err
 from roboauto.utils import \
-    roboauto_options, sha256_single, \
+    roboauto_options, sha512_sha256, \
     roboauto_get_coordinator_url, roboauto_get_coordinator_nostr_pubkey
 from roboauto.date_utils import get_current_timestamp
 
 
 def nostr_pubkey_from_token(token):
-    nostr_seckey = SecretKey.parse(sha256_single(token))
+    # https://github.com/RoboSats/robosats/pull/2055/files
+    nostr_seckey = SecretKey.parse(sha512_sha256(token))
     nostr_pubkey = Keys(nostr_seckey).public_key().to_hex()
 
     return nostr_pubkey
@@ -59,7 +60,7 @@ def nostr_create_publish_event(
         for key, value in connection_output.failed.items():
             print_err(f"{key} connecting {value}", error=False)
 
-        nostr_keys = Keys(SecretKey.parse(sha256_single(token)))
+        nostr_keys = Keys(SecretKey.parse(sha512_sha256(token)))
 
         # pylint: disable=C0301 line-too-long
         event_builder = EventBuilder(Kind(review_id), "")\

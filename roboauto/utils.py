@@ -632,6 +632,12 @@ def sha256_single(string):
     return hashlib.sha256(string.encode("utf-8")).hexdigest()
 
 
+def sha512_sha256(string):
+    return hashlib.sha256(
+        hashlib.sha512(string.encode("utf-8")
+    ).digest()).hexdigest()
+
+
 def token_get_double_sha256(token_string):
     return hashlib.sha256(
         hashlib.sha256(
