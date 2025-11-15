@@ -221,8 +221,10 @@ def get_file_hash(filename):
         return None
 
 
-def update_roboauto_options(print_info=False):
+def update_roboauto_options(is_update=False):
     # pylint: disable=R1702 too-many-nested-blocks
+
+    print_info=is_update
 
     if not os.path.isfile(roboauto_state["config_file"]):
         if roboauto_state["config_file_hash"] is not None:
@@ -358,11 +360,16 @@ def update_roboauto_options(print_info=False):
                     if print_info:
                         print_out(f"{coord_name} {key} set to {value}")
 
-    for coord_name in list(roboauto_options["federation"]):
-        if coord_name not in new_coordinator_list:
-            del roboauto_options["federation"][coord_name]
-            if print_info:
-                print_out(f"coordinator {coord_name} removed")
+    if not is_update:
+        for coord_name in list(roboauto_options["federation"]):
+            if roboauto_options["federation"][coord_name] is None:
+                del roboauto_options["federation"][coord_name]
+    else:
+        for coord_name in list(roboauto_options["federation"]):
+            if coord_name not in new_coordinator_list:
+                del roboauto_options["federation"][coord_name]
+                if print_info:
+                    print_out(f"coordinator {coord_name} removed")
 
     return True
 

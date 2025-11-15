@@ -56,6 +56,11 @@ roboauto_options = {
             "short_alias": "freedomsats",
             "url": "http://dqmmejfmtlve7d4ccohk4usriifdtci6xk4wv7igxn2fyaduh25s6did.onion",
             "nostr_pubkey": "ded3dc02a1a9b61ce59d11f496539cb3fd15f00326a16f47e5f8d76baba24bdb"
+        },
+        "wes": {
+            "short_alias": "whiteyesats",
+            "url": "http://s4usqbcf2pk2xwghdzaggrxd3paiqpvnl4lm2dxp6dec3wbclgbdyiyd.onion",
+            "nostr_pubkey": "5dd5af0c0fbdd785af6bfe2ea1461f4bda4062391fe396661ef4dc4028d64d60"
         }
     }
 }
