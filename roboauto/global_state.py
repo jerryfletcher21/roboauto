@@ -61,6 +61,11 @@ roboauto_options = {
             "short_alias": "whiteyesats",
             "url": "http://s4usqbcf2pk2xwghdzaggrxd3paiqpvnl4lm2dxp6dec3wbclgbdyiyd.onion",
             "nostr_pubkey": "5dd5af0c0fbdd785af6bfe2ea1461f4bda4062391fe396661ef4dc4028d64d60"
+        },
+        "ali": {
+            "short_alias": "alice",
+            "url": "http://alice7bqexhtnkiqhtgkuwgtzzfkishw23ac4sfwpznrwlmnipxlomyd.onion",
+            "nostr_pubkey": "40d33962fdf26e0910805f36a3a96b239cf93b95d4a3e6dd779f1ea3ff9b0866"
         }
     }
 }
