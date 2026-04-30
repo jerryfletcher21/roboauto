@@ -37,11 +37,11 @@ roboauto_options = {
             "url": "http://4t4jxmivv6uqej6xzx2jx3fxh75gtt65v3szjoqmc4ugdlhipzdat6yd.onion",
             "nostr_pubkey": "f2d4855df39a7db6196666e8469a07a131cddc08dcaa744a344343ffcf54a10c"
         },
-        "bve": {
-            "short_alias": "veneto",
-            "url": "http://mmhaqzuirth5rx7gl24d4773lknltjhik57k7ahec5iefktezv4b3uid.onion",
-            "nostr_pubkey": "c8dc40a80bbb41fe7430fca9d0451b37a2341486ab65f890955528e4732da34a"
-        },
+#        "bve": {
+#            "short_alias": "veneto",
+#            "url": "http://mmhaqzuirth5rx7gl24d4773lknltjhik57k7ahec5iefktezv4b3uid.onion",
+#            "nostr_pubkey": "c8dc40a80bbb41fe7430fca9d0451b37a2341486ab65f890955528e4732da34a"
+#        },
         "otm": {
             "short_alias": "moon",
             "url": "http://otmoonrndnrddqdlhu6b36heunmbyw3cgvadqo2oqeau3656wfv7fwad.onion",
@@ -57,11 +57,11 @@ roboauto_options = {
             "url": "http://dqmmejfmtlve7d4ccohk4usriifdtci6xk4wv7igxn2fyaduh25s6did.onion",
             "nostr_pubkey": "ded3dc02a1a9b61ce59d11f496539cb3fd15f00326a16f47e5f8d76baba24bdb"
         },
-        "wes": {
-            "short_alias": "whiteyesats",
-            "url": "http://s4usqbcf2pk2xwghdzaggrxd3paiqpvnl4lm2dxp6dec3wbclgbdyiyd.onion",
-            "nostr_pubkey": "5dd5af0c0fbdd785af6bfe2ea1461f4bda4062391fe396661ef4dc4028d64d60"
-        },
+#        "wes": {
+#            "short_alias": "whiteyesats",
+#            "url": "http://s4usqbcf2pk2xwghdzaggrxd3paiqpvnl4lm2dxp6dec3wbclgbdyiyd.onion",
+#            "nostr_pubkey": "5dd5af0c0fbdd785af6bfe2ea1461f4bda4062391fe396661ef4dc4028d64d60"
+#        },
         "ali": {
             "short_alias": "alice",
             "url": "http://alice7bqexhtnkiqhtgkuwgtzzfkishw23ac4sfwpznrwlmnipxlomyd.onion",
