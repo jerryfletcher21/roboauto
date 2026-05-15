@@ -364,12 +364,12 @@ def update_roboauto_options(is_update=False):
         for coord_name in list(roboauto_options["federation"]):
             if roboauto_options["federation"][coord_name] is None:
                 del roboauto_options["federation"][coord_name]
-    else:
-        for coord_name in list(roboauto_options["federation"]):
-            if coord_name not in new_coordinator_list:
-                del roboauto_options["federation"][coord_name]
-                if print_info:
-                    print_out(f"coordinator {coord_name} removed")
+
+    for coord_name in list(roboauto_options["federation"]):
+        if coord_name not in new_coordinator_list:
+            del roboauto_options["federation"][coord_name]
+            if print_info:
+                print_out(f"coordinator {coord_name} removed")
 
     return True
 
