@@ -132,7 +132,7 @@ def robot_handle_active_expired(robot_dic, all_dic, make_data, expiry_reason=Non
             print_out(f"{robot_name} was active and now is {expiry_string}")
 
             earned_rewards = robot_check_and_claim_reward(robot_dic)
-            if earned_rewards is False:
+            if earned_rewards is False or earned_rewards is None:
                 return False
             elif earned_rewards > 0:
                 # while there are rewards to be claimed it is not moving from active
@@ -199,7 +199,7 @@ def robot_handle_active(robot_dic, all_dic):
         return robot_change_dir(robot_name, "paused")
     elif bad_request_is_cancelled(order_dic):
         earned_rewards = robot_check_and_claim_reward(robot_dic)
-        if earned_rewards is False:
+        if earned_rewards is False or earned_rewards is None:
             return False
         elif earned_rewards > 0:
             return True
@@ -280,7 +280,7 @@ def robot_handle_active(robot_dic, all_dic):
             order_is_finished(status_id) or \
             (is_seller and order_is_finished_for_seller(status_id)):
             earned_rewards = robot_check_and_claim_reward(robot_dic)
-            if earned_rewards is False:
+            if earned_rewards is False or earned_rewards is None:
                 return False
             elif earned_rewards > 0:
                 # while there are rewards to be claimed it is not moving from active
@@ -374,7 +374,7 @@ def robot_handle_pending(robot_dic):
         return robot_change_dir(robot_name, "paused")
     elif bad_request_is_cancelled(order_dic):
         earned_rewards = robot_check_and_claim_reward(robot_dic)
-        if earned_rewards is False:
+        if earned_rewards is False or earned_rewards is None:
             return False
         elif earned_rewards > 0:
             return True
@@ -495,7 +495,7 @@ def robot_handle_pending(robot_dic):
         print_out(f"{robot_name} {robot_coordinator} {order_id} {status_string}")
 
         earned_rewards = robot_check_and_claim_reward(robot_dic)
-        if earned_rewards is False:
+        if earned_rewards is False or earned_rewards is None:
             return False
         elif earned_rewards > 0:
             # while there are rewards to be claimed it is not moving from pending

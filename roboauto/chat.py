@@ -46,7 +46,7 @@ def messages_from_chat_response(robot_dic, chat_response_json):
 
     for message in messages:
         message_enc = string_from_multiline_format(message.get("message", False))
-        if message_enc is False:
+        if message_enc is False or message_enc is None:
             print_err("getting encrypted message")
             return False
 

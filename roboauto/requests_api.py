@@ -126,7 +126,7 @@ def requests_tor(url, user, headers, data=None, options=None):
 
             time.sleep(roboauto_options["error_interval"])
             response = requests_tor_response(
-                url, user, timeout, headers, data, error_print=error_print
+                url, user, timeout, headers, data, error_print=bool(error_print)
             )
         if error_happened:
             if error_print is not False and error_print is not None:
