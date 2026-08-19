@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# use pyflakes
+
 command_exist() {
     if command -v "$1" >/dev/null 2>&1; then
         return 0
@@ -8,46 +10,70 @@ command_exist() {
     fi
 }
 
-## check python scripts
-
 python_scripts="$(find roboauto -mindepth 1 -maxdepth 1 -type f)
 bin/roboauto
 setup.py"
 
-pyright_bin="pyright"
-if ! command_exist "$pyright_bin"; then
-    pyright_bin="$HOME/.local/share/nvim/mason/bin/pyright"
+pyright_run() {
+    pyright_bin="pyright"
     if ! command_exist "$pyright_bin"; then
-        echo "error: pyright not found" >&2
-        exit 1
+        pyright_bin="$HOME/.local/share/nvim/mason/bin/pyright"
+        if ! command_exist "$pyright_bin"; then
+            echo "error: pyright not found" >&2
+            exit 1
+        fi
     fi
+
+    # shellcheck disable=SC2086
+    "$pyright_bin" \
+        --level warning \
+        $python_scripts
+}
+
+pylint_run() {
+    # R0911 too-many-return-statements
+    # R0912 too-many-branches
+    # R0913 too-many-arguments
+    # R0914 too-many-locals
+    # R0915 too-many-statements
+    # R0916 too-many-boolean-expressions
+    # R0917 too-many-positional-arguments
+    # R1705 no-else-return
+
+    # shellcheck disable=SC2086
+    pylint \
+        -s n \
+        -d R0911,R0912,R0913,R0914,R0915,R0916,R0917,R1705 \
+        $python_scripts
+}
+
+shellcheck_run() {
+    sh_scripts="completions/roboauto.bash-completion
+    $(find data -mindepth 1 -maxdepth 1)
+    $(find scripts -mindepth 1 -maxdepth 1)"
+
+    # shellcheck disable=SC2086
+    shellcheck $sh_scripts
+}
+
+if [ "$#" -gt 0 ]; then
+    action="$1"
+    shift 1
+    case "$action" in
+    -h|--help)
+        echo "correctness-check [pyright|pylint|shellcheck]"
+        exit 0
+    ;;
+    pyright) pyright_run ;;
+    pylint) pylint_run ;;
+    shellcheck) shellcheck_run ;;
+    *)
+        echo "error: wrong action" >&2
+        exit 1
+    ;;
+    esac
+else
+    pyright_run
+    pylint_run
+    shellcheck_run
 fi
-
-# shellcheck disable=SC2086
-"$pyright_bin" \
-    --level warning \
-    $python_scripts
-
-# R0911 too-many-return-statements
-# R0912 too-many-branches
-# R0913 too-many-arguments
-# R0914 too-many-locals
-# R0915 too-many-statements
-# R0916 too-many-boolean-expressions
-# R0917 too-many-positional-arguments
-# R1705 no-else-return
-
-# shellcheck disable=SC2086
-pylint \
-    -s n \
-    -d R0911,R0912,R0913,R0914,R0915,R0916,R0917,R1705 \
-    $python_scripts
-
-## check sh scripts
-
-sh_scripts="completions/roboauto.bash-completion
-$(find data -mindepth 1 -maxdepth 1)
-$(find scripts -mindepth 1 -maxdepth 1)"
-
-# shellcheck disable=SC2086
-shellcheck $sh_scripts
