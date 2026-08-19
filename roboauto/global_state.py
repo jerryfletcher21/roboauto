@@ -42,21 +42,21 @@ roboauto_options = {
 #            "url": "http://mmhaqzuirth5rx7gl24d4773lknltjhik57k7ahec5iefktezv4b3uid.onion",
 #            "nostr_pubkey": "c8dc40a80bbb41fe7430fca9d0451b37a2341486ab65f890955528e4732da34a"
 #        },
-        "otm": {
-            "short_alias": "moon",
-            "url": "http://otmoonrndnrddqdlhu6b36heunmbyw3cgvadqo2oqeau3656wfv7fwad.onion",
-            "nostr_pubkey": "7af6f7cfc3bfdf8aa65df2465aa7841096fa8ee6b2d4d14fc43d974e5db9ab96"
-        },
+#        "otm": {
+#            "short_alias": "moon",
+#            "url": "http://otmoonrndnrddqdlhu6b36heunmbyw3cgvadqo2oqeau3656wfv7fwad.onion",
+#            "nostr_pubkey": "7af6f7cfc3bfdf8aa65df2465aa7841096fa8ee6b2d4d14fc43d974e5db9ab96"
+#        },
         "lba": {
             "short_alias": "bazaar",
             "url": "http://librebazovfmmkyi2jekraxsuso3mh622avuuzqpejixdl5dhuhb4tid.onion",
             "nostr_pubkey": "95521a33ba34f5924464f425e81b896b1aa9069796a778368ed053e3612c509b"
         },
-        "fds": {
-            "short_alias": "freedomsats",
-            "url": "http://dqmmejfmtlve7d4ccohk4usriifdtci6xk4wv7igxn2fyaduh25s6did.onion",
-            "nostr_pubkey": "ded3dc02a1a9b61ce59d11f496539cb3fd15f00326a16f47e5f8d76baba24bdb"
-        },
+#        "fds": {
+#            "short_alias": "freedomsats",
+#            "url": "http://dqmmejfmtlve7d4ccohk4usriifdtci6xk4wv7igxn2fyaduh25s6did.onion",
+#            "nostr_pubkey": "ded3dc02a1a9b61ce59d11f496539cb3fd15f00326a16f47e5f8d76baba24bdb"
+#        },
 #        "wes": {
 #            "short_alias": "whiteyesats",
 #            "url": "http://s4usqbcf2pk2xwghdzaggrxd3paiqpvnl4lm2dxp6dec3wbclgbdyiyd.onion",
