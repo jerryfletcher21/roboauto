@@ -7,8 +7,8 @@
 import datetime
 import asyncio
 from nostr_sdk import \
-    PublicKey, SecretKey, Keys, Client, EventBuilder, Kind, \
-    RelayOptions, ConnectionMode, Tag, TagKind, Timestamp
+    PublicKey, SecretKey, Keys, ClientBuilder, Proxy, RelayUrl, \
+    EventBuilder, Kind, Tag, Timestamp
 
 from roboauto.logger import print_out, print_err
 from roboauto.utils import \
@@ -44,15 +44,14 @@ def nostr_create_publish_event(
     async def _nostr_create_publish_event():
         review_id = 31986
 
-        client = Client()
+        tor_host = roboauto_options["tor_host"]
+        tor_port = roboauto_options["tor_port"]
+        client = ClientBuilder().proxy(Proxy.all(
+            f"{tor_host}:{tor_port}"
+        )).build()
 
         for relay in coordinator_relays_get():
-            await client.add_relay_with_opts(
-                relay, RelayOptions().connection_mode(
-                    ConnectionMode.PROXY(
-                        roboauto_options["tor_host"], roboauto_options["tor_port"]
-                    ) # pyright: ignore reportArgumentType
-            ))
+            await client.add_relay(RelayUrl.parse(relay))
 
         connection_output = await client.try_connect(
             datetime.timedelta(seconds=roboauto_options["requests_timeout"])
@@ -62,17 +61,16 @@ def nostr_create_publish_event(
 
         nostr_keys = Keys(SecretKey.parse(sha512_sha256(token)))
 
-        # pylint: disable=C0301 line-too-long
         event_builder = EventBuilder(Kind(review_id), "")\
             .custom_created_at(Timestamp.from_secs(get_current_timestamp()))\
             .tags([
-                Tag.custom(TagKind.UNKNOWN("sig"), [coord_token]), # pyright: ignore reportArgumentType
+                Tag.custom("sig", [coord_token]),
                 Tag.identifier(f"{coord_short_alias}:{order_id}"),
                 Tag.public_key(PublicKey.parse(coord_pubkey)),
-                Tag.custom(TagKind.UNKNOWN("rating"), [str(rating)]), # pyright: ignore reportArgumentType
+                Tag.custom("rating", [str(rating)]),
             ])
 
-        event = event_builder.sign_with_keys(nostr_keys)
+        event = event_builder.finalize(nostr_keys)
 
         event_output = await client.send_event(event)
         for key, value in event_output.failed.items():
