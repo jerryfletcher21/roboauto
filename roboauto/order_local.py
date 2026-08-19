@@ -30,7 +30,8 @@ def get_order_data(
     type_id, currency_id,
     amount, has_range, min_amount, max_amount,
     payment_method, premium,
-    public_duration, escrow_duration, bond_size
+    public_duration, escrow_duration, bond_size,
+    password, description
 ):
     return {
         "type":                 type_id,
@@ -43,13 +44,16 @@ def get_order_data(
         "premium":              premium,
         "public_duration":      public_duration,
         "escrow_duration":      escrow_duration,
-        "bond_size":            bond_size
+        "bond_size":            bond_size,
+        "password":             password,
+        "description":          description
     }
 
 
 def get_order_user(
     type_string, currency_string, min_amount_user, max_amount_user,
-    payment_method, premium, public_duration, escrow_duration, bond_size
+    payment_method, premium, public_duration, escrow_duration, bond_size,
+    password, description
 ):
     return {
         "type":                 type_string,
@@ -60,7 +64,9 @@ def get_order_user(
         "premium":              premium,
         "public_duration":      public_duration,
         "escrow_duration":      escrow_duration,
-        "bond_size":            bond_size
+        "bond_size":            bond_size,
+        "password":             password,
+        "description":          description
     }
 
 
@@ -77,6 +83,8 @@ def get_offer_dic(offer, coordinator):
     premium = offer.get("premium", "")
     escrow_duration_seconds = offer.get("escrow_duration", "")
     bond_size = offer.get("bond_size", "")
+    password = offer.get("password", "")
+    description = offer.get("description", "")
     maker_nick = offer.get("maker_nick", "")
     maker_status = offer.get("maker_status", "")
 
@@ -129,6 +137,8 @@ def get_offer_dic(offer, coordinator):
         "max_amount": max_amount,
         "date_end": date_end,
         "payment_method": payment_method,
+        "password": password,
+        "description": description,
         "amount_format": amount_format
     }
 
@@ -140,7 +150,7 @@ def offer_dic_print(offer_dic):
     printf_string = \
         "%-3s %-6s %-8s %-24s %-4s %-3s %3sh %5s %6.2f%% %3s " + \
         offer_dic["amount_format"] + " " + offer_dic["amount_format"] + \
-        " %8s %s"
+        " %8s %s %s"
     print_out(printf_string % (
         offer_dic["coordinator"][:3],
         offer_dic["offer_id"],
@@ -150,7 +160,8 @@ def offer_dic_print(offer_dic):
         offer_dic["ours"],
         float(offer_dic["min_amount"]), float(offer_dic["max_amount"]),
         offer_dic["date_end"],
-        offer_dic["payment_method"]
+        offer_dic["payment_method"],
+        offer_dic["description"]
     ))
 
 
@@ -742,11 +753,15 @@ def order_data_from_order_user(order_user):
         print_err("bond size %s is not a number between 0 and 100" % bond_size)
         return False
 
+    password = order_user.get("password", False)
+    description = order_user.get("description", False)
+
     return get_order_data(
         type_id, currency_id,
         amount, has_range, min_amount, max_amount,
         payment_method, premium,
-        public_duration, escrow_duration, bond_size
+        public_duration, escrow_duration, bond_size,
+        password, description
     )
 
 

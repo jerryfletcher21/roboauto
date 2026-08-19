@@ -119,7 +119,7 @@ def order_user_from_argv(argv, with_default=False, only_set=False):
 
     for key, value in order_user.items():
         if value is False:
-            order_user[key] = order_user_old[key]
+            order_user[key] = order_user_old.get(key, False)
 
     if with_default:
         default_mapping = {
@@ -178,8 +178,10 @@ def create_order(argv):
         return False
 
     for key, value in order_user.items():
+        if key in ("password", "description"):
+            continue
         if value is False:
-            answer = input_ask("-%24s" % (key + ":"))
+            answer = input_ask("%-24s" % (key + ":"))
             if answer is False:
                 return False
             order_user[key] = answer

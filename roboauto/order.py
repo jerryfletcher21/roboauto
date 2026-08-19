@@ -33,8 +33,8 @@ from roboauto.subprocess_commands import subprocess_pay_invoice_and_check
 
 def order_user_empty_get():
     empty_order = get_order_user(
-        False, False, False, False, False,
-        False, False, False, False
+        False, False, False, False, False, False,
+        False, False, False, False, False
     )
 
     return empty_order
@@ -140,6 +140,8 @@ def order_requests_order_dic(
     min_amount = order_response_json.get("min_amount", False)
     max_amount = order_response_json.get("max_amount", False)
     payment_method = order_response_json.get("payment_method", False)
+    password = False
+    description = order_response_json.get("description", False)
     premium = order_response_json.get("premium", False)
     public_duration = order_response_json.get(
         "public_duration", roboauto_options["default_duration"]
@@ -192,16 +194,18 @@ def order_requests_order_dic(
         premium + " " + payment_method + " " + status_string
 
     order_dic = {
+        # pylint: disable=R0801 duplicate-code
         "order_data": get_order_data(
             type_id, currency_id,
             amount, has_range, min_amount, max_amount,
             payment_method, premium,
-            public_duration, escrow_duration, bond_size
+            public_duration, escrow_duration, bond_size,
+            password, description
         ),
         "order_user": get_order_user(
             type_string, currency_string, min_amount_user, max_amount_user,
             payment_method, premium, str(public_duration), str(escrow_duration),
-            bond_size
+            bond_size, password, description
         ),
         "order_info": {
             "coordinator":          coordinator,
@@ -494,6 +498,10 @@ def make_order(
     if not make_data["bond_size"]:
         print_err("bond size percentage not defined")
         return False
+
+    for key in list(make_data.keys()):
+        if make_data[key] is False or make_data[key] is None:
+            del make_data[key]
 
     make_response_all = requests_api_make(
         token_base91, robot_url, robot_name, make_data=json_dumps(make_data)
