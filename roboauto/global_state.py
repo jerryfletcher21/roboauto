@@ -62,10 +62,25 @@ roboauto_options = {
 #            "url": "http://s4usqbcf2pk2xwghdzaggrxd3paiqpvnl4lm2dxp6dec3wbclgbdyiyd.onion",
 #            "nostr_pubkey": "5dd5af0c0fbdd785af6bfe2ea1461f4bda4062391fe396661ef4dc4028d64d60"
 #        },
-        "ali": {
-            "short_alias": "alice",
-            "url": "http://alice7bqexhtnkiqhtgkuwgtzzfkishw23ac4sfwpznrwlmnipxlomyd.onion",
-            "nostr_pubkey": "40d33962fdf26e0910805f36a3a96b239cf93b95d4a3e6dd779f1ea3ff9b0866"
+#        "ali": {
+#            "short_alias": "alice",
+#            "url": "http://alice7bqexhtnkiqhtgkuwgtzzfkishw23ac4sfwpznrwlmnipxlomyd.onion",
+#            "nostr_pubkey": "40d33962fdf26e0910805f36a3a96b239cf93b95d4a3e6dd779f1ea3ff9b0866"
+#        },
+#        "ele": {
+#            "short_alias": "eleuteria",
+#            "url": "http://ixiiqsuzt7hh5qxshiqwyewyh3gyygltbygqlvlyitg3gl3u2cemk3ad.onion",
+#            "nostr_pubkey": "0f243ba69b7c7ffa73934bc7f5fa6586b8013afdc310d808b1ec2c2c98f1c219"
+#        },
+        "frp": {
+            "short_alias": "freeport",
+            "url": "http://2enoseg66hme76khjjn2qvrhipnzwgwa44mewgrdphrxbhzcxd2vdiqd.onion",
+            "nostr_pubkey": "e489cdb0b24fa416a49b524625e0edab0f7235f3a0261a3cdfc64c4efdc14afd"
+        },
+        "ama": {
+            "short_alias": "ammanaya",
+            "url": "http://ammannjgzybw4qm2odmci7xgolh5grzijidacjxose5tthm375dcopad.onion",
+            "nostr_pubkey": "91820b0fc7e52873a574208c7b4e9b8ae848ee25e5c03bac655c45d060995548"
         }
     }
 }
