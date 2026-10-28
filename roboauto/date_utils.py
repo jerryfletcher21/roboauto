@@ -12,7 +12,11 @@ from roboauto.global_state import roboauto_options
 
 
 def time_strptime_understand_format(date_string):
-    possible_formats = [ "%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ" ]
+    possible_formats = [
+        "%Y-%m-%dT%H:%M:%S.%f%z",
+        "%Y-%m-%dT%H:%M:%S.%fZ",
+        "%Y-%m-%dT%H:%M:%SZ"
+    ]
 
     for date_format in possible_formats:
         try:
